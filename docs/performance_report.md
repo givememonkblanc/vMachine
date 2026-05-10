@@ -1,116 +1,129 @@
-# vMachine Performance Evaluation Report
+# vMachine Performance Evaluation Report & Measurement Plan
 
-## 1. 평가 목적
-본 보고서는 기존 OpenStack 기반 VM 관리 플랫폼(vMachine)의 백엔드 API 성능, 동시 요청 처리량, 백그라운드 워커 처리 시간 및 시스템 리소스 사용량을 평가하기 위해 작성되었습니다. 이 결과는 제품 납품 및 PoC(Proof of Concept) 검증을 위한 신뢰성 있는 지표로 활용되며, 최근 적용된 백엔드 성능 최적화(Connection Pooling, 비동기 배치 처리, TTL 캐싱 등)의 효과를 확인하고 향후 병목 개선 방향을 수립하는 것을 목적으로 합니다.
+> **문서 상태**: 예비 성능 검증 및 재측정 계획 (Draft)  
+> **수정일**: 2026-05-10  
+> **목적**: 성능 측정 프레임워크 검증, 유효/무효 지표 분리, 상용 배포 전 재측정 및 계층별 Instrumentation 계획 수립
 
-## 2. 시스템 개요
-현재 vMachine 플랫폼은 FastAPI 기반의 백엔드로 구성되며, OpenStack SDK를 통해 Nova, Neutron, Cinder, Glance 등과 통신합니다. 최근 적용된 주요 최적화 사항은 다음과 같습니다.
-- OpenStack SDK Connection Pooling 및 싱글톤 인스턴스화
-- Audit Log 및 Monitoring Metric의 비동기 Background Batch Queue 처리
-- `find_*` (O(N)) 패턴을 `get_*` (O(1)) 패턴으로 변경하여 OpenStack API 조회 성능 최적화
-- Image 및 Flavor 조회에 대한 인메모리 TTL Caching 적용
-- VMware 마이그레이션 시 메모리 팽창(OOM) 방지를 위한 Chunked Streaming I/O 구현
-- 데이터베이스 세션 풀링 최적화
+---
 
-## 3. 테스트 환경
-*본 측정은 타겟 OpenStack/Kubernetes 인프라가 완전히 구성된 환경에서 수행해야 정확한 결과를 얻을 수 있습니다. 현재는 측정 스크립트와 템플릿만 제공되며, 실제 수치는 배포 환경에서 측정 후 기입해야 합니다.*
+## 1. 예비 성능 측정 결과 분석 (Reality Check)
 
-- **서버 사양**: [To be measured in target OpenStack environment]
-- **OS**: Ubuntu 22.04 LTS (권장)
-- **Python 버전**: Python 3.12+
-- **FastAPI/Uvicorn 설정**: Workers=[N], DB Pool Size=5, Max Overflow=20
-- **DB 종류**: SQLite (개발) / PostgreSQL (상용 권장)
-- **Redis 사용 여부**: Arq 기반 Worker Queue용 활성화
-- **OpenStack 버전**: [Target Version, e.g., 2024.1 Caracal]
-- **Kubernetes 버전**: [Target Version, e.g., v1.30]
-- **네트워크 환경**: [10G/40G Internal Network]
+본 결과는 로컬 개발 환경(Mock 환경 일부 포함)에서 벤치마크 스크립트(`api_benchmark.py`, `load_test_locust.py`)의 동작을 검증하기 위해 수행된 예비 테스트입니다. 성능공학 관점에서 유효한 측정값과 환경 구성 누락으로 인한 무효(Error) 측정값을 엄격히 분리합니다.
 
-## 4. 테스트 대상 API
+### 1.1 유효 측정값 (성공률 100%)
 
-| 구분 | Endpoint | Method | 설명 | 측정 여부 |
-|------|----------|--------|------|-----------|
-| 공통 | `/api/v1/health` | GET | 시스템 상태 체크 | 예 |
-| Compute | `/api/v1/compute/servers` | GET | VM 목록 조회 (Nova) | 예 |
-| Compute | `/api/v1/compute/servers` | POST | VM 생성 요청 (Nova+Cinder+Neutron) | 아니오 (PoC 시 실측 요망) |
-| Compute | `/api/v1/compute/servers/{id}` | DELETE | VM 삭제 요청 | 아니오 (PoC 시 실측 요망) |
-| Image | `/api/v1/image/images` | GET | 이미지 목록 조회 (Glance) | 예 |
-| Network | `/api/v1/network/networks` | GET | 네트워크 목록 조회 (Neutron) | 예 |
-| Storage | `/api/v1/storage/volumes` | GET | 볼륨 목록 조회 (Cinder) | 예 |
-| K8s | `/api/v1/kubernetes/clusters` | GET | Kubernetes 클러스터 리소스 조회 | 예 |
-| Orchestration | `/api/v1/orchestration/migrations` | GET/POST | VMware Migration API | 예 (Mock 제외 실측 요망) |
+다음 API는 내부 의존성 또는 연동된 Mock/로컬 환경을 통해 정상적인 HTTP 2xx 응답을 반환한 **유효한 성능 지표**입니다.
 
-## 5. 측정 방법
-- **단일 요청 테스트**: `api_benchmark.py`를 사용하여 각 API에 대해 50~100회 순차 요청 후 지연 시간(p50, p95, p99 등) 분석.
-- **반복/동시 요청 테스트**: `load_test_locust.py`를 사용하여 가상의 동시 사용자(10~100명)를 시뮬레이션하며 Throughput(RPS) 및 부하 시 응답 저하 확인.
-- **부하 테스트**: Locust를 활용해 점진적 부하 증가(Step Load) 테스트 수행.
-- **시스템 리소스 모니터링**: `system_monitor.py`를 사용하여 테스트 구간 동안의 CPU, 메모리, Network I/O 변동 추이 기록.
+| API | 평균 응답시간 | p50 | p95 | p99 | 성공률 | 비고 |
+|-----|---------------|-----|-----|-----|--------|------|
+| **Health Check** (`/api/v1/health`) | 2.26 ms | 2.07 ms | 6.50 ms | 11.25 ms | 100% | 내부 로직 전용 |
+| **List Servers** (`/api/v1/compute/servers`) | 597.90 ms | 565.65 ms | 929.93 ms | 1145.35 ms | 100% | OpenStack SDK 통신 |
 
-## 6. 성능 측정 결과
-*(2026년 5월 10일 로컬 테스트 환경 기준 실측 데이터)*
+> **분석**: `List Servers`의 약 600ms 응답 속도는 측정값 자체는 유효하나, 이 시간이 vMachine 내부 병목인지 타겟 OpenStack Nova API의 지연인지 분리되지 않은 통합 지표입니다. (재측정 계획의 '계층별 시간 분해' 참고)
 
-| API | 평균 응답시간 | p50 | p95 | p99 | 최소 | 최대 | 성공률 | 실패율 |
-|-----|---------------|-----|-----|-----|------|------|--------|--------|
-| Health Check | 2.26 ms | 2.07 ms | 6.50 ms | 11.25 ms | 0.88 ms | 8.61 ms | 100.0% | 0.0% |
-| List Servers | 597.90 ms | 565.65 ms | 929.93 ms | 1145.35 ms | 546.68 ms | 1025.48 ms | 100.0% | 0.0% |
-| List Images | 1.19 ms | 0.83 ms | 3.24 ms | 4.84 ms | 0.50 ms | 3.95 ms | 0.0%* | 100.0% |
-| List Networks| 0.70 ms | 0.66 ms | 1.35 ms | 1.99 ms | 0.47 ms | 1.64 ms | 0.0%* | 100.0% |
-| List Volumes | 2.99 ms | 0.74 ms | 29.95 ms | 104.66 ms | 0.49 ms | 63.09 ms | 0.0%* | 100.0% |
-| K8s Clusters | 0.73 ms | 0.67 ms | 1.06 ms | 1.11 ms | 0.56 ms | 1.09 ms | 0.0%* | 100.0% |
+### 1.2 무효 측정값 (오류 응답 시간)
 
-> **Note**: `*` 표시가 있는 API의 실패(0.0% 성공률)는 현재 로컬 샌드박스 환경에 OpenStack 및 K8s 인증/연결 정보(.env)가 완전하게 주입되지 않아 발생하는 404/500 에러 등에 기인합니다. 반면 `List Servers`의 경우 응답이 약 600ms 정도로 정상 작동하는 것을 확인하였으며, 이는 Connection Pooling 적용 후 안정적인 레이턴시를 보여주는 의미 있는 수치입니다. 실제 고객 환경에서는 지연시간과 성공률 모두 변동될 수 있습니다.
+다음 API는 인증 실패(401), 리소스 없음(404), 내부 오류(500) 등으로 인해 정상적인 비즈니스 로직을 수행하지 못하고 Early Return된 결과입니다. **이를 성능 수치로 해석해서는 안 됩니다.**
 
-## 7. 부하 테스트 결과
-*(Locust 부하 테스트 - 20명의 동시 접속자가 30초 동안 혼합 요청(Mixed load)을 발생시킨 결과)*
+| API | 평균 **오류 반환** 시간 | HTTP Status | 실패율 | 원인 |
+|-----|-------------------------|-------------|--------|------|
+| **List Images** | 1.19 ms | 4xx/5xx | 100% | 인증/엔드포인트 설정 누락 |
+| **List Networks** | 0.70 ms | 4xx/5xx | 100% | 인증/엔드포인트 설정 누락 |
+| **List Volumes** | 2.99 ms | 4xx/5xx | 100% | 인증/엔드포인트 설정 누락 |
+| **K8s Clusters** | 0.73 ms | 4xx/5xx | 100% | Kubeconfig 파일 부재 |
+| **VMware Migrations** | 2.00 ms (Locust) | 404 Not Found | 100% | 경로/설정 불일치 |
 
-- **동시 사용자 수**: 20명
-- **RPS (Requests Per Second)**: 6.35 req/s
-- **평균 응답시간**: 123 ms (전체 Aggregated)
-- **p95 응답시간**: 620 ms (전체 Aggregated)
-- **실패율**: 48.15 % (위와 동일한 환경 의존적 실패)
+> **분석**: 실패율 48.15%가 기록된 기존 Locust 부하 테스트 결과는 성능 결론에서 제외하며, "환경 미구성 상태의 무효 부하 테스트"로 분류합니다. 에러 응답(1~3ms)이 전체 평균 응답 시간을 인위적으로 낮춰(123ms) 마치 백엔드 성능이 우수한 것처럼 보이게 하는 통계적 착시를 유발했습니다.
 
-> **상세 분석**: 동시 20명이 지속적으로 `List Servers`(가장 무거운 요청)와 경량 API들을 동시에 호출하는 상황에서, 가장 무거운 `List Servers` API의 p95 응답시간이 620ms 수준으로 매우 안정적으로 방어되었습니다. 백엔드 자체의 병목 현상은 관찰되지 않았으며, FastAPI의 Async/Uvicorn 워커가 원활히 요청을 소화하고 있음을 증명합니다.
+---
 
-## 8. 시스템 리소스 사용량
-- **CPU 평균 / 최대**: 약 2.5 % / 4.1 %
-- **Memory 평균 / 최대**: 약 35 % / 36 % (FastAPI 단일 프로세스 기준 약 100MB 사용)
-- **Disk I/O**: 측정 범위 내 유의미한 Disk 병목 없음 (비동기 처리로 로깅 지연 없음)
-- **Network I/O**: RPS 당 수 KB 수준의 트래픽으로 안정적 유지
+## 2. 성능 결론 수정 및 삭제 대상 표현
 
-## 9. 주요 병목 분석 (Architecture Analysis)
+이전 보고서에서 사용된 다음 표현들은 비교군(Baseline) 부재 및 분해 지표 부족으로 인해 **신뢰할 수 없으므로 모두 삭제/수정**되었습니다.
 
-최근 진행된 코드 최적화 및 구조 분석에 따른 시스템 병목 분석입니다.
+* ❌ "백엔드 병목 없음" → **수정**: "현재 지표로는 내부 병목과 외부 API 지연의 분리 판단 불가"
+* ❌ "안정적으로 방어" → **수정**: "Error 반환이 섞여 통계적 유효성 없음"
+* ❌ "원활히 요청을 소화" → **수정**: "단순 HTTP 에러 응답 처리는 경량화되어 있음"
+* ❌ "Connection Pooling 효과 확인" → **수정**: "Before/After 대조군 테스트 진행 전까지 효과 입증 유보"
 
-### 9.1 OpenStack SDK API 호출
-- **관련 파일/함수**: `app/services/openstack/*_service.py`
-- **원인**: 백엔드에서 OpenStack Core 서비스(Nova, Neutron 등)로의 API 요청은 HTTP 네트워크 통신이므로 필연적인 레이턴시가 발생합니다. 기존 매 요청마다 Keystone 인증을 수행하던 구조는 `ConnectionFactory` 캐싱으로 500ms~2s가량 단축되었습니다.
-- **영향**: 여전히 목록 조회가 무거운 테넌트에서는 DB 부하가 아닌 OpenStack API 자체 응답 속도가 전체 API 지연의 90% 이상을 차지합니다.
-- **개선 방향**: Pagination(페이징) 및 Redis 백엔드 캐시 전면 도입.
-- **우선순위**: 높음
+**현재의 정확한 결론**: 
+- 현재 로컬 측정은 일부 API(`Health Check`, `List Servers`)만 유효한 벤치마크 프레임워크 검증 단계입니다.
+- OpenStack/K8s 인증 실패로 다수 API의 측정은 무효입니다.
+- 향후 실제 타겟 환경에서 성공률 99% 이상을 달성한 뒤 재측정해야 최종 SLA(Service Level Agreement) 산정이 가능합니다.
 
-### 9.2 Audit Log & Metrics DB I/O
-- **관련 파일/함수**: `app/common/middleware/audit.py`, `app/services/monitoring/monitoring_service.py`
-- **원인**: 모든 API 요청/응답마다 DB INSERT가 발생했습니다.
-- **개선 결과**: 현재 `asyncio.Queue` 기반의 백그라운드 배치 처리(Batch Processing)로 전환되어 Per-request DB 병목은 해소되었습니다. 다만 동시 접속자가 폭증하여 큐 사이즈가 한계에 도달하면 메모리 사용량이 증가할 수 있습니다.
+---
 
-### 9.3 VMware Migration I/O 처리
-- **관련 파일/함수**: `app/modules/migration/manager.py`
-- **원인**: 대용량 vmdk 디스크 파일(수십~수백 GB)을 OpenStack Glance에 업로드할 때, 기존 메모리에 파일을 전체 로드하는 방식은 OOM(Out of Memory)의 원인이었습니다.
-- **개선 결과**: Chunked file streaming(`open("rb")` 통째로 넘기기) 방식으로 개선되어 OOM 위험은 낮아졌으나, Network Bandwidth와 Disk I/O 병목은 물리적 한계로 남습니다.
-- **우선순위**: 보통 (마이그레이션 전용 스토리지 10G/40G 네트워크 구성 필요)
+## 3. 재측정 기준 및 환경 요건
 
-## 10. 개선 권고사항
-- **API 계층**: 대량 리소스(Server, Volume) 조회 시 OpenStack API의 응답 속도에 종속되므로, 프론트엔드 단의 Async Lazy Loading 및 Pagination 필수 적용.
-- **DB 계층**: 상용 환경에서는 SQLite 대신 PostgreSQL + PgBouncer(Connection Pooling) 구성을 권장.
-- **Worker/Queue 계층**: Migration과 같은 Heavy Task 처리 시 현재 1대의 Worker Node로는 부하가 집중될 수 있으므로, Arq 기반의 다중 Worker Node 스케일 아웃(Scale-out) 구조 구축 필요.
-- **Monitoring 계층**: 현재 내부 SQLite 기반 Metric 저장 구조는 노드 확장에 불리하므로, 외부 Prometheus/VictoriaMetrics로의 데이터 연동 구조 마련 필요.
+차기 성능 측정은 다음 조건이 모두 충족된 상태에서 수행해야 합니다.
 
-## 11. 제품화 관점 평가
-- **현 단계**: MVP(Minimum Viable Product) 수준.
-- 단일 서버 내 API 구동 및 비동기 처리, 큐 튜닝 등 소프트웨어 레벨의 최적화는 완료되었습니다.
-- **상용화 전 보완 필요사항**: 
-  1. HAProxy 또는 Nginx 기반의 FastAPI 로드밸런싱 클러스터링 적용
-  2. 실제 OpenStack 연동 상태에서의 Long-running Task(VM 생성/삭제) 타임아웃 안정성 테스트
-  3. Redis를 활용한 분산 세션 및 글로벌 캐싱 적용
+1. **인프라 연결성**: 실제 OpenStack(Nova, Glance, Neutron, Cinder) 및 K8s 인증 정보 정상 주입.
+2. **사전 검증(Health Check)**: 부하 테스트 시작 전 모든 대상 API 단일 호출 시 200 OK (성공률 100%) 확인.
+3. **컴포넌트 구성**: SQLite 대신 상용 기준의 PostgreSQL 사용, Redis 기반 백그라운드 Worker 정상 구동 상태.
+4. **유효성 통제**: 테스트 중 에러율이 1%를 초과할 경우 해당 테스트 Run은 무효화하고 원인 파악 후 재수행.
 
-## 12. 결론
-vMachine 백엔드는 최근 적용된 Connection Pooling, TTL Caching, 비동기 배치 처리를 통해 프레임워크 내부의 소프트웨어적 병목을 대부분 해소하였습니다. 그러나 IaaS/Orchestration 플랫폼의 특성상 성능의 최종 지표는 타겟 인프라(OpenStack, K8s, Network, Storage)의 응답 속도에 절대적으로 의존합니다. 본 벤치마크 툴들을 활용하여 대상 인프라에 직접 연동한 뒤 실측 데이터를 수집함으로써, 최종 고객 납품 시 신뢰성 있는 SLA(Service Level Agreement)를 제시할 수 있습니다.
+---
+
+## 4. 필수 성능 지표 재정의
+
+재측정 시 다음 지표들을 반드시 분리하여 추출하고 보고해야 합니다.
+
+* **API 성공/실패 지표**: API별 성공률, Error Rate, HTTP Status Code별 빈도 및 평균 응답 시간
+* **Latency 지표**: **성공 응답(2xx) 기준의** Average, p50, p95, p99 Latency
+* **Throughput 지표**: 동시 사용자 수(Concurrent Users)에 따른 RPS(Requests Per Second) 변화 곡선
+* **Internal 지표**: OpenStack API 대기 시간 vs vMachine 내부 DB/비즈니스 로직 처리 시간
+* **Async 지표**: Redis Queue 대기 시간(Wait Time), Worker 실제 실행 시간(Execution Time)
+* **Resource 지표**: CPU, Memory, Network I/O, Disk I/O (system_monitor.py 활용)
+
+---
+
+## 5. 계층별 시간 분해 (Instrumentation) 추가 방안
+
+현재 `List Servers` 600ms의 원인을 규명하기 위해, 각 API 요청 구간에 대한 Tracing(또는 시간 분해 로그)을 추가해야 합니다.
+측정해야 할 세부 구간은 다음과 같습니다:
+
+1. `total_request_time`: 클라이언트 요청 ~ 응답 완료
+2. `auth_middleware_time`: Keystone/JWT 토큰 검증 시간
+3. `db_query_time`: 로컬 DB(PostgreSQL/SQLite) 조회 시간
+4. `openstack_client_time`: OpenStack SDK가 실제 Nova API에 다녀오는 시간 (병목 의심 1순위)
+5. `response_serialization_time`: OpenStack 응답 객체를 Pydantic/FastAPI JSON으로 변환하는 시간
+6. `audit_log_enqueue_time`: Audit/Metric을 비동기 큐에 푸시하는 시간
+7. `background_task_enqueue_time`: Migration 등 비동기 작업 큐 접수 시간
+
+> **적용 방안**: FastAPI Middleware 또는 OpenTelemetry(Jaeger/Zipkin) 연동을 통해 위 Span들을 분리 기록하는 코드를 차기 스프린트에 반영해야 합니다.
+
+---
+
+## 6. 부하 테스트(Locust) 재설계안
+
+기존의 Mixed Load 방식은 에러율이 섞이면 지표가 오염됩니다. 차기 Locust 스크립트는 다음 시나리오별로 분리하여 실행합니다.
+
+1. **Fail-Fast 로직**: 실패 응답(4xx/5xx) 발생 시 로깅 후 테스트 중단 처리 (옵션화)
+2. **시나리오 1: 순수 백엔드 부하 (Health Check 단독)**
+   - 목표: vMachine 자체 웹서버(Uvicorn/FastAPI)의 한계 RPS 파악.
+3. **시나리오 2: 외부 의존성 부하 (List Servers 단독)**
+   - 목표: OpenStack API + Connection Pool의 한계 동시 처리량 파악.
+4. **시나리오 3: 혼합 워크로드 (Mixed API)**
+   - 목표: 조회/상태 확인 등 일반적인 유저 사용 패턴 시뮬레이션 (모든 API 200 OK 보장 하에).
+5. **시나리오 4: Long-running 비동기 작업**
+   - 목표: VM 생성/삭제, Migration 요청 접수 속도와 Worker의 비동기 완료 시간 측정 (Polling 방식).
+
+**측정 단계**:
+- 사용자 수: 1명 → 5명 → 10명 → 20명 → 50명 → 100명 (Step Load)
+- 각 단계별 Warm-up 30초, 측정 3분 유지. 최소 3회 반복 측정 후 평균치 도출.
+
+---
+
+## 7. 성능 합격 기준선 (Target SLA) 제안
+
+상용 배포 전 다음의 성능 기준(SLA)을 달성하는 것을 목표로 합니다.
+
+* **초경량 API (Health Check 등)**: p95 < 50ms
+* **단순 캐시 API (DB Select Only)**: p95 < 100ms
+* **OpenStack 목록/상세 조회 API (List/Get)**: p95 < 1,000ms
+* **비동기 작업 접수 API (VM Create/Delete, Migration POST)**: p95 < 500ms
+* **비동기 작업 실제 완료 시간**: 별도 Worker 메트릭으로 평가 (요청 대비 지연 추적)
+* **안정성**: 
+  - 부하 테스트(최대 설계 RPS 내) 실패율 < 1%
+  - CPU 사용률 < 70%, Memory 사용률 < 80% (OOM 방지)
+  - Redis Queue 대기 시간 < 1s (워커 스케일아웃 기준)
