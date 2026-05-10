@@ -11,8 +11,8 @@ from app.schemas.security_group import (
     SecurityGroupRuleCreateRequest,
     SecurityGroupRuleCreateResponse,
 )
-from app.services.operation_task_service import OperationTaskService
-from app.services.security_group_service import SecurityGroupService
+from app.services.core.operation_task_service import OperationTaskService
+from app.services.openstack.security_group_service import SecurityGroupService
 
 router = APIRouter()
 

@@ -1,4 +1,4 @@
-from app.services.auth_service import AuthService
+from app.services.identity.auth_service import AuthService
 
 
 class AuthManager:

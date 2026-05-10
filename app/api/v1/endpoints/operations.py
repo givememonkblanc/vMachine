@@ -12,8 +12,8 @@ from app.schemas.operations_automation import (
     ScheduledTaskListResponse,
     ScheduledTaskSummary,
 )
-from app.services.operation_task_service import OperationTaskService
-from app.services.operations_service import OperationsService
+from app.services.core.operation_task_service import OperationTaskService
+from app.services.orchestration.operations_service import OperationsService
 
 router = APIRouter()
 

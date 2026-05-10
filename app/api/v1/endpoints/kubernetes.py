@@ -16,8 +16,8 @@ from app.schemas.kubernetes import (
     ServiceListResponse,
     ServiceSummary,
 )
-from app.services.kubernetes_service import KubernetesService
-from app.services.operation_task_service import OperationTaskService
+from app.services.kubernetes.kubernetes_service import KubernetesService
+from app.services.core.operation_task_service import OperationTaskService
 
 router = APIRouter()
 

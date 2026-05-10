@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, Response, status
 
 from app.api.deps.services import get_image_service, get_operation_task_service
 from app.schemas.image import ImageCreateRequest, ImageListResponse, ImageSummary
-from app.services.image_service import ImageService
-from app.services.operation_task_service import OperationTaskService
+from app.services.openstack.image_service import ImageService
+from app.services.core.operation_task_service import OperationTaskService
 
 router = APIRouter()
 

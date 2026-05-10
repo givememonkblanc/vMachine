@@ -12,8 +12,8 @@ from app.schemas.monitoring import (
     MetricQueryParams,
     ProjectUsage,
 )
-from app.services.compute_service import ComputeService
-from app.services.monitoring_service import MonitoringService
+from app.services.openstack.compute_service import ComputeService
+from app.services.monitoring.monitoring_service import MonitoringService
 
 router = APIRouter()
 

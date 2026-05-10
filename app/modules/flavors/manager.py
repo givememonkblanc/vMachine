@@ -1,5 +1,5 @@
 from app.schemas.flavor import FlavorCreateRequest
-from app.services.flavor_service import FlavorService
+from app.services.openstack.flavor_service import FlavorService
 
 
 class FlavorManager:

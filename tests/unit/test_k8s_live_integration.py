@@ -3,7 +3,7 @@ import os
 import pytest
 from app.core.config.settings import Settings
 from app.clients.kubernetes.connection import KubernetesClientFactory
-from app.services.kubernetes_service import KubernetesService
+from app.services.kubernetes.kubernetes_service import KubernetesService
 from app.schemas.kubernetes import DeploymentCreateRequest, DeploymentScaleRequest, ServiceCreateRequest
 
 @pytest.fixture(scope="module")

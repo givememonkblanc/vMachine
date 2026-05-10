@@ -1,5 +1,5 @@
 from app.schemas.image import ImageCreateRequest
-from app.services.image_service import ImageService
+from app.services.openstack.image_service import ImageService
 
 
 class ImageManager:

@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, Response, status
 
 from app.api.deps.services import get_network_service, get_operation_task_service
 from app.schemas.network import NetworkCreateRequest, NetworkCreateResponse, NetworkDetail, NetworkListResponse
-from app.services.network_service import NetworkService
-from app.services.operation_task_service import OperationTaskService
+from app.services.openstack.network_service import NetworkService
+from app.services.core.operation_task_service import OperationTaskService
 
 router = APIRouter()
 

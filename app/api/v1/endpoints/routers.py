@@ -10,8 +10,8 @@ from app.schemas.router import (
     RouterListResponse,
     RouterSummary,
 )
-from app.services.operation_task_service import OperationTaskService
-from app.services.router_service import RouterService
+from app.services.core.operation_task_service import OperationTaskService
+from app.services.openstack.router_service import RouterService
 
 router = APIRouter()
 

@@ -2,7 +2,7 @@ from collections.abc import Mapping, Sequence
 from typing import cast, final
 
 from app.core.logging.logger import get_logger
-from app.services.audit_service import log_audit_entry
+from app.services.core.audit_service import log_audit_entry
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 logger = get_logger(__name__)

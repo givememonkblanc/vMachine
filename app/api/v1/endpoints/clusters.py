@@ -10,8 +10,8 @@ from app.schemas.deployment import (
     ClusterListResponse,
     ClusterSummary,
 )
-from app.services.cluster_service import ClusterService
-from app.services.operation_task_service import OperationTaskService
+from app.services.orchestration.cluster_service import ClusterService
+from app.services.core.operation_task_service import OperationTaskService
 
 router = APIRouter()
 

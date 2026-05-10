@@ -1,4 +1,4 @@
-from app.services.router_service import RouterService
+from app.services.openstack.router_service import RouterService
 
 
 class RouterManager:

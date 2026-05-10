@@ -8,8 +8,8 @@ from app.schemas.deployment import (
     MigrationListResponse,
     MigrationTaskSummary,
 )
-from app.services.migration_service import MigrationService
-from app.services.operation_task_service import OperationTaskService
+from app.services.orchestration.migration_service import MigrationService
+from app.services.core.operation_task_service import OperationTaskService
 
 router = APIRouter()
 

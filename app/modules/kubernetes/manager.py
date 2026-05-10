@@ -1,5 +1,5 @@
 from app.schemas.kubernetes import DeploymentCreateRequest, ServiceCreateRequest
-from app.services.kubernetes_service import KubernetesService
+from app.services.kubernetes.kubernetes_service import KubernetesService
 
 
 class KubernetesManager:

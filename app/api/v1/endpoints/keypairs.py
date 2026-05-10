@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, Response, status
 
 from app.api.deps.services import get_keypair_service, get_operation_task_service
 from app.schemas.keypair import KeypairCreateRequest, KeypairCreateResponse, KeypairListResponse, KeypairSummary
-from app.services.keypair_service import KeypairService
-from app.services.operation_task_service import OperationTaskService
+from app.services.openstack.keypair_service import KeypairService
+from app.services.core.operation_task_service import OperationTaskService
 
 router = APIRouter()
 

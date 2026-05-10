@@ -1,6 +1,6 @@
 from app.schemas.volume import VolumeCreateRequest
-from app.services.compute_service import ComputeService
-from app.services.volume_service import VolumeService
+from app.services.openstack.compute_service import ComputeService
+from app.services.openstack.volume_service import VolumeService
 
 
 class VolumeManager:

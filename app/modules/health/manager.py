@@ -1,7 +1,7 @@
-from app.services.audit_service import AuditService
-from app.services.compute_service import ComputeService
-from app.services.image_service import ImageService
-from app.services.network_service import NetworkService
+from app.services.core.audit_service import AuditService
+from app.services.openstack.compute_service import ComputeService
+from app.services.openstack.image_service import ImageService
+from app.services.openstack.network_service import NetworkService
 
 
 class HealthManager:

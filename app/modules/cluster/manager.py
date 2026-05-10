@@ -1,6 +1,6 @@
 from app.schemas.deployment import BatchDeployRequest, ClusterCreateRequest
-from app.services.cluster_service import ClusterService
-from app.services.compute_service import ComputeService
+from app.services.orchestration.cluster_service import ClusterService
+from app.services.openstack.compute_service import ComputeService
 
 
 class ClusterManager:

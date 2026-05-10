@@ -1,5 +1,5 @@
 from app.schemas.tenant import ProjectCreateRequest
-from app.services.tenant_service import TenantService
+from app.services.identity.tenant_service import TenantService
 
 
 class TenantManager:

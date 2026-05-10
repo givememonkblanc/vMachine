@@ -1,4 +1,4 @@
-from app.services.network_service import NetworkService
+from app.services.openstack.network_service import NetworkService
 
 
 class SubnetManager:

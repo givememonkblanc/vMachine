@@ -8,8 +8,8 @@ from app.schemas.operations_automation import (
     StoragePoolListResponse,
     StoragePoolSummary,
 )
-from app.services.operation_task_service import OperationTaskService
-from app.services.storage_service import StorageService
+from app.services.core.operation_task_service import OperationTaskService
+from app.services.openstack.storage_service import StorageService
 
 router = APIRouter()
 

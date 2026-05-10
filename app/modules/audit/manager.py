@@ -1,4 +1,4 @@
-from app.services.audit_service import AuditService
+from app.services.core.audit_service import AuditService
 
 
 class AuditManager:

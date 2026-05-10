@@ -1,4 +1,4 @@
-from app.services.compute_service import ComputeService
+from app.services.openstack.compute_service import ComputeService
 
 
 class SnapshotManager:

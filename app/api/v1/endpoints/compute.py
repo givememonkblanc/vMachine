@@ -16,8 +16,8 @@ from app.schemas.compute import (
     ServerSummary,
     VolumeAttachRequest,
 )
-from app.services.compute_service import ComputeService
-from app.services.operation_task_service import OperationTaskService
+from app.services.openstack.compute_service import ComputeService
+from app.services.core.operation_task_service import OperationTaskService
 
 router = APIRouter()
 
