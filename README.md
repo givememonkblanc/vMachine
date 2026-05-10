@@ -79,6 +79,26 @@ Swagger UI는 `http://localhost:8000/docs`에서 확인할 수 있습니다.
 arq app.worker.WorkerSettings
 ```
 
+## Performance Evaluation
+
+This project includes benchmark scripts for evaluating API latency, concurrent request throughput, background worker processing time, and system resource usage.
+
+Benchmark tools are located in the `benchmarks/` directory.
+
+```bash
+# API Latency Benchmark
+python benchmarks/api_benchmark.py --base-url http://localhost:8000
+
+# Locust Load Testing (Concurrency)
+locust -f benchmarks/load_test_locust.py --host http://localhost:8000
+
+# System Resource Monitoring
+python benchmarks/system_monitor.py --duration 300
+```
+
+Detailed benchmark methodology, bottleneck analysis, and architecture improvements are available in:
+`docs/performance_report.md`
+
 ## 프로젝트 구조
 
 - `app/api`: 라우터 및 API 엔드포인트
