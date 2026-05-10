@@ -53,7 +53,7 @@ async def lifespan(app_: FastAPI):
     cache_sync_task = asyncio.create_task(_sync_cache_metrics())
 
     # worker count gauge — read from Gunicorn's enviroment
-    worker_count.set(int(os.environ.get("GUNICORN_WORKERS", "16")))
+    worker_count.set(int(os.environ.get("GUNICORN_WORKERS", "8")))
 
     await on_startup()
     yield

@@ -2,10 +2,14 @@
 
 Architecture
 -----------
-Nginx (0.0.0.0:8001) → Gunicorn (127.0.0.1:8002) → FastAPI workers
+Nginx (0.0.0.0:8083) → Gunicorn (127.0.0.1:8002) → FastAPI workers
 
-Worker formula: (2 × CPU cores) + 1 = 65 on this 32-core AMD Ryzen 395.
-Capped at 16 workers to stay within memory budget (~50 MB/worker overhead).
+Worker formula: (2 × CPU cores) + 1 = 65, but capped at 8 workers.
+Benchmarked 4/8/16 — 8 is the sweet spot for this 32-core, 31 GB host:
+  - Memory: ~80 MB/worker → 8 workers = ~680 MB (2.1% of 31 GB)
+  - Cache efficiency: fewer workers = warmer per-worker caches
+  - OpenStack throttling: remote API is bottleneck, not local workers
+  - Headroom: leaves resources for Phase 2 (Redis) and Phase 3 (PostgreSQL)
 """
 
 import multiprocessing
@@ -24,10 +28,10 @@ backlog = int(os.getenv("GUNICORN_BACKLOG", "2048"))
 # FastAPI requires an ASGI worker — UvicornWorker provides this.
 worker_class = os.getenv("GUNICORN_WORKER_CLASS", "uvicorn.workers.UvicornWorker")
 
-# Formula: (2 × CPU) + 1 = 65.  Cap at 16 to avoid overcommit.
+# Formula: (2 × CPU) + 1 = 65.  Cap at 8 (benchmark-validated).
 _cores = multiprocessing.cpu_count()
 _recommended = _cores * 2 + 1
-_default_workers = min(_recommended, 16)
+_default_workers = min(_recommended, 8)
 workers = int(os.getenv("GUNICORN_WORKERS", str(_default_workers)))
 
 # Restart workers periodically to prevent memory leaks.

@@ -71,9 +71,9 @@ alembic upgrade head
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-#### 운영 모드 (Gunicorn + Nginx)
+#### 운영 모드 (Gunicorn 8 workers + Nginx)
 ```bash
-# Gunicorn 직접 실행 (port 8002)
+# Gunicorn 직접 실행 (port 8002, 8 workers)
 gunicorn app.main:app -c gunicorn.conf.py
 
 # Nginx reverse proxy (port 8083)
@@ -82,6 +82,11 @@ gunicorn app.main:app -c gunicorn.conf.py
 
 # systemd service (/etc/systemd/system/okastro-backend.service)
 sudo systemctl daemon-reload && sudo systemctl restart okastro-backend
+```
+
+Worker 수 변경 시 환경변수 설정:
+```bash
+GUNICORN_WORKERS=4 gunicorn app.main:app -c gunicorn.conf.py
 ```
 Swagger UI는 `http://localhost:8000/docs`에서 확인할 수 있습니다.
 
@@ -111,11 +116,11 @@ curl http://localhost:8083/metrics
 ### 6. 시스템 아키텍처 (운영)
 
 ```
-사용자 → Nginx (:8083) → Gunicorn (:8002) → FastAPI Workers (×16)
+사용자 → Nginx (:8083) → Gunicorn (:8002) → FastAPI Workers (×8)
                               ├── Worker 1 (in-memory cache)
                               ├── Worker 2 (in-memory cache)
                               ├── …
-                              └── Worker 16 (in-memory cache)
+                              └── Worker 8 (in-memory cache)
 
 Prometheus → /metrics → Nginx → Gunicorn → MultiProcessCollector
 ```
@@ -155,8 +160,23 @@ python benchmarks/system_monitor.py --duration 300
 | Phase | Deployment | Workers | Metrics | Status |
 |-------|-----------|---------|---------|--------|
 | Baseline | Single Uvicorn (:8000) | 1 | — | Legacy |
-| Phase 0 | Gunicorn + Nginx (:8083→:8002) | 16 | — | ✅ Active |
-| Phase 1 | Prometheus /metrics | 16 | HTTP + Custom | ✅ Active |
+| Phase 0 | Gunicorn + Nginx (:8083→:8002) | **8** (recommended) | — | ✅ Active |
+| Phase 1 | Prometheus /metrics | 8 | HTTP + Custom | ✅ Active |
+
+### Worker Count Recommendation
+
+Benchmarked 4, 8, and 16 workers. **8 workers recommended** for this server:
+
+| Factor | Value | Assessment |
+|--------|-------|------------|
+| CPU cores | 32 | 8 workers = 4 cores/worker — ample for I/O-bound ASGI |
+| Memory (8 workers) | ~680 MB (2.1% of 31 GB) | Negligible overhead |
+| Cache efficiency | Fewer workers = warmer caches | Each worker handles more requests vs 16 workers |
+| OpenStack throttling | Remote API is bottleneck | 8 concurrent clients sufficient |
+| Headroom | Leaves room for Redis + PostgreSQL | Non-disruptive future upgrades |
+| Success rate | 100% at 4/8/16 | All configurations reliable |
+
+Full analysis in `docs/performance_report.md` (Worker Count Analysis section).
 
 Detailed benchmark methodology, bottleneck analysis, and architecture improvements are available in:
 `docs/performance_report.md`
