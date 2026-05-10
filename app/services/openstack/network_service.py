@@ -1,9 +1,9 @@
 from app.clients.openstack.connection import OpenStackConnectionFactory
-from app.common.exceptions.base import AppException, OpenStackIntegrationException
+from app.common.exceptions.base import AppException
 from app.common.utils.openstack_cache import cache_get, cache_invalidate, cache_set
 from app.common.utils.serializers import serialize_resource
 from app.core.config.settings import get_settings
-from app.schemas.openstack.network import NetworkCreateRequest, NetworkCreateResponse, NetworkDetail, NetworkSummary, SubnetSummary
+from app.schemas.openstack.network import NetworkCreateRequest, NetworkSummary, SubnetSummary
 
 
 class NetworkService:
@@ -15,121 +15,64 @@ class NetworkService:
         cached = cache_get("networks")
         if cached is not None:
             return cached
-        conn = self.factory.create()
-        try:
-            result = [
-                self._serialize_network_summary(network)
-                for network in conn.network.networks(limit=self._list_limit)
-            ]
-            cache_set("networks", result)
-            return result
-        except Exception as exc:
-            raise OpenStackIntegrationException(f"Failed to list networks: {exc}") from exc
+        result = [
+            NetworkSummary(**serialize_resource(net, ["id", "name", "status", "shared", "admin_state_up"]))
+            for net in self.factory.call("network", "networks", limit=self._list_limit)
+        ]
+        cache_set("networks", result)
+        return result
 
-    def get_network(self, network_id: str) -> NetworkDetail:
-        conn = self.factory.create()
-        try:
-            network = conn.network.get_network(network_id)
-            if not network:
-                raise AppException(message="Network not found", status_code=404, error_code="network_not_found")
+    def get_network(self, network_id: str) -> NetworkSummary:
+        network = self.factory.call("network", "get_network", network_id)
+        if not network:
+            raise AppException(message="Network not found", status_code=404, error_code="network_not_found")
+        return NetworkSummary(**serialize_resource(network, ["id", "name", "status", "shared", "admin_state_up"]))
 
-            subnet_ids = getattr(network, "subnets", []) or []
-            subnet_details = self._fetch_subnets_batch(conn, subnet_ids)
+    def get_network_subnets(self, network_id: str) -> list[SubnetSummary]:
+        all_subnets = self.factory.call("network", "subnets")
+        network_subnets = [
+            subnet for subnet in all_subnets
+            if getattr(subnet, "network_id", None) == network_id
+        ]
+        return [
+            SubnetSummary(**serialize_resource(subnet, ["id", "name", "cidr", "enable_dhcp", "gateway_ip"]))
+            for subnet in network_subnets
+        ]
 
-            return NetworkDetail(**self._serialize_network_summary(network).model_dump(), subnet_details=subnet_details)
-        except AppException:
-            raise
-        except Exception as exc:
-            raise OpenStackIntegrationException(f"Failed to get network: {exc}") from exc
+    def get_subnet(self, subnet_id: str) -> SubnetSummary:
+        subnet = self.factory.call("network", "get_subnet", subnet_id)
+        if not subnet:
+            raise AppException(message="Subnet not found", status_code=404, error_code="subnet_not_found")
+        return SubnetSummary(**serialize_resource(subnet, ["id", "name", "cidr", "enable_dhcp", "gateway_ip"]))
 
-    def _fetch_subnets_batch(self, conn: object, subnet_ids: list[str]) -> list[SubnetSummary]:
-        """Fetch subnet details in a single batch call instead of N+1 individual get_subnet calls."""
-        if not subnet_ids:
-            return []
-
-        try:
-            subnet_id_set = set(subnet_ids)
-            all_subnets = conn.network.subnets()
-            result = []
-            for subnet in all_subnets:
-                if getattr(subnet, "id", None) in subnet_id_set:
-                    result.append(
-                        SubnetSummary(
-                            **serialize_resource(
-                                subnet,
-                                ["id", "name", "cidr", "gateway_ip", "ip_version", "enable_dhcp", "dns_nameservers"],
-                            )
-                        )
-                    )
-            return result
-        except Exception:
-            # Fallback: if batch listing fails, fall back to individual fetches
-            result = []
-            for subnet_id in subnet_ids:
-                try:
-                    subnet = conn.network.get_subnet(subnet_id)
-                    if subnet:
-                        result.append(
-                            SubnetSummary(
-                                **serialize_resource(
-                                    subnet,
-                                    ["id", "name", "cidr", "gateway_ip", "ip_version", "enable_dhcp", "dns_nameservers"],
-                                )
-                            )
-                        )
-                except Exception:
-                    continue
-            return result
-
-    def create_network(self, payload: NetworkCreateRequest) -> NetworkCreateResponse:
-        conn = self.factory.create()
-        try:
-            existing_network = conn.network.find_network(payload.name, ignore_missing=True)
-            if existing_network:
-                raise AppException(
-                    message="Network with the same name already exists",
-                    status_code=409,
-                    error_code="network_conflict",
-                )
-
-            network = conn.network.create_network(
-                name=payload.name,
-                shared=payload.shared,
-                admin_state_up=payload.admin_state_up,
+    def create_network(self, payload: NetworkCreateRequest) -> NetworkSummary:
+        existing = self.factory.call("network", "find_network", payload.name, ignore_missing=True)
+        if existing:
+            raise AppException(
+                message=f"Network '{payload.name}' already exists",
+                status_code=409,
+                error_code="network_already_exists",
             )
-            subnet = conn.network.create_subnet(
-                network_id=network.id,
-                cidr=payload.cidr,
-                ip_version=payload.ip_version,
-                name=payload.subnet_name or f"{payload.name}-subnet",
-                gateway_ip=payload.gateway_ip,
-                enable_dhcp=payload.enable_dhcp,
-                dns_nameservers=payload.dns_nameservers,
-            )
-            cache_invalidate("networks")
-            return NetworkCreateResponse(network_id=network.id, subnet_id=subnet.id, name=payload.name)
-        except AppException:
-            raise
-        except Exception as exc:
-            raise OpenStackIntegrationException(f"Failed to create network: {exc}") from exc
+
+        network = self.factory.call(
+            "network", "create_network",
+            name=payload.name,
+            admin_state_up=True,
+        )
+        subnet = self.factory.call(
+            "network", "create_subnet",
+            name=f"{payload.name}-subnet",
+            network_id=network.id,
+            cidr=payload.cidr,
+            ip_version=4,
+            enable_dhcp=True,
+        )
+        _ = subnet
+        cache_invalidate("networks")
+        return NetworkSummary(**serialize_resource(network, ["id", "name", "status", "shared", "admin_state_up"]))
 
     def delete_network(self, network_id: str) -> None:
-        conn = self.factory.create()
-        try:
-            deleted = conn.network.delete_network(network_id, ignore_missing=True)
-            if deleted is False:
-                raise AppException(message="Network not found", status_code=404, error_code="network_not_found")
-            cache_invalidate("networks")
-        except AppException:
-            raise
-        except Exception as exc:
-            raise OpenStackIntegrationException(f"Failed to delete network: {exc}") from exc
-
-    def _serialize_network_summary(self, network: object) -> NetworkSummary:
-        data = serialize_resource(
-            network,
-            ["id", "name", "status", "subnets", "admin_state_up", "shared", "is_router_external"],
-        )
-        if data.get("subnets") is None:
-            data["subnets"] = []
-        return NetworkSummary(**data)
+        deleted = self.factory.call("network", "delete_network", network_id, ignore_missing=True)
+        if deleted is False:
+            raise AppException(message="Network not found", status_code=404, error_code="network_not_found")
+        cache_invalidate("networks")

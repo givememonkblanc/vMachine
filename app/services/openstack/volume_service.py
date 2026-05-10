@@ -1,5 +1,5 @@
 from app.clients.openstack.connection import OpenStackConnectionFactory
-from app.common.exceptions.base import AppException, OpenStackIntegrationException
+from app.common.exceptions.base import AppException
 from app.common.utils.openstack_cache import cache_get, cache_invalidate, cache_set
 from app.common.utils.serializers import serialize_resource
 from app.core.config.settings import get_settings
@@ -15,44 +15,27 @@ class VolumeService:
         cached = cache_get("volumes")
         if cached is not None:
             return cached
-        conn = self.factory.create()
-        try:
-            result = [
-                VolumeSummary(**serialize_resource(volume, ["id", "name", "status", "size", "bootable"]))
-                for volume in conn.block_storage.volumes(limit=self._list_limit)
-            ]
-            cache_set("volumes", result)
-            return result
-        except Exception as exc:
-            raise OpenStackIntegrationException(f"Failed to list volumes: {exc}") from exc
+        result = [
+            VolumeSummary(**serialize_resource(volume, ["id", "name", "status", "size", "bootable"]))
+            for volume in self.factory.call("block_storage", "volumes", limit=self._list_limit)
+        ]
+        cache_set("volumes", result)
+        return result
 
     def get_volume(self, volume_id: str) -> VolumeSummary:
-        conn = self.factory.create()
-        try:
-            volume = conn.block_storage.get_volume(volume_id)
-            if not volume:
-                raise AppException(message="Volume not found", status_code=404, error_code="volume_not_found")
-            return VolumeSummary(**serialize_resource(volume, ["id", "name", "status", "size", "bootable"]))
-        except AppException:
-            raise
-        except Exception as exc:
-            raise OpenStackIntegrationException(f"Failed to get volume: {exc}") from exc
+        volume = self.factory.call("block_storage", "get_volume", volume_id)
+        if not volume:
+            raise AppException(message="Volume not found", status_code=404, error_code="volume_not_found")
+        return VolumeSummary(**serialize_resource(volume, ["id", "name", "status", "size", "bootable"]))
 
     def delete_volume(self, volume_id: str) -> None:
-        conn = self.factory.create()
-        try:
-            deleted = conn.block_storage.delete_volume(volume_id, ignore_missing=True)
-            if deleted is False:
-                raise AppException(message="Volume not found", status_code=404, error_code="volume_not_found")
-            cache_invalidate("volumes")
-        except AppException:
-            raise
-        except Exception as exc:
-            raise OpenStackIntegrationException(f"Failed to delete volume: {exc}") from exc
+        deleted = self.factory.call("block_storage", "delete_volume", volume_id, ignore_missing=True)
+        if deleted is False:
+            raise AppException(message="Volume not found", status_code=404, error_code="volume_not_found")
+        cache_invalidate("volumes")
 
     def create_volume(self, payload: VolumeCreateRequest) -> VolumeSummary:
-        conn = self.factory.create()
-        volume_args = {
+        volume_args: dict[str, object] = {
             "name": payload.name,
             "size": payload.size,
         }
@@ -61,9 +44,6 @@ class VolumeService:
         if payload.image_id:
             volume_args["image"] = payload.image_id
 
-        try:
-            volume = conn.block_storage.create_volume(**volume_args)
-            cache_invalidate("volumes")
-            return VolumeSummary(**serialize_resource(volume, ["id", "name", "status", "size", "bootable"]))
-        except Exception as exc:
-            raise OpenStackIntegrationException(f"Failed to create volume: {exc}") from exc
+        volume = self.factory.call("block_storage", "create_volume", **volume_args)
+        cache_invalidate("volumes")
+        return VolumeSummary(**serialize_resource(volume, ["id", "name", "status", "size", "bootable"]))

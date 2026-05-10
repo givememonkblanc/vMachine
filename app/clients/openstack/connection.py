@@ -8,6 +8,7 @@ Key optimizations over vanilla openstacksdk:
 """
 
 import asyncio
+import time
 from collections.abc import Callable
 from functools import wraps
 from importlib import import_module
@@ -18,6 +19,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry as RetryStrategy
 
 from app.common.exceptions.base import AppException, OpenStackIntegrationException
+from app.common.metrics.custom import openstack_api_duration, openstack_api_errors
 from app.core.config.settings import Settings
 
 
@@ -116,6 +118,59 @@ class OpenStackConnectionFactory:
             raise OpenStackIntegrationException(
                 f"Failed to create OpenStack connection: {exc}"
             ) from exc
+
+    def call(
+        self,
+        service: str,
+        operation: str,
+        *args: Any,
+        **kwargs: Any,
+    ) -> Any:
+        """Execute an OpenStack SDK operation with unified metrics and error tracking.
+
+        Parameters
+        ----------
+        service : str
+            SDK service attribute name, e.g. ``"compute"``, ``"network"``,
+            ``"image"``, ``"block_storage"``.
+        operation : str
+            SDK method name, e.g. ``"servers"``, ``"get_server"``.
+        *args, **kwargs :
+            Forwarded to the SDK method.
+
+        Returns
+        -------
+        The raw SDK return value.
+
+        Raises
+        ------
+        OpenStackIntegrationException
+            Wraps any underlying exception with a descriptive message.
+        """
+        conn = self.create()
+        sdk_obj = getattr(conn, service, None)
+        if sdk_obj is None:
+            raise OpenStackIntegrationException(f"Unknown OpenStack service: {service}")
+        method = getattr(sdk_obj, operation, None)
+        if method is None:
+            raise OpenStackIntegrationException(
+                f"Unknown {service} operation: {operation}"
+            )
+
+        t0 = time.monotonic()
+        try:
+            result = method(*args, **kwargs)
+        except Exception as exc:
+            error_type = type(exc).__name__
+            openstack_api_errors.labels(service=service, error_type=error_type).inc()
+            raise OpenStackIntegrationException(
+                f"{service}.{operation} failed: {exc}"
+            ) from exc
+        else:
+            openstack_api_duration.labels(
+                service=service, operation=operation
+            ).observe(time.monotonic() - t0)
+        return result
 
     def invalidate(self) -> None:
         self._connection = None

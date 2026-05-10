@@ -43,10 +43,9 @@ class MigrationManager:
 
                 # 3. Upload to OpenStack Glance (streaming — avoids loading
                 #    the entire disk file into memory at once).
-                conn = self.os_factory.create()
-
                 with open(exported_disk_path, "rb") as _disk_file:
-                    image = conn.image.create_image(
+                    image = self.os_factory.call(
+                        "image", "create_image",
                         name=f"migrated-{vm_name}",
                         data=_disk_file,
                         disk_format="vmdk",
@@ -56,15 +55,16 @@ class MigrationManager:
                 await session.commit()
 
                 # 4. Create OpenStack Server (use get_* instead of find_*)
-                flavor = conn.compute.get_flavor(target_flavor)
+                flavor = self.os_factory.call("compute", "get_flavor", target_flavor)
                 if not flavor:
                     raise AppException(f"Target flavor '{target_flavor}' not found in OpenStack")
 
-                network = conn.network.get_network(target_network)
+                network = self.os_factory.call("network", "get_network", target_network)
                 if not network:
                     raise AppException(f"Target network '{target_network}' not found in OpenStack")
 
-                server = conn.compute.create_server(
+                server = self.os_factory.call(
+                    "compute", "create_server",
                     name=f"migrated-{vm_name}",
                     image_id=image.id,
                     flavor_id=flavor.id,

@@ -39,8 +39,15 @@ async def lifespan(app_: FastAPI):
     configure_from_settings()
     cache_backend_status.set(1.0 if is_redis() else 0.0)
 
+    # Track last-seen values to compute deltas (avoid duplicate accumulation)
+    _last_cache: dict[str, dict[str, int]] = {
+        r: {"hits": 0, "misses": 0, "invalidations": 0}
+        for r in ("servers", "images", "networks", "volumes")
+    }
+
     # background task: sync in-memory cache counters → Prometheus
     async def _sync_cache_metrics() -> None:
+        nonlocal _last_cache
         while True:
             try:
                 await asyncio.sleep(15)
@@ -48,15 +55,24 @@ async def lifespan(app_: FastAPI):
                 for resource in ("servers", "images", "networks", "volumes"):
                     h = metrics_["hits"].get(resource, 0)
                     m = metrics_["misses"].get(resource, 0)
-                    if h:
-                        cache_hits.labels(resource=resource).inc(h)
-                    if m:
-                        cache_misses.labels(resource=resource).inc(m)
                     inv = metrics_["invalidations"].get(resource, 0)
-                    if inv:
-                        cache_invalidations.labels(resource=resource).inc(inv)
+
+                    # Delta since last poll — prevents duplicate accumulation
+                    dh = h - _last_cache[resource]["hits"]
+                    dm = m - _last_cache[resource]["misses"]
+                    dinv = inv - _last_cache[resource]["invalidations"]
+
+                    if dh > 0:
+                        cache_hits.labels(resource=resource).inc(dh)
+                    if dm > 0:
+                        cache_misses.labels(resource=resource).inc(dm)
+                    if dinv > 0:
+                        cache_invalidations.labels(resource=resource).inc(dinv)
+
                     total = h + m
                     cache_hit_ratio.labels(resource=resource).set(h / total if total else 1.0)
+
+                    _last_cache[resource] = {"hits": h, "misses": m, "invalidations": inv}
 
                 # If Redis backend, also sync Redis-specific metrics
                 if is_redis():

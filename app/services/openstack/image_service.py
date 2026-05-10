@@ -1,9 +1,5 @@
-import io
-import os
-from typing import Any
-
 from app.clients.openstack.connection import OpenStackConnectionFactory
-from app.common.exceptions.base import AppException, OpenStackIntegrationException
+from app.common.exceptions.base import AppException
 from app.common.utils.openstack_cache import cache_get, cache_invalidate, cache_set
 from app.common.utils.serializers import serialize_resource
 from app.core.config.settings import get_settings
@@ -19,97 +15,45 @@ class ImageService:
         cached = cache_get("images")
         if cached is not None:
             return cached
-        conn = self.factory.create()
-        try:
-            result = [
-                ImageSummary(
-                    **serialize_resource(image, ["id", "name", "status", "visibility", "container_format", "disk_format"])
-                )
-                for image in conn.image.images(limit=self._list_limit)
-            ]
-            cache_set("images", result)
-            return result
-        except Exception as exc:
-            raise OpenStackIntegrationException(f"Failed to list images: {exc}") from exc
+        result = [
+            ImageSummary(**serialize_resource(image, ["id", "name", "status", "visibility", "size", "created_at"]))
+            for image in self.factory.call("image", "images", limit=self._list_limit)
+        ]
+        cache_set("images", result)
+        return result
 
     def get_image(self, image_id: str) -> ImageSummary:
-        conn = self.factory.create()
-        try:
-            image = conn.image.get_image(image_id)
-            if not image:
-                raise AppException(message="Image not found", status_code=404, error_code="image_not_found")
-            return ImageSummary(
-                **serialize_resource(image, ["id", "name", "status", "visibility", "container_format", "disk_format"])
-            )
-        except AppException:
-            raise
-        except Exception as exc:
-            raise OpenStackIntegrationException(f"Failed to get image: {exc}") from exc
+        image = self.factory.call("image", "get_image", image_id)
+        if not image:
+            raise AppException(message="Image not found", status_code=404, error_code="image_not_found")
+        return ImageSummary(**serialize_resource(image, ["id", "name", "status", "visibility", "size", "created_at"]))
 
     def create_image(self, payload: ImageCreateRequest) -> ImageSummary:
-        conn = self.factory.create()
-        try:
-            image = conn.image.create_image(
-                name=payload.name,
-                container_format=payload.container_format,
-                disk_format=payload.disk_format,
-                min_disk=payload.min_disk,
-                min_ram=payload.min_ram,
-                visibility=payload.visibility,
-                protected=payload.protected,
-            )
-            cache_invalidate("images")
-            return ImageSummary(
-                **serialize_resource(image, ["id", "name", "status", "visibility", "container_format", "disk_format"])
-            )
-        except Exception as exc:
-            raise OpenStackIntegrationException(f"Failed to create image: {exc}") from exc
+        kwargs: dict[str, object] = {
+            "name": payload.name,
+            "disk_format": payload.disk_format or "qcow2",
+            "container_format": payload.container_format or "bare",
+            "visibility": payload.visibility or "private",
+        }
+        if payload.tags:
+            kwargs["tags"] = payload.tags
+        if payload.architecture:
+            kwargs["architecture"] = payload.architecture
+        if payload.min_disk:
+            kwargs["min_disk"] = payload.min_disk
+        if payload.min_ram:
+            kwargs["min_ram"] = payload.min_ram
+        image = self.factory.call("image", "create_image", **kwargs)
+        cache_invalidate("images")
+        return ImageSummary(**serialize_resource(image, ["id", "name", "status", "visibility", "size", "created_at"]))
 
-    def create_image_from_file(self, name: str, file_path: str, disk_format: str = "qcow2", container_format: str = "bare") -> ImageSummary:
-        """Upload an image from a local file using streaming to avoid loading the entire file into memory."""
-        conn = self.factory.create()
-        file_size = os.path.getsize(file_path)
-        try:
-            def _chunked_reader(path: str, chunk_size: int = 8 * 1024 * 1024):
-                with open(path, "rb") as f:
-                    while True:
-                        chunk = f.read(chunk_size)
-                        if not chunk:
-                            break
-                        yield chunk
+    def upload_image_data(self, image_id: str, data: bytes) -> None:
+        self.factory.call("image", "upload_image", image_id, data, backend="store")
 
-            image = conn.image.create_image(
-                name=name,
-                data=io.BytesIO(b"".join(_chunked_reader(file_path))),
-                disk_format=disk_format,
-                container_format=container_format,
-            )
-            return ImageSummary(
-                **serialize_resource(image, ["id", "name", "status", "visibility", "container_format", "disk_format"])
-            )
-        except Exception as exc:
-            raise OpenStackIntegrationException(f"Failed to create image from file: {exc}") from exc
-
-    def upload_image_data(self, name: str, data: bytes, disk_format: str = "qcow2", container_format: str = "bare") -> ImageSummary:
-        """Upload an image from raw bytes (e.g. from an HTTP upload)."""
-        conn = self.factory.create()
-        try:
-            image = conn.image.create_image(
-                name=name,
-                data=io.BytesIO(data),
-                disk_format=disk_format,
-                container_format=container_format,
-            )
-            return ImageSummary(
-                **serialize_resource(image, ["id", "name", "status", "visibility", "container_format", "disk_format"])
-            )
-        except Exception as exc:
-            raise OpenStackIntegrationException(f"Failed to upload image data: {exc}") from exc
+    def import_image(self, image_id: str, uri: str) -> None:
+        self.factory.call("image", "import_image", image_id, method="web-download", uri=uri)
 
     def delete_image(self, image_id: str) -> None:
-        conn = self.factory.create()
-        try:
-            conn.image.delete_image(image_id, ignore_missing=True)
-            cache_invalidate("images")
-        except Exception as exc:
-            raise OpenStackIntegrationException(f"Failed to delete image: {exc}") from exc
+        self.factory.call("image", "delete_image", image_id, ignore_missing=True)
+        cache_invalidate("images")
+
