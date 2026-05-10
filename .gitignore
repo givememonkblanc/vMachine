@@ -40,6 +40,14 @@ okastro.db
 
 # Logs
 logs/
+uvicorn.log
+
+# Benchmark artifacts
+benchmark_results_*.json
+locust_*.csv
+
+# Test keys
+test-key.pem
 
 # Virtual Environments
 venv/
