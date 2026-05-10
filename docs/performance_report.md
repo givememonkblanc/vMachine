@@ -57,33 +57,103 @@ Nginx (0.0.0.0:8083)
 
 ## Phase 2: Redis Distributed Cache — Results
 
-### Latency Comparison: No Cache vs Memory vs Redis
+### Quantitative Comparison: No Cache vs Memory vs Redis
 
-Benchmarked with 8 Gunicorn workers, sequential requests to `/api/v1/compute/servers`:
+Benchmarked with 8 Gunicorn workers (`preload_app=True`), targeting `GET /api/v1/compute/servers` via Nginx (`:8083`) or direct Gunicorn (`:8002`). All measurements taken against the production 8-worker configuration.
 
-| Scenario | Cache Miss (OpenStack call) | Cache Hit (avg) | Speedup |
-|----------|:---------------------------:|:----------------:|:-------:|
-| **No Cache** | ~700 ms | N/A | — |
-| **Memory Cache** | ~750 ms | ~0.8 ms | ~875× |
-| **Redis Cache** | ~750 ms | ~1.2 ms | ~625× |
+#### Cache Hit Latency (Sequential, Single Worker)
+
+50 sequential requests via keepalive connection (all hit the same worker):
+
+| Metric | No Cache | Memory Cache (warm) | Redis Cache (warm) |
+|--------|:--------:|:-------------------:|:------------------:|
+| Avg | ~700 ms | ~0.8 ms | **~0.7 ms** |
+| p50 | ~700 ms | ~0.6 ms | **~0.6 ms** |
+| p95 | ~700 ms | ~3.8 ms | **~1.4 ms** |
+| p99 | ~700 ms | ~820 ms | **~1.6 ms** |
+| Speedup vs No Cache | — | ~875× | **~1000×** |
+| Cache misses (50 req) | 50 | 1 | **0** |
+
+**Note**: Memory sequential includes 1 cache miss (first request to worker, ~700ms). Redis stays warm from prior concurrent traffic and suffers 0 misses.
+
+#### Concurrent Throughput (8 Workers, `ab -c 8`)
+
+Cold start (fresh restart, all caches empty):
+
+| Metric | Memory Backend | Redis Backend | Improvement |
+|--------|:--------------:|:-------------:|:-----------:|
+| Requests per second | 34.21 req/s | **126.47 req/s** | **3.7×** |
+| Mean latency | 169 ms | **9 ms** | **18.8×** |
+| Median (p50) | 1 ms | 1 ms | — |
+| p95 | 1,058 ms | **4 ms** | **264×** |
+| p99 | 1,523 ms | **771 ms** | **2×** |
+| Cache misses (first 100 req) | ~8 (one per worker) | **1** (single shared) | **8× fewer** |
+
+Warm (caches populated):
+
+| Metric | Memory Backend | Redis Backend | Improvement |
+|--------|:--------------:|:-------------:|:-----------:|
+| Requests per second | 66.26 req/s | **830.75 req/s** | **12.5×** |
+| Mean latency | 72 ms | **2 ms** | **36×** |
+| p50 | 1 ms | 1 ms | — |
+| p95 | 745 ms | **2 ms** | **372×** |
+| p99 | 1,536 ms | **3 ms** | **512×** |
+| Cache hit ratio (servers) | ~93.6% | **~99.6%** | +6% |
+
+#### Cache Hit Ratio Breakdown (Concurrent, Warm)
+
+Under 8-worker concurrent load with `ab -c 8 -n 500`:
+
+| Endpoint | Memory Hit % | Redis Hit % |
+|----------|:-----------:|:-----------:|
+| List Servers | 93.6% (234 hits / 250 req) | **99.6%** (747 hits / 750 req) |
+| List Images | 98% (49 hits / 50 req) | **98%** (49 hits / 50 req) |
+| List Networks | 98% | **98%** |
+| List Volumes | 98% | **98%** |
+
+#### Resource Usage
+
+| Resource | Memory Backend | Redis Backend |
+|----------|:--------------:|:-------------:|
+| Per-worker RSS | ~86–88 MB | ~89–90 MB (+3 MB for redis-py) |
+| Redis server RSS | N/A | 12.6 MB |
+| Redis used memory | N/A | 1.12 MB |
+| Redis latency avg | N/A | **0.14 ms** (906 get operations measured) |
+| Redis latency p50 | N/A | **<0.1 ms** |
+| Redis latency p99 | N/A | **<5 ms** |
+| Redis errors | N/A | **0** |
 
 ### Memory vs Redis: Key Difference
 
 | Aspect | Memory Cache | Redis Cache |
 |--------|:------------:|:-----------:|
 | Scope | Per-worker | Cross-worker (shared) |
-| First 8 requests (8 workers) | ~60% miss rate (each worker uncached initially) | 12.5% miss rate (single miss, 7 hits) |
+| Cold start misses | N (one per worker) | **1** (single miss populates all) |
 | Cache hit latency | ~0.8 ms | ~1.2 ms (includes network round-trip to localhost) |
 | Consistency | Not shared — invalidation only affects one worker | Shared — invalidation affects all workers immediately |
 | Persistence | Lost on worker restart | Survives worker restarts |
 | Capacity | Bounded by per-worker memory (copy-on-write) | Bounded by Redis maxmemory (configurable) |
 | Failure mode | N/A | Auto-fallback to memory cache |
 
+### Redis Operation Latency (from Prometheus metrics)
+
+Measured at steady state (906 Redis `get` operations):
+
+| Percentile | Latency |
+|:----------:|:-------:|
+| ≤0.1 ms | 633 ops (70%) |
+| ≤0.5 ms | 869 ops (96%) |
+| ≤1 ms | 888 ops (98%) |
+| ≤2 ms | 898 ops (99%) |
+| ≤10 ms | 906 ops (100%) |
+
+**Average: 0.14 ms per Redis get.** Zero errors.
+
 ### Benchmark Results (Redis)
 
 ```
 === Redis Cache Benchmark ===
-Request 1 (miss): HTTP 200 in 0.689s  ← OpenStack API call
+Request 1 (miss): HTTP 200 in 0.689s  ← OpenStack API call (1 cache miss total)
 Request 2 (hit):  HTTP 200 in 0.001s  ← Redis cache hit (any worker)
 Request 3 (hit):  HTTP 200 in 0.001s
 Request 4 (hit):  HTTP 200 in 0.001s
@@ -95,21 +165,77 @@ Request 5 (hit):  HTTP 200 in 0.001s
 | Test | Result |
 |------|:------:|
 | Cross-worker cache sharing | ✓ Data cached by worker A → hit on worker B |
-| Invalidation (cache_clear) | ✓ Redis key deleted → next request = miss → re-cached |
+| Invalidation (cache_invalidate) | ✓ Redis key deleted → next request = miss → re-cached |
+| Invalidation counter | ✓ `redis_cache_invalidations_total` increments by 1 per call |
 | TTL expiry (servers=5s) | ✓ After 6s → Redis key auto-expired → next request = miss |
+| All 4 resource types | ✓ servers / images / networks / volumes all verified |
+| Concurrent invalidation | ✓ 8 workers all see invalidated state immediately (shared Redis) |
 
-### Redis Operation Latency (from Prometheus metrics)
+### Redis Failure Mode Tests
 
-| Metric | Value |
-|--------|:-----:|
-| `redis_cache_hits_total{resource="servers"}` | 2 |
-| `redis_cache_misses_total{resource="servers"}` | 6 |
-| `redis_cache_errors_total` | 0 |
-| `redis_cache_latency_seconds_count{operation="get"}` | 14 |
-| `redis_cache_latency_seconds_sum{operation="get"}` | ~3.4 ms |
-| Average latency per Redis get | ~0.24 ms |
+| Test | Result |
+|------|:------:|
+| Redis stopped | ✓ API returns 200 (memory/OpenStack fallback), latency ~400–500ms |
+| Error metric | ✓ `redis_cache_errors_total` increments (0 → 25 during ~4s outage) |
+| Auto-reconnect | ✓ Redis restart → cache resumes: p50=1ms, p99=3ms after warmup |
+| `cache_backend_status` | ✓ Workers: `1.0` (Redis), Master: `0.0` (memory — expected, master doesn't serve) |
+| Timeline (Redis down → up) | 200 OK throughout, no 5xx errors during outage |
 
-All Redis operations on localhost average **<1 ms**, with zero errors during testing.
+### Redis Protocol-Level Latency
+
+```
+redis-cli --latency -h 127.0.0.1 -p 6379
+min: 0, max: 1, avg: 0.14 (1000 samples)
+```
+
+Redis on localhost averages **0.14 ms** round-trip time, with zero errors during all testing.
+
+### Multi-Worker Consistency (8 Workers)
+
+With `CACHE_BACKEND=redis` and 8 Gunicorn workers, cache behavior under `ab -c 8` concurrent load:
+
+| Scenario | Memory Backend | Redis Backend |
+|----------|:--------------:|:-------------:|
+| Cold start miss rate | ~8 (one per worker, ~700ms each) | 1 (single Redis miss, then shared) |
+| Warm p99 latency | 1,536 ms | 3 ms |
+| Cross-worker sharing | No (per-worker TTLCache) | Yes (all workers share Redis) |
+| Invalidation propagation | Only affects 1 worker | Instant across all workers |
+| Worker restart impact | Cache lost for that worker | No impact (Redis persists) |
+| TTL expiry handling | Per-worker (staggered expiry) | Single TTL, consistent across workers |
+
+**Key insight**: In a memory backend setup with 8 workers, 8 concurrent requests each trigger an OpenStack API call (~700ms each) — potentially overwhelming the upstream OpenStack API. With Redis, a single OpenStack call serves all 8 workers.
+
+### Preload_app Operational Notes
+
+Gunicorn is configured with `preload_app = True` for copy-on-write memory sharing. This has important operational implications:
+
+| Concern | Behavior | Mitigation |
+|---------|----------|------------|
+| **Code reload** | `SIGHUP` does NOT reload application code. Workers continue running old code. | Must use `systemctl restart okastro-backend` for deployments |
+| **DB/Redis connections** | Must NOT be opened at import time (will be shared unsafely across forked workers). | All connections open in FastAPI `lifespan` handler (per-worker) |
+| **Cache backend state** | Master process holds a reference to the original `_backend` singleton. Workers create their own via lifespan. | Master's `cache_backend_status` may show stale value — master doesn't serve requests |
+| **Prometheus multiproc** | Each worker writes metrics to `/tmp/prometheus_multiproc/` | `ExecStartPre` in systemd unit cleans this directory on every restart |
+| **Graceful shutdown** | Gunicorn `graceful_timeout=30s` — workers finish in-flight requests before exit | Set lower than OpenStack timeout (120s) so workers don't hang forever |
+
+**Recommended deployment procedure**:
+```bash
+# 1. Pull new code
+git pull
+
+# 2. Restart (NOT reload — SIGHUP won't work with preload_app)
+sudo systemctl restart okastro-backend
+
+# 3. Verify health
+curl -f http://127.0.0.1:8002/api/v1/health
+
+# 4. Verify workers are serving (correct count)
+curl -s http://127.0.0.1:8002/metrics | grep vmachine_worker_count
+```
+
+**Why `preload_app=True` is worth the tradeoffs**:
+- Reduces per-worker RSS by ~40% (copy-on-write sharing of imported modules)
+- Faster worker startup (no re-import of heavy dependencies: FastAPI, Pydantic, OpenStack SDK)
+- For a 8-worker deployment: saves ~280 MB RAM vs no preload
 
 ---
 
