@@ -3,8 +3,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Response, status
 
 from app.api.deps.services import get_operation_task_service, get_operations_service
-from app.schemas.operation_task import OperationTaskListResponse, OperationTaskQueryParams, OperationTaskSummary
-from app.schemas.operations_automation import (
+from app.schemas.core.operation_task import OperationTaskListResponse, OperationTaskQueryParams, OperationTaskSummary
+from app.schemas.orchestration.operations_automation import (
     ScalingPolicyCreateRequest,
     ScalingPolicyListResponse,
     ScalingPolicySummary,

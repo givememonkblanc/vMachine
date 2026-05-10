@@ -4,7 +4,7 @@ from app.common.exceptions.base import AppException
 from app.db.session.session import SessionLocal
 from app.models.auto_scaling_policy import AutoScalingPolicy
 from app.models.scheduled_task import ScheduledTask
-from app.schemas.operations_automation import (
+from app.schemas.orchestration.operations_automation import (
     ScalingPolicyCreateRequest,
     ScalingPolicyListResponse,
     ScalingPolicySummary,

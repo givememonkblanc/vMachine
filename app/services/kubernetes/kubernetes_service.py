@@ -3,7 +3,7 @@
 
 from app.clients.kubernetes.connection import KubernetesClientFactory
 from app.common.exceptions.base import AppException, KubernetesIntegrationException
-from app.schemas.kubernetes import (
+from app.schemas.kubernetes.kubernetes import (
     ContainerSummary,
     DeploymentCreateRequest,
     DeploymentListResponse,

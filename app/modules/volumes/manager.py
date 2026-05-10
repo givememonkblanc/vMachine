@@ -1,4 +1,4 @@
-from app.schemas.volume import VolumeCreateRequest
+from app.schemas.openstack.volume import VolumeCreateRequest
 from app.services.openstack.compute_service import ComputeService
 from app.services.openstack.volume_service import VolumeService
 

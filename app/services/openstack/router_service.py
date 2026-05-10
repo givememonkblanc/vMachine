@@ -3,7 +3,7 @@ from typing import Any
 from app.clients.openstack.connection import OpenStackConnectionFactory
 from app.common.exceptions.base import AppException, OpenStackIntegrationException
 from app.common.utils.serializers import serialize_resource
-from app.schemas.router import RouterCreateRequest, RouterCreateResponse, RouterSummary
+from app.schemas.openstack.router import RouterCreateRequest, RouterCreateResponse, RouterSummary
 
 
 class RouterService:

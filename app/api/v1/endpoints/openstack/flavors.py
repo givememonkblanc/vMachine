@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Response, status
 
 from app.api.deps.services import get_flavor_service, get_operation_task_service
-from app.schemas.flavor import FlavorCreateRequest, FlavorListResponse, FlavorSummary
+from app.schemas.openstack.flavor import FlavorCreateRequest, FlavorListResponse, FlavorSummary
 from app.services.openstack.flavor_service import FlavorService
 from app.services.core.operation_task_service import OperationTaskService
 

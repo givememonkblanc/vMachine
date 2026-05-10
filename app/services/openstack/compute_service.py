@@ -3,7 +3,7 @@ from collections.abc import Mapping
 from app.clients.openstack.connection import OpenStackConnectionFactory
 from app.common.exceptions.base import AppException, OpenStackIntegrationException
 from app.common.utils.serializers import serialize_resource
-from app.schemas.compute import ServerActionResponse, ServerCreateRequest, ServerDetail, ServerSummary
+from app.schemas.openstack.compute import ServerActionResponse, ServerCreateRequest, ServerDetail, ServerSummary
 
 
 class ComputeService:

@@ -1,7 +1,7 @@
 from app.clients.openstack.connection import OpenStackConnectionFactory
 from app.common.exceptions.base import AppException, OpenStackIntegrationException
 from app.common.utils.serializers import serialize_resource
-from app.schemas.keypair import KeypairCreateRequest, KeypairCreateResponse, KeypairSummary
+from app.schemas.openstack.keypair import KeypairCreateRequest, KeypairCreateResponse, KeypairSummary
 
 
 class KeypairService:

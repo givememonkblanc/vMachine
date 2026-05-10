@@ -1,7 +1,7 @@
 from app.clients.openstack.connection import OpenStackConnectionFactory
 from app.common.exceptions.base import AppException, OpenStackIntegrationException
 from app.common.utils.serializers import serialize_resource
-from app.schemas.volume import VolumeCreateRequest, VolumeSummary
+from app.schemas.openstack.volume import VolumeCreateRequest, VolumeSummary
 
 
 class VolumeService:

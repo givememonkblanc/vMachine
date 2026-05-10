@@ -15,15 +15,15 @@ from app.api.deps.services import (
     get_volume_service,
 )
 from app.main import app
-from app.schemas.compute import ServerDetail, ServerSummary
-from app.schemas.flavor import FlavorSummary
-from app.schemas.image import ImageSummary
-from app.schemas.keypair import KeypairSummary
-from app.schemas.network import NetworkDetail, NetworkSummary, SubnetSummary
-from app.schemas.router import RouterSummary
-from app.schemas.security_group import SecurityGroupDetail, SecurityGroupSummary
-from app.schemas.tenant import ProjectSummary
-from app.schemas.volume import VolumeSummary
+from app.schemas.openstack.compute import ServerDetail, ServerSummary
+from app.schemas.openstack.flavor import FlavorSummary
+from app.schemas.openstack.image import ImageSummary
+from app.schemas.openstack.keypair import KeypairSummary
+from app.schemas.openstack.network import NetworkDetail, NetworkSummary, SubnetSummary
+from app.schemas.openstack.router import RouterSummary
+from app.schemas.openstack.security_group import SecurityGroupDetail, SecurityGroupSummary
+from app.schemas.identity.tenant import ProjectSummary
+from app.schemas.openstack.volume import VolumeSummary
 from tests.conftest import create_test_client
 
 

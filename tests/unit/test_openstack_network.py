@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock
 from app.services.openstack.network_service import NetworkService
-from app.schemas.network import NetworkCreateRequest
+from app.schemas.openstack.network import NetworkCreateRequest
 from app.clients.openstack.connection import OpenStackConnectionFactory
 
 

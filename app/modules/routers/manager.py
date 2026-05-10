@@ -12,7 +12,7 @@ class RouterManager:
 
     def provision_router_with_interfaces(self, name: str, subnet_ids: list[str]) -> dict:
         """라우터를 생성하고 여러 서브넷을 한 번에 연결합니다."""
-        from app.schemas.router import RouterCreateRequest
+        from app.schemas.openstack.router import RouterCreateRequest
 
         request = RouterCreateRequest(name=name)
         router = self._router.create_router(request)

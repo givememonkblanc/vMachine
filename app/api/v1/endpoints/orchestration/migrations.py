@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, status
 
 from app.api.deps.services import get_migration_service, get_operation_task_service
-from app.schemas.deployment import (
+from app.schemas.orchestration.deployment import (
     MigrationCreateRequest,
     MigrationListResponse,
     MigrationTaskSummary,

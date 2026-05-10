@@ -3,7 +3,7 @@ from sqlalchemy import select
 from app.common.exceptions.base import AppException
 from app.db.session.session import SessionLocal
 from app.models.storage_pool import StoragePool
-from app.schemas.operations_automation import (
+from app.schemas.orchestration.operations_automation import (
     StoragePoolCreateRequest,
     StoragePoolListResponse,
     StoragePoolSummary,

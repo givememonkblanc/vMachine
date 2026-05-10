@@ -1,7 +1,7 @@
 from app.clients.openstack.connection import OpenStackConnectionFactory
 from app.common.exceptions.base import AppException, OpenStackIntegrationException
 from app.common.utils.serializers import serialize_resource
-from app.schemas.network import NetworkCreateRequest, NetworkCreateResponse, NetworkDetail, NetworkSummary, SubnetSummary
+from app.schemas.openstack.network import NetworkCreateRequest, NetworkCreateResponse, NetworkDetail, NetworkSummary, SubnetSummary
 
 
 class NetworkService:

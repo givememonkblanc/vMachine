@@ -3,7 +3,7 @@ from uuid import uuid4
 
 from app.db.session.session import SessionLocal
 from app.models.audit_log import AuditLog
-from app.schemas.audit import AuditLogSummary
+from app.schemas.core.audit import AuditLogSummary
 
 
 async def log_audit_entry(

@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from app.api.deps.services import get_cluster_service, get_migration_service
 from app.main import app
-from app.schemas.deployment import (
+from app.schemas.orchestration.deployment import (
     BatchDeployResponse,
     ClusterListResponse,
     ClusterSummary,

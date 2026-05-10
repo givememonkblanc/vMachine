@@ -1,7 +1,7 @@
 from app.clients.openstack.connection import OpenStackConnectionFactory
 from app.common.exceptions.base import AppException, OpenStackIntegrationException
 from app.common.utils.serializers import serialize_resource
-from app.schemas.flavor import FlavorCreateRequest, FlavorSummary
+from app.schemas.openstack.flavor import FlavorCreateRequest, FlavorSummary
 
 
 class FlavorService:

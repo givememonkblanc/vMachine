@@ -1,6 +1,6 @@
 from app.clients.openstack.connection import OpenStackConnectionFactory
 from app.common.exceptions.base import OpenStackIntegrationException
-from app.schemas.auth import (
+from app.schemas.identity.auth import (
     OpenStackServiceCatalogResponse,
     OpenStackServiceEndpoint,
     OpenStackTokenInfo,

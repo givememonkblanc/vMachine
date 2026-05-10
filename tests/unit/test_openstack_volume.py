@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock
 from app.services.openstack.volume_service import VolumeService
-from app.schemas.volume import VolumeCreateRequest
+from app.schemas.openstack.volume import VolumeCreateRequest
 from app.clients.openstack.connection import OpenStackConnectionFactory
 
 

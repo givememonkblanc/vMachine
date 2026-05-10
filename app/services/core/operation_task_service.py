@@ -5,7 +5,7 @@ from sqlalchemy import Select, select
 from app.common.exceptions.base import AppException
 from app.db.session.session import SessionLocal
 from app.models.operation_task import OperationTask
-from app.schemas.operation_task import OperationTaskSummary
+from app.schemas.core.operation_task import OperationTaskSummary
 
 
 class OperationTaskService:

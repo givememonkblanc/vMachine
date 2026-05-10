@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Response, status
 
 from app.api.deps.services import get_operation_task_service, get_security_group_service
-from app.schemas.security_group import (
+from app.schemas.openstack.security_group import (
     SecurityGroupCreateRequest,
     SecurityGroupCreateResponse,
     SecurityGroupDetail,

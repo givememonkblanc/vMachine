@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock
 from app.services.openstack.compute_service import ComputeService
-from app.schemas.compute import ServerCreateRequest
+from app.schemas.openstack.compute import ServerCreateRequest
 from app.clients.openstack.connection import OpenStackConnectionFactory
 
 

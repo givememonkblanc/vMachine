@@ -1,4 +1,4 @@
-from app.schemas.compute import ServerCreateRequest
+from app.schemas.openstack.compute import ServerCreateRequest
 from app.services.openstack.compute_service import ComputeService
 from app.services.openstack.network_service import NetworkService
 from app.services.openstack.volume_service import VolumeService

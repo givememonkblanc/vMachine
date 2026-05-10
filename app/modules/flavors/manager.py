@@ -1,4 +1,4 @@
-from app.schemas.flavor import FlavorCreateRequest
+from app.schemas.openstack.flavor import FlavorCreateRequest
 from app.services.openstack.flavor_service import FlavorService
 
 

@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from app.api.deps.services import get_monitoring_service
 from app.main import app
-from app.schemas.monitoring import (
+from app.schemas.monitoring.monitoring import (
     AlertListResponse,
     AlertRecordSummary,
     DashboardSummary,

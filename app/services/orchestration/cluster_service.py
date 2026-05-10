@@ -3,7 +3,7 @@ from sqlalchemy import select
 from app.common.exceptions.base import AppException
 from app.db.session.session import SessionLocal
 from app.models.cluster_deployment import ClusterDeployment
-from app.schemas.deployment import (
+from app.schemas.orchestration.deployment import (
     BatchDeployRequest,
     BatchDeployResponse,
     ClusterCreateRequest,

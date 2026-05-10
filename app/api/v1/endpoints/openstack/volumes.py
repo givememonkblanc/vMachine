@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Response, status
 
 from app.api.deps.services import get_operation_task_service, get_volume_service
-from app.schemas.volume import VolumeCreateRequest, VolumeListResponse, VolumeSummary
+from app.schemas.openstack.volume import VolumeCreateRequest, VolumeListResponse, VolumeSummary
 from app.services.core.operation_task_service import OperationTaskService
 from app.services.openstack.volume_service import VolumeService
 

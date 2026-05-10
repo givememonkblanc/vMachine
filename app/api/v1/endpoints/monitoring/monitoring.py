@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 
 from app.api.deps.services import get_compute_service, get_monitoring_service
-from app.schemas.monitoring import (
+from app.schemas.monitoring.monitoring import (
     AlertListResponse,
     AlertRecordSummary,
     DashboardSummary,

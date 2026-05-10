@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 
 from app.api.deps.services import get_auth_service
-from app.schemas.auth import OpenStackServiceCatalogResponse, OpenStackTokenInfo, OpenStackValidationResponse
+from app.schemas.identity.auth import OpenStackServiceCatalogResponse, OpenStackTokenInfo, OpenStackValidationResponse
 from app.services.identity.auth_service import AuthService
 
 router = APIRouter()

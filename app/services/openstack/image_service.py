@@ -1,7 +1,7 @@
 from app.clients.openstack.connection import OpenStackConnectionFactory
 from app.common.exceptions.base import AppException, OpenStackIntegrationException
 from app.common.utils.serializers import serialize_resource
-from app.schemas.image import ImageCreateRequest, ImageSummary
+from app.schemas.openstack.image import ImageCreateRequest, ImageSummary
 
 
 class ImageService:

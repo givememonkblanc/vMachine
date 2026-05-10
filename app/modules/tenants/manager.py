@@ -1,4 +1,4 @@
-from app.schemas.tenant import ProjectCreateRequest
+from app.schemas.identity.tenant import ProjectCreateRequest
 from app.services.identity.tenant_service import TenantService
 
 

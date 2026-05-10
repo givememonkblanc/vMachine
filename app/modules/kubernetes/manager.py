@@ -1,4 +1,4 @@
-from app.schemas.kubernetes import DeploymentCreateRequest, ServiceCreateRequest
+from app.schemas.kubernetes.kubernetes import DeploymentCreateRequest, ServiceCreateRequest
 from app.services.kubernetes.kubernetes_service import KubernetesService
 
 

@@ -1,4 +1,4 @@
-from app.schemas.network import NetworkCreateRequest
+from app.schemas.openstack.network import NetworkCreateRequest
 from app.services.openstack.network_service import NetworkService
 
 

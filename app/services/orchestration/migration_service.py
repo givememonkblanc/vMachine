@@ -5,7 +5,7 @@ from sqlalchemy import Select, select
 from app.common.exceptions.base import AppException
 from app.db.session.session import SessionLocal
 from app.models.migration_task import MigrationTask
-from app.schemas.deployment import (
+from app.schemas.orchestration.deployment import (
     MigrationCreateRequest,
     MigrationListResponse,
     MigrationTaskSummary,

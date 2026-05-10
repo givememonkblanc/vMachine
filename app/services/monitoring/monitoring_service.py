@@ -6,7 +6,7 @@ from app.common.exceptions.base import AppException
 from app.db.session.session import SessionLocal
 from app.models.alert_record import AlertRecord
 from app.models.monitoring_metric import MetricRecord
-from app.schemas.monitoring import (
+from app.schemas.monitoring.monitoring import (
     AlertListResponse,
     AlertRecordSummary,
     DashboardSummary,

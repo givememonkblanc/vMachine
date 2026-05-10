@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Response, status
 
 from app.api.deps.services import get_operation_task_service, get_storage_service
-from app.schemas.operations_automation import (
+from app.schemas.orchestration.operations_automation import (
     StoragePoolCreateRequest,
     StoragePoolListResponse,
     StoragePoolSummary,

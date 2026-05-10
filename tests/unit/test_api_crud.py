@@ -16,15 +16,15 @@ from app.api.deps.services import (
     get_volume_service,
 )
 from app.main import app
-from app.schemas.compute import ServerActionResponse, ServerSummary
-from app.schemas.flavor import FlavorSummary
-from app.schemas.image import ImageSummary
-from app.schemas.keypair import KeypairCreateResponse
-from app.schemas.network import NetworkCreateResponse
-from app.schemas.router import RouterCreateResponse
-from app.schemas.security_group import SecurityGroupCreateResponse, SecurityGroupRuleCreateResponse
-from app.schemas.tenant import ProjectSummary
-from app.schemas.volume import VolumeSummary
+from app.schemas.openstack.compute import ServerActionResponse, ServerSummary
+from app.schemas.openstack.flavor import FlavorSummary
+from app.schemas.openstack.image import ImageSummary
+from app.schemas.openstack.keypair import KeypairCreateResponse
+from app.schemas.openstack.network import NetworkCreateResponse
+from app.schemas.openstack.router import RouterCreateResponse
+from app.schemas.openstack.security_group import SecurityGroupCreateResponse, SecurityGroupRuleCreateResponse
+from app.schemas.identity.tenant import ProjectSummary
+from app.schemas.openstack.volume import VolumeSummary
 from tests.conftest import create_test_client
 
 
@@ -285,7 +285,7 @@ def test_tenant_crud(client: TestClient) -> None:
 
 
 def test_kubernetes_crud(client: TestClient) -> None:
-    from app.schemas.kubernetes import (
+    from app.schemas.kubernetes.kubernetes import (
         DeploymentSummary,
         K8sClusterInfo,
         PodSummary,

@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Response, status
 
 from app.api.deps.services import get_kubernetes_service, get_operation_task_service
-from app.schemas.kubernetes import (
+from app.schemas.kubernetes.kubernetes import (
     DeploymentCreateRequest,
     DeploymentListResponse,
     DeploymentScaleRequest,

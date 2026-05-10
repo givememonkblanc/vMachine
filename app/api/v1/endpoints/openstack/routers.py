@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Response, status
 
 from app.api.deps.services import get_operation_task_service, get_router_service
-from app.schemas.router import (
+from app.schemas.openstack.router import (
     RouterCreateRequest,
     RouterCreateResponse,
     RouterInterfaceRequest,

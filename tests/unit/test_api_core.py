@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from app.api.deps.services import get_auth_service
 from app.main import app
-from app.schemas.auth import (
+from app.schemas.identity.auth import (
     OpenStackServiceCatalogResponse,
     OpenStackServiceEndpoint,
     OpenStackTokenInfo,

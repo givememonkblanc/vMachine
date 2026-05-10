@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 
 from app.api.deps.services import get_audit_service
-from app.schemas.audit import AuditLogListResponse, AuditLogQueryParams
+from app.schemas.core.audit import AuditLogListResponse, AuditLogQueryParams
 from app.services.core.audit_service import AuditService
 
 router = APIRouter()

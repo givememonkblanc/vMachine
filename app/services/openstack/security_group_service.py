@@ -1,7 +1,7 @@
 from app.clients.openstack.connection import OpenStackConnectionFactory
 from app.common.exceptions.base import AppException, OpenStackIntegrationException
 from app.common.utils.serializers import serialize_resource
-from app.schemas.security_group import (
+from app.schemas.openstack.security_group import (
     SecurityGroupCreateRequest,
     SecurityGroupCreateResponse,
     SecurityGroupDetail,

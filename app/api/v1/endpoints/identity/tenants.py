@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Response, status
 
 from app.api.deps.services import get_operation_task_service, get_tenant_service
-from app.schemas.tenant import ProjectCreateRequest, ProjectListResponse, ProjectSummary
+from app.schemas.identity.tenant import ProjectCreateRequest, ProjectListResponse, ProjectSummary
 from app.services.core.operation_task_service import OperationTaskService
 from app.services.identity.tenant_service import TenantService
 

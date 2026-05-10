@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from app.api.deps.services import get_operations_service, get_storage_service
 from app.main import app
-from app.schemas.operations_automation import (
+from app.schemas.orchestration.operations_automation import (
     ScalingPolicyListResponse,
     ScalingPolicySummary,
     ScheduledTaskListResponse,

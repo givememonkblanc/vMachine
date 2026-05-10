@@ -1,4 +1,4 @@
-from app.schemas.image import ImageCreateRequest
+from app.schemas.openstack.image import ImageCreateRequest
 from app.services.openstack.image_service import ImageService
 
 
