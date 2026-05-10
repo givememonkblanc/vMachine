@@ -1,4 +1,3 @@
-from typing import Any
 
 from app.common.exceptions.base import AppException
 from app.core.config.settings import Settings

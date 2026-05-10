@@ -1,6 +1,5 @@
 """Kubernetes Pod, Deployment, Service CRUD 서비스"""
 
-from typing import Any
 
 from app.clients.kubernetes.connection import KubernetesClientFactory
 from app.common.exceptions.base import AppException, KubernetesIntegrationException

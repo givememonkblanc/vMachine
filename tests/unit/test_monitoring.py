@@ -11,7 +11,6 @@ from app.schemas.monitoring import (
     DashboardSummary,
     HypervisorUsage,
     MetricListResponse,
-    MetricValue,
     ProjectUsage,
 )
 from tests.conftest import create_test_client

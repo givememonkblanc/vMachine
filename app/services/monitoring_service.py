@@ -1,7 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Select, delete, func, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import Select, func, select
 
 from app.common.exceptions.base import AppException
 from app.db.session.session import SessionLocal

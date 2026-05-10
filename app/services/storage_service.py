@@ -1,4 +1,4 @@
-from sqlalchemy import Select, select
+from sqlalchemy import select
 
 from app.common.exceptions.base import AppException
 from app.db.session.session import SessionLocal

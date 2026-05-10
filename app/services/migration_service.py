@@ -1,4 +1,3 @@
-import asyncio
 from datetime import datetime, timezone
 
 from sqlalchemy import Select, select
@@ -6,7 +5,6 @@ from sqlalchemy import Select, select
 from app.common.exceptions.base import AppException
 from app.db.session.session import SessionLocal
 from app.models.migration_task import MigrationTask
-from app.modules.migration.manager import MigrationManager
 from app.schemas.deployment import (
     MigrationCreateRequest,
     MigrationListResponse,

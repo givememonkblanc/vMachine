@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends
 from app.api.deps.services import get_auth_service, get_monitoring_service
 from app.core.config.settings import get_settings
 from app.schemas.health import HealthResponse, OpenStackHealthResponse
-from app.schemas.monitoring import DetailedHealthResponse, ServiceHealthDetail
+from app.schemas.monitoring import DetailedHealthResponse
 from app.services.auth_service import AuthService
 from app.services.monitoring_service import MonitoringService
 

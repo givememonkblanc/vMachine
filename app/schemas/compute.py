@@ -52,6 +52,7 @@ class ServerImageCreateRequest(BaseModel):
 class ServerImageCreateResponse(BaseModel):
     server_id: str
     image_name: str
+    image_id: str | None = None
     operation_task_id: str | None = None
 
 

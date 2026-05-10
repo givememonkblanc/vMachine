@@ -243,6 +243,7 @@ async def create_server_snapshot(
         return ServerImageCreateResponse(
             server_id=server_id,
             image_name=payload.name,
+            image_id=image_id,
             operation_task_id=task.id,
         )
     except Exception as exc:
