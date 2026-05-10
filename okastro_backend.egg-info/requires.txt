@@ -1,0 +1,12 @@
+fastapi<1.0.0,>=0.115.0
+uvicorn[standard]<1.0.0,>=0.30.0
+pydantic-settings<3.0.0,>=2.4.0
+alembic<2.0.0,>=1.13.0
+openstacksdk<5.0.0,>=4.0.0
+sqlalchemy<3.0.0,>=2.0.0
+aiosqlite<1.0.0,>=0.20.0
+typing-extensions<5.0.0,>=4.12.0
+
+[dev]
+pytest<9.0.0,>=8.0.0
+httpx<1.0.0,>=0.27.0
