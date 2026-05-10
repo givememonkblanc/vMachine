@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -9,13 +10,30 @@ from app.common.middleware.audit import AuditMiddleware
 from app.common.middleware.request_id import RequestIDMiddleware
 from app.core.config.settings import get_settings
 from app.events import on_shutdown, on_startup
+from app.services.core.audit_service import audit_flush_worker, drain_audit_queue, enqueue_shutdown_signal
+from app.services.monitoring.monitoring_service import enqueue_metric_shutdown, metric_flush_worker
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    audit_flush = asyncio.create_task(audit_flush_worker())
+    metric_flush = asyncio.create_task(metric_flush_worker())
     await on_startup()
     yield
     await on_shutdown()
+    await enqueue_shutdown_signal()
+    await drain_audit_queue()
+    await enqueue_metric_shutdown()
+    audit_flush.cancel()
+    metric_flush.cancel()
+    try:
+        await audit_flush
+    except asyncio.CancelledError:
+        pass
+    try:
+        await metric_flush
+    except asyncio.CancelledError:
+        pass
 
 
 def create_application() -> FastAPI:

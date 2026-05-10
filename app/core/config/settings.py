@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     vmware_no_verify_ssl: bool = True
 
     redis_url: str = "redis://localhost:6379/0"
+    migration_disk_dir: str = "/tmp/migrations"
+    cache_ttl_seconds: int = 300
 
     @property
     def vmware_ready(self) -> bool:

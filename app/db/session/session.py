@@ -7,8 +7,30 @@ from app.db.base import Base
 from app.core.config.settings import get_settings
 
 settings = get_settings()
-engine = create_async_engine(settings.database_url, future=True, echo=settings.app_debug, pool_pre_ping=True)
-sync_engine = create_engine(settings.database_url.replace("+aiosqlite", "+pysqlite"), future=True, echo=settings.app_debug)
+
+# Pool settings — default 5 connections, max 20 overflow.
+# SQLite's aiosqlite driver ignores pool_size/max_overflow, but these take
+# effect when switching to PostgreSQL / MySQL in production.
+_db_pool_opts: dict[str, object] = {
+    "future": True,
+    "echo": settings.app_debug,
+    "pool_pre_ping": True,
+    "pool_size": 5,
+    "max_overflow": 20,
+    "pool_recycle": 3600,   # recycle connections every hour
+    "pool_timeout": 30,     # seconds to wait for a pool connection
+}
+
+engine = create_async_engine(settings.database_url, **_db_pool_opts)  # type: ignore[arg-type]
+sync_engine = create_engine(
+    settings.database_url.replace("+aiosqlite", "+pysqlite"),
+    future=True,
+    echo=settings.app_debug,
+    pool_pre_ping=True,
+    pool_size=5,
+    max_overflow=20,
+    pool_recycle=3600,
+)
 SessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
 
 

@@ -2,13 +2,18 @@ from collections.abc import Mapping
 
 from app.clients.openstack.connection import OpenStackConnectionFactory
 from app.common.exceptions.base import AppException, OpenStackIntegrationException
+from app.common.utils.cache import TTLCache
 from app.common.utils.serializers import serialize_resource
+from app.core.config.settings import get_settings
 from app.schemas.openstack.compute import ServerActionResponse, ServerCreateRequest, ServerDetail, ServerSummary
 
 
 class ComputeService:
     def __init__(self, factory: OpenStackConnectionFactory):
         self.factory = factory
+        settings = get_settings()
+        self._image_cache = TTLCache[str](ttl_seconds=settings.cache_ttl_seconds)
+        self._flavor_cache = TTLCache[str](ttl_seconds=settings.cache_ttl_seconds)
 
     def list_servers(self) -> list[ServerSummary]:
         conn = self.factory.create()
@@ -33,32 +38,38 @@ class ComputeService:
     def create_server(self, payload: ServerCreateRequest) -> ServerSummary:
         conn = self.factory.create()
         try:
-            image = conn.image.find_image(payload.image_id, ignore_missing=True)
+            # Use direct get_* lookups instead of find_* (which lists ALL
+            # resources and filters in Python — O(n) vs O(1)).
+            image = conn.image.get_image(payload.image_id)
             if not image:
                 raise AppException(message="Image not found", status_code=404, error_code="image_not_found")
 
-            flavor = conn.compute.find_flavor(payload.flavor_id, ignore_missing=True)
+            flavor = conn.compute.get_flavor(payload.flavor_id)
             if not flavor:
                 raise AppException(message="Flavor not found", status_code=404, error_code="flavor_not_found")
 
-            network = conn.network.find_network(payload.network_id, ignore_missing=True)
+            network = conn.network.get_network(payload.network_id)
             if not network:
                 raise AppException(message="Network not found", status_code=404, error_code="network_not_found")
 
             if payload.key_name:
-                keypair = conn.compute.find_keypair(payload.key_name, ignore_missing=True)
+                keypair = conn.compute.get_keypair(payload.key_name)
                 if not keypair:
                     raise AppException(message="Key pair not found", status_code=404, error_code="keypair_not_found")
 
-            server = conn.compute.create_server(
-                name=payload.name,
-                image_id=payload.image_id,
-                flavor_id=payload.flavor_id,
-                networks=[{"uuid": payload.network_id}],
-                key_name=payload.key_name,
-                availability_zone=payload.availability_zone,
-                metadata=payload.metadata,
-            )
+            create_kwargs: dict[str, object] = {
+                "name": payload.name,
+                "image_id": payload.image_id,
+                "flavor_id": payload.flavor_id,
+                "networks": [{"uuid": payload.network_id}],
+                "metadata": payload.metadata,
+            }
+            if payload.key_name:
+                create_kwargs["key_name"] = payload.key_name
+            if payload.availability_zone:
+                create_kwargs["availability_zone"] = payload.availability_zone
+
+            server = conn.compute.create_server(**create_kwargs)
             if payload.wait:
                 server = conn.compute.wait_for_server(server)
             return self._serialize_server_summary(server)

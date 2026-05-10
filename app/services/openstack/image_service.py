@@ -1,3 +1,7 @@
+import io
+import os
+from typing import Any
+
 from app.clients.openstack.connection import OpenStackConnectionFactory
 from app.common.exceptions.base import AppException, OpenStackIntegrationException
 from app.common.utils.serializers import serialize_resource
@@ -51,6 +55,47 @@ class ImageService:
             )
         except Exception as exc:
             raise OpenStackIntegrationException(f"Failed to create image: {exc}") from exc
+
+    def create_image_from_file(self, name: str, file_path: str, disk_format: str = "qcow2", container_format: str = "bare") -> ImageSummary:
+        """Upload an image from a local file using streaming to avoid loading the entire file into memory."""
+        conn = self.factory.create()
+        file_size = os.path.getsize(file_path)
+        try:
+            def _chunked_reader(path: str, chunk_size: int = 8 * 1024 * 1024):
+                with open(path, "rb") as f:
+                    while True:
+                        chunk = f.read(chunk_size)
+                        if not chunk:
+                            break
+                        yield chunk
+
+            image = conn.image.create_image(
+                name=name,
+                data=io.BytesIO(b"".join(_chunked_reader(file_path))),
+                disk_format=disk_format,
+                container_format=container_format,
+            )
+            return ImageSummary(
+                **serialize_resource(image, ["id", "name", "status", "visibility", "container_format", "disk_format"])
+            )
+        except Exception as exc:
+            raise OpenStackIntegrationException(f"Failed to create image from file: {exc}") from exc
+
+    def upload_image_data(self, name: str, data: bytes, disk_format: str = "qcow2", container_format: str = "bare") -> ImageSummary:
+        """Upload an image from raw bytes (e.g. from an HTTP upload)."""
+        conn = self.factory.create()
+        try:
+            image = conn.image.create_image(
+                name=name,
+                data=io.BytesIO(data),
+                disk_format=disk_format,
+                container_format=container_format,
+            )
+            return ImageSummary(
+                **serialize_resource(image, ["id", "name", "status", "visibility", "container_format", "disk_format"])
+            )
+        except Exception as exc:
+            raise OpenStackIntegrationException(f"Failed to upload image data: {exc}") from exc
 
     def delete_image(self, image_id: str) -> None:
         conn = self.factory.create()

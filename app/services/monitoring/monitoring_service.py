@@ -1,4 +1,7 @@
+import asyncio
+from collections.abc import Sequence
 from datetime import datetime, timezone
+from typing import Any
 
 from sqlalchemy import Select, func, select
 
@@ -18,6 +21,45 @@ from app.schemas.monitoring.monitoring import (
 )
 
 
+# Batch metric queue — accumulates metric writes and flushes periodically
+# to avoid one DB INSERT per metric reading.
+_METRIC_QUEUE: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
+_METRIC_BATCH_SIZE = 50
+_METRIC_FLUSH_INTERVAL = 5.0
+
+
+async def _flush_metric_batch(entries: Sequence[dict[str, Any]]) -> None:
+    if not entries:
+        return
+    async with SessionLocal() as session:
+        for entry in entries:
+            session.add(MetricRecord(**entry))
+        await session.commit()
+
+
+async def metric_flush_worker() -> None:
+    batch: list[dict[str, Any]] = []
+    while True:
+        try:
+            entry = await asyncio.wait_for(_METRIC_QUEUE.get(), timeout=_METRIC_FLUSH_INTERVAL)
+            if entry is None:
+                break
+            batch.append(entry)
+            if len(batch) >= _METRIC_BATCH_SIZE:
+                await _flush_metric_batch(batch)
+                batch.clear()
+        except asyncio.TimeoutError:
+            if batch:
+                await _flush_metric_batch(batch)
+                batch.clear()
+    if batch:
+        await _flush_metric_batch(batch)
+
+
+async def enqueue_metric_shutdown() -> None:
+    await _METRIC_QUEUE.put(None)
+
+
 class MonitoringService:
     async def record_metric(
         self,
@@ -29,18 +71,17 @@ class MonitoringService:
         project_id: str | None = None,
         resource_id: str | None = None,
     ) -> None:
-        async with SessionLocal() as session:
-            record = MetricRecord(
-                metric_name=metric_name,
-                source=source,
-                value=value,
-                unit=unit,
-                labels=labels,
-                project_id=project_id,
-                resource_id=resource_id,
-            )
-            session.add(record)
-            await session.commit()
+        await _METRIC_QUEUE.put(
+            {
+                "metric_name": metric_name,
+                "source": source,
+                "value": value,
+                "unit": unit,
+                "labels": labels,
+                "project_id": project_id,
+                "resource_id": resource_id,
+            }
+        )
 
     async def query_metrics(
         self,

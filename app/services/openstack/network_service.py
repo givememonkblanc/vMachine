@@ -84,9 +84,10 @@ class NetworkService:
             raise OpenStackIntegrationException(f"Failed to delete network: {exc}") from exc
 
     def _serialize_network_summary(self, network: object) -> NetworkSummary:
-        return NetworkSummary(
-            **serialize_resource(
-                network,
-                ["id", "name", "status", "subnets", "admin_state_up", "shared", "is_router_external"],
-            )
+        data = serialize_resource(
+            network,
+            ["id", "name", "status", "subnets", "admin_state_up", "shared", "is_router_external"],
         )
+        if data.get("subnets") is None:
+            data["subnets"] = []
+        return NetworkSummary(**data)

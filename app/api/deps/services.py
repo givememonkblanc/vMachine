@@ -1,6 +1,6 @@
 from app.clients.kubernetes.connection import KubernetesClientFactory
 from app.clients.openstack.connection import OpenStackConnectionFactory
-from app.core.config.settings import get_settings
+from app.core.config.settings import Settings, get_settings
 from app.services.core.audit_service import AuditService
 from app.services.identity.auth_service import AuthService
 from app.services.orchestration.cluster_service import ClusterService
@@ -21,8 +21,16 @@ from app.services.identity.tenant_service import TenantService
 from app.services.openstack.volume_service import VolumeService
 
 
+# Module-level cache so every request reuses the same factory *and* the
+# same underlying OpenStack SDK Connection (avoiding Keystone auth per call).
+_openstack_factory: OpenStackConnectionFactory | None = None
+
+
 def get_openstack_factory() -> OpenStackConnectionFactory:
-    return OpenStackConnectionFactory(get_settings())
+    global _openstack_factory
+    if _openstack_factory is None:
+        _openstack_factory = OpenStackConnectionFactory(get_settings())
+    return _openstack_factory
 
 
 def get_auth_service() -> AuthService:
