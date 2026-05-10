@@ -38,6 +38,9 @@ okastro.db
 .vscode/
 .DS_Store
 
+# Logs
+logs/
+
 # Virtual Environments
 venv/
 env/
