@@ -3,6 +3,7 @@ from collections.abc import Mapping
 from app.clients.openstack.connection import OpenStackConnectionFactory
 from app.common.exceptions.base import AppException, OpenStackIntegrationException
 from app.common.utils.cache import TTLCache
+from app.common.utils.openstack_cache import cache_get, cache_invalidate, cache_set
 from app.common.utils.serializers import serialize_resource
 from app.core.config.settings import get_settings
 from app.schemas.openstack.compute import ServerActionResponse, ServerCreateRequest, ServerDetail, ServerSummary
@@ -17,10 +18,15 @@ class ComputeService:
         self._list_limit = settings.openstack_list_limit
 
     def list_servers(self) -> list[ServerSummary]:
+        cached = cache_get("servers")
+        if cached is not None:
+            return cached
         conn = self.factory.create()
         try:
             servers = conn.compute.servers(limit=self._list_limit)
-            return [self._serialize_server_summary(server) for server in servers]
+            result = [self._serialize_server_summary(server) for server in servers]
+            cache_set("servers", result)
+            return result
         except Exception as exc:
             raise OpenStackIntegrationException(f"Failed to list servers: {exc}") from exc
 
@@ -73,6 +79,7 @@ class ComputeService:
             server = conn.compute.create_server(**create_kwargs)
             if payload.wait:
                 server = conn.compute.wait_for_server(server)
+            cache_invalidate("servers")
             return self._serialize_server_summary(server)
         except AppException:
             raise
@@ -108,6 +115,7 @@ class ComputeService:
             deleted = conn.compute.delete_server(server_id, ignore_missing=True)
             if deleted is False:
                 raise AppException(message="Server not found", status_code=404, error_code="server_not_found")
+            cache_invalidate("servers")
         except AppException:
             raise
         except Exception as exc:
@@ -178,6 +186,8 @@ class ComputeService:
                 raise AppException(message="Volume not found", status_code=404, error_code="volume_not_found")
 
             conn.compute.create_volume_attachment(server, volumeId=volume.id)
+            cache_invalidate("servers")
+            cache_invalidate("volumes")
         except AppException:
             raise
         except Exception as exc:
@@ -195,6 +205,8 @@ class ComputeService:
                 raise AppException(message="Volume attachment not found", status_code=404, error_code="attachment_not_found")
                 
             conn.compute.delete_volume_attachment(attachment, server)
+            cache_invalidate("servers")
+            cache_invalidate("volumes")
         except AppException:
             raise
         except Exception as exc:

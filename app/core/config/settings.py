@@ -49,6 +49,12 @@ class Settings(BaseSettings):
     migration_disk_dir: str = "/tmp/migrations"
     cache_ttl_seconds: int = 300
 
+    # Per-resource cache TTLs (seconds) for OpenStack API responses
+    cache_ttl_servers: int = 5
+    cache_ttl_images: int = 30
+    cache_ttl_networks: int = 30
+    cache_ttl_volumes: int = 10
+
     @property
     def vmware_ready(self) -> bool:
         return all([self.vmware_host, self.vmware_user, self.vmware_password])

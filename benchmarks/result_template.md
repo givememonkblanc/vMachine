@@ -9,31 +9,33 @@
 
 ## API Latency Results (api_benchmark.py — 50 iterations, 2026-05-10)
 
-### Optimized Results (Connection Pooling + Pagination + Timeout/Retry + N+1 Fix)
+### Optimized Results (Connection Pooling + Pagination + Timeout/Retry + N+1 Fix + TTL Cache)
 
 | API Name             | Avg (ms) | p50 (ms) | p95 (ms) | p99 (ms) | Min (ms) | Max (ms) | Success % |
 |----------------------|----------|----------|----------|----------|----------|----------|-----------|
-| Health Check         | 0.79     | 0.52     | 1.95     | 7.99     | 0.39     | 7.99     | 100.0%    |
-| List Servers         | 403.01   | 390.31   | 496.27   | 507.56   | 373.26   | 507.56   | 100.0%    |
-| List Images          | 116.99   | 115.32   | 135.62   | 139.28   | 110.05   | 139.28   | 100.0%    |
-| List Networks        | 133.57   | 130.69   | 156.56   | 160.91   | 118.04   | 160.91   | 100.0%    |
-| List Volumes         | 136.33   | 130.67   | 164.15   | 192.73   | 123.97   | 192.73   | 100.0%    |
-| K8s Cluster Info     | 12.38    | 11.22    | 17.42    | 18.76    | 10.87    | 18.76    | 100.0%    |
-| List Migrations      | 1.83     | 1.65     | 3.19     | 5.48     | 1.47     | 5.48     | 100.0%    |
+| Health Check         | 0.76     | 0.58     | 1.69     | 5.43     | 0.35     | 5.43     | 100.0%    |
+| List Servers         | **10.96**| **0.77** | **1.83** | 505.85   | 0.54     | 505.85   | 100.0%    |
+| List Images          | **0.68** | **0.59** | **1.28** | 1.58     | 0.52     | 1.58     | 100.0%    |
+| List Networks        | **0.62** | **0.56** | **1.04** | 1.30     | 0.50     | 1.30     | 100.0%    |
+| List Volumes         | **3.65** | **0.57** | **1.32** | 149.44   | 0.49     | 149.44   | 100.0%    |
+| K8s Cluster Info     | 11.40    | 11.25    | 13.26    | 14.42    | 10.37    | 14.42    | 100.0%    |
+| List Migrations      | 2.08     | 1.85     | 4.36     | 6.78     | 1.50     | 6.78     | 100.0%    |
 
-### Before vs After Comparison
+### Before vs After Comparison (SDK Optimization + TTL Cache)
 
-| API Name             | Before Avg (ms) | After Avg (ms) | Improvement | Key Optimization |
-|----------------------|-----------------|----------------|-------------|------------------|
-| Health Check         | 3.22            | 0.79           | **-75.5%**  | Connection Pooling |
-| List Servers         | 577.64          | 403.01         | **-30.2%**  | Pagination (limit=200) + Pooling |
-| List Images          | 299.08          | 116.99         | **-60.9%**  | Pagination (limit=200) + Pooling |
-| List Networks        | 298.86          | 133.57         | **-55.3%**  | Pagination (limit=200) + Pooling + N+1 fix |
-| List Volumes         | 348.88          | 136.33         | **-60.9%**  | Pagination (limit=200) + Pooling |
-| K8s Cluster Info     | 15.61           | 12.38          | **-20.7%**  | Connection Pooling |
-| List Migrations      | 4.30            | 1.83           | **-57.4%**  | Connection Pooling |
+| API Name             | Before (ms) | SDK Opt (ms) | +Cache (ms) | SDK Improve | Cache Improve |
+|----------------------|:-----------:|:------------:|:-----------:|:-----------:|:-------------:|
+| Health Check         | 3.22        | 0.79         | **0.76**    | -75.5%      | — |
+| List Servers         | 577.64      | 403.01       | **10.96**   | -30.2%      | **-97%** |
+| List Images          | 299.08      | 116.99       | **0.68**    | -60.9%      | **-99%** |
+| List Networks        | 298.86      | 133.57       | **0.62**    | -55.3%      | **-99%** |
+| List Volumes         | 348.88      | 136.33       | **3.65**    | -60.9%      | **-97%** |
+| K8s Cluster Info     | 15.61       | 12.38        | **11.40**   | -20.7%      | — |
+| List Migrations      | 4.30        | 1.83         | **2.08**    | -57.4%      | — |
 
-**Total OpenStack API latency reduction**: 30-61% across all list endpoints.
+**Total OpenStack API latency reduction**: SDK 30-61% + Cache **97-99%** (List APIs).
+**OpenStack backend API call offload**: **97%** (200 calls → 6 calls over 50 iterations).
+**Cache hit ratio**: **97.06%** (3 resources with 96-98% hit rate).
 
 ## Load Test Results (Locust — Before vs After)
 
@@ -84,7 +86,13 @@
 - **Pagination** (limit=200) applied to all list APIs
 - **N+1 query fix**: subnet batch query replaces individual get_subnet()
 - **Timeout/Retry**: 60s timeout, up to 2 retries with 0.5s backoff for 429/5xx
+- **TTL Cache**: servers=5s, images=30s, networks=30s, volumes=10s (in-memory)
+- **Cache Invalidation**: on create/delete server/image/network/volume, volume attach/detach
+- **Cache hit ratio**: 97.06% across all cached resources
 - **ConnectionReset completely eliminated** (was 22% at 50 health users)
 - **502/ConnectionError completely eliminated** (was 87% at 10 servers users)
-- **Remaining bottleneck**: Nova API server itself (~350ms of the 403ms total)
+- **OpenStack backend call offload**: 97% (200→6 OpenStack API calls in 50 iterations)
+- **Effective RPS increase**: 31x (2.5→80 RPS for single user cached APIs)
+- **New endpoint**: `GET /api/v1/monitoring/cache-stats` for cache observability
+- **Remaining bottleneck**: Uvicorn single worker throughput (~90 RPS max)
 - See `docs/performance_report.md` for full analysis

@@ -4,6 +4,7 @@ from typing import Any
 
 from app.clients.openstack.connection import OpenStackConnectionFactory
 from app.common.exceptions.base import AppException, OpenStackIntegrationException
+from app.common.utils.openstack_cache import cache_get, cache_invalidate, cache_set
 from app.common.utils.serializers import serialize_resource
 from app.core.config.settings import get_settings
 from app.schemas.openstack.image import ImageCreateRequest, ImageSummary
@@ -15,14 +16,19 @@ class ImageService:
         self._list_limit = get_settings().openstack_list_limit
 
     def list_images(self) -> list[ImageSummary]:
+        cached = cache_get("images")
+        if cached is not None:
+            return cached
         conn = self.factory.create()
         try:
-            return [
+            result = [
                 ImageSummary(
                     **serialize_resource(image, ["id", "name", "status", "visibility", "container_format", "disk_format"])
                 )
                 for image in conn.image.images(limit=self._list_limit)
             ]
+            cache_set("images", result)
+            return result
         except Exception as exc:
             raise OpenStackIntegrationException(f"Failed to list images: {exc}") from exc
 
@@ -52,6 +58,7 @@ class ImageService:
                 visibility=payload.visibility,
                 protected=payload.protected,
             )
+            cache_invalidate("images")
             return ImageSummary(
                 **serialize_resource(image, ["id", "name", "status", "visibility", "container_format", "disk_format"])
             )
@@ -103,5 +110,6 @@ class ImageService:
         conn = self.factory.create()
         try:
             conn.image.delete_image(image_id, ignore_missing=True)
+            cache_invalidate("images")
         except Exception as exc:
             raise OpenStackIntegrationException(f"Failed to delete image: {exc}") from exc

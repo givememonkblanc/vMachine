@@ -1,5 +1,6 @@
 from app.clients.openstack.connection import OpenStackConnectionFactory
 from app.common.exceptions.base import AppException, OpenStackIntegrationException
+from app.common.utils.openstack_cache import cache_get, cache_invalidate, cache_set
 from app.common.utils.serializers import serialize_resource
 from app.core.config.settings import get_settings
 from app.schemas.openstack.network import NetworkCreateRequest, NetworkCreateResponse, NetworkDetail, NetworkSummary, SubnetSummary
@@ -11,12 +12,17 @@ class NetworkService:
         self._list_limit = get_settings().openstack_list_limit
 
     def list_networks(self) -> list[NetworkSummary]:
+        cached = cache_get("networks")
+        if cached is not None:
+            return cached
         conn = self.factory.create()
         try:
-            return [
+            result = [
                 self._serialize_network_summary(network)
                 for network in conn.network.networks(limit=self._list_limit)
             ]
+            cache_set("networks", result)
+            return result
         except Exception as exc:
             raise OpenStackIntegrationException(f"Failed to list networks: {exc}") from exc
 
@@ -100,6 +106,7 @@ class NetworkService:
                 enable_dhcp=payload.enable_dhcp,
                 dns_nameservers=payload.dns_nameservers,
             )
+            cache_invalidate("networks")
             return NetworkCreateResponse(network_id=network.id, subnet_id=subnet.id, name=payload.name)
         except AppException:
             raise
@@ -112,6 +119,7 @@ class NetworkService:
             deleted = conn.network.delete_network(network_id, ignore_missing=True)
             if deleted is False:
                 raise AppException(message="Network not found", status_code=404, error_code="network_not_found")
+            cache_invalidate("networks")
         except AppException:
             raise
         except Exception as exc:

@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 
 from app.api.deps.services import get_compute_service, get_monitoring_service
+from app.common.utils.openstack_cache import collect_metrics, get_cache_status
 from app.schemas.monitoring.monitoring import (
     AlertListResponse,
     AlertRecordSummary,
@@ -77,6 +78,15 @@ async def resolve_alert(
 ) -> AlertRecordSummary:
     """특정 알림을 해결(Resolve) 처리합니다."""
     return await monitoring_service.resolve_alert(alert_id)
+
+
+@router.get("/cache-stats")
+async def get_cache_stats() -> dict:
+    """OpenStack API 응답 캐시 적중률(Hit Ratio) 및 상태 정보를 반환합니다."""
+    return {
+        "metrics": collect_metrics(),
+        "status": get_cache_status(),
+    }
 
 
 @router.get("/dashboard", response_model=DashboardSummary)
