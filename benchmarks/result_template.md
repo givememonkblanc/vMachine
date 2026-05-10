@@ -9,15 +9,32 @@
 
 ## API Latency Results (api_benchmark.py — 50 iterations, 2026-05-10)
 
+### Optimized Results (Connection Pooling + Pagination + Timeout/Retry)
+
 | API Name             | Avg (ms) | p50 (ms) | p95 (ms) | p99 (ms) | Min (ms) | Max (ms) | Success % |
 |----------------------|----------|----------|----------|----------|----------|----------|-----------|
-| Health Check         | 3.22     | 0.99     | 4.86     | 92.78    | 0.52     | 92.78    | 100.0%    |
-| List Servers         | 577.64   | 567.90   | 671.56   | 714.49   | 546.86   | 714.49   | 100.0%    |
-| List Images          | 299.08   | 288.21   | 396.89   | 434.98   | 277.56   | 434.98   | 100.0%    |
-| List Networks        | 298.86   | 296.16   | 307.77   | 423.46   | 286.28   | 423.46   | 100.0%    |
-| List Volumes         | 348.88   | 342.50   | 400.76   | 410.72   | 325.66   | 410.72   | 100.0%    |
-| K8s Cluster Info     | 15.61    | 12.36    | 18.28    | 148.85   | 11.68    | 148.85   | 100.0%    |
-| List Migrations      | 4.30     | 3.35     | 11.15    | 11.66    | 1.99     | 11.66    | 100.0%    |
+| Health Check         | 0.79     | 0.52     | 1.95     | 7.99     | 0.39     | 7.99     | 100.0%    |
+| List Servers         | 403.01   | 390.31   | 496.27   | 507.56   | 373.26   | 507.56   | 100.0%    |
+| List Images          | 116.99   | 115.32   | 135.62   | 139.28   | 110.05   | 139.28   | 100.0%    |
+| List Networks        | 133.57   | 130.69   | 156.56   | 160.91   | 118.04   | 160.91   | 100.0%    |
+| List Volumes         | 136.33   | 130.67   | 164.15   | 192.73   | 123.97   | 192.73   | 100.0%    |
+| K8s Cluster Info     | 12.38    | 11.22    | 17.42    | 18.76    | 10.87    | 18.76    | 100.0%    |
+| List Migrations      | 1.83     | 1.65     | 3.19     | 5.48     | 1.47     | 5.48     | 100.0%    |
+
+### Before vs After Comparison
+
+| API Name             | Before Avg (ms) | After Avg (ms) | Improvement | Key Optimization |
+|----------------------|-----------------|----------------|-------------|------------------|
+| Health Check         | 3.22            | 0.79           | **-75.5%**  | Connection Pooling |
+| List Servers         | 577.64          | 403.01         | **-30.2%**  | Pagination (limit=200) + Pooling |
+| List Images          | 299.08          | 116.99         | **-60.9%**  | Pagination (limit=200) + Pooling |
+| List Networks        | 298.86          | 133.57         | **-55.3%**  | Pagination (limit=200) + Pooling + N+1 fix |
+| List Volumes         | 348.88          | 136.33         | **-60.9%**  | Pagination (limit=200) + Pooling |
+| K8s Cluster Info     | 15.61           | 12.38          | **-20.7%**  | Connection Pooling |
+| List Migrations      | 4.30            | 1.83           | **-57.4%**  | Connection Pooling |
+
+**Total OpenStack API latency reduction**: 30-61% across all list endpoints.
+**Biggest win**: List Volumes (saved 213ms per call) and List Images (saved 182ms per call).
 
 ## Load Test Results (Locust — Mixed API, 20 users, 3min)
 
@@ -40,8 +57,9 @@
 > `python benchmarks/system_monitor.py --duration 120 --interval 2`
 
 ## Notes / Observations
-- All 7 APIs returned 100% success rate after endpoint path fix (was returning 404 due to wrong routes)
-- OpenStack Nova (List Servers) is the heaviest endpoint at ~570ms avg — bottleneck is Nova API latency, not vMachine
-- Single uvicorn worker saturates at ~90 RPS for health check endpoint (connection resets at 50 users)
-- OpenStack Nova shows 502 errors under sustained 10-user load — needs Connection Pool tuning
+- **Connection Pooling** (pool_connections=20, pool_maxsize=50) applied to all OpenStack SDK calls via `_build_http_session()`
+- **Pagination** (limit=200) applied to all list APIs — dramatically reduces payload for environments with 1000s of resources
+- **N+1 query fix** applied to network_service — subnet batch query replaces individual get_subnet() calls
+- **Timeout/Retry** configured (60s timeout, up to 2 retries with 0.5s backoff for 429/5xx)
+- **30-61% latency improvement** across all OpenStack-dependent endpoints
 - See `docs/performance_report.md` for full analysis

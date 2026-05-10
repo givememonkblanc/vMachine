@@ -1,19 +1,21 @@
 from app.clients.openstack.connection import OpenStackConnectionFactory
 from app.common.exceptions.base import AppException, OpenStackIntegrationException
 from app.common.utils.serializers import serialize_resource
+from app.core.config.settings import get_settings
 from app.schemas.openstack.flavor import FlavorCreateRequest, FlavorSummary
 
 
 class FlavorService:
     def __init__(self, factory: OpenStackConnectionFactory):
         self.factory = factory
+        self._list_limit = get_settings().openstack_list_limit
 
     def list_flavors(self) -> list[FlavorSummary]:
         conn = self.factory.create()
         try:
             return [
                 FlavorSummary(**serialize_resource(flavor, ["id", "name", "vcpus", "ram", "disk"]))
-                for flavor in conn.compute.flavors()
+                for flavor in conn.compute.flavors(limit=self._list_limit)
             ]
         except Exception as exc:
             raise OpenStackIntegrationException(f"Failed to list flavors: {exc}") from exc

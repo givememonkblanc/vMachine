@@ -1,17 +1,22 @@
 from app.clients.openstack.connection import OpenStackConnectionFactory
 from app.common.exceptions.base import AppException, OpenStackIntegrationException
 from app.common.utils.serializers import serialize_resource
+from app.core.config.settings import get_settings
 from app.schemas.openstack.network import NetworkCreateRequest, NetworkCreateResponse, NetworkDetail, NetworkSummary, SubnetSummary
 
 
 class NetworkService:
     def __init__(self, factory: OpenStackConnectionFactory):
         self.factory = factory
+        self._list_limit = get_settings().openstack_list_limit
 
     def list_networks(self) -> list[NetworkSummary]:
         conn = self.factory.create()
         try:
-            return [self._serialize_network_summary(network) for network in conn.network.networks()]
+            return [
+                self._serialize_network_summary(network)
+                for network in conn.network.networks(limit=self._list_limit)
+            ]
         except Exception as exc:
             raise OpenStackIntegrationException(f"Failed to list networks: {exc}") from exc
 
@@ -22,11 +27,27 @@ class NetworkService:
             if not network:
                 raise AppException(message="Network not found", status_code=404, error_code="network_not_found")
 
-            subnet_details = []
-            for subnet_id in getattr(network, "subnets", []) or []:
-                subnet = conn.network.get_subnet(subnet_id)
-                if subnet:
-                    subnet_details.append(
+            subnet_ids = getattr(network, "subnets", []) or []
+            subnet_details = self._fetch_subnets_batch(conn, subnet_ids)
+
+            return NetworkDetail(**self._serialize_network_summary(network).model_dump(), subnet_details=subnet_details)
+        except AppException:
+            raise
+        except Exception as exc:
+            raise OpenStackIntegrationException(f"Failed to get network: {exc}") from exc
+
+    def _fetch_subnets_batch(self, conn: object, subnet_ids: list[str]) -> list[SubnetSummary]:
+        """Fetch subnet details in a single batch call instead of N+1 individual get_subnet calls."""
+        if not subnet_ids:
+            return []
+
+        try:
+            subnet_id_set = set(subnet_ids)
+            all_subnets = conn.network.subnets()
+            result = []
+            for subnet in all_subnets:
+                if getattr(subnet, "id", None) in subnet_id_set:
+                    result.append(
                         SubnetSummary(
                             **serialize_resource(
                                 subnet,
@@ -34,12 +55,25 @@ class NetworkService:
                             )
                         )
                     )
-
-            return NetworkDetail(**self._serialize_network_summary(network).model_dump(), subnet_details=subnet_details)
-        except AppException:
-            raise
-        except Exception as exc:
-            raise OpenStackIntegrationException(f"Failed to get network: {exc}") from exc
+            return result
+        except Exception:
+            # Fallback: if batch listing fails, fall back to individual fetches
+            result = []
+            for subnet_id in subnet_ids:
+                try:
+                    subnet = conn.network.get_subnet(subnet_id)
+                    if subnet:
+                        result.append(
+                            SubnetSummary(
+                                **serialize_resource(
+                                    subnet,
+                                    ["id", "name", "cidr", "gateway_ip", "ip_version", "enable_dhcp", "dns_nameservers"],
+                                )
+                            )
+                        )
+                except Exception:
+                    continue
+            return result
 
     def create_network(self, payload: NetworkCreateRequest) -> NetworkCreateResponse:
         conn = self.factory.create()

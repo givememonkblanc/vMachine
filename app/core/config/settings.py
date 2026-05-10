@@ -28,6 +28,14 @@ class Settings(BaseSettings):
     openstack_interface: str = "public"
     openstack_verify_ssl: bool = True
 
+    # Connection pool & performance tuning
+    openstack_pool_connections: int = 20
+    openstack_pool_maxsize: int = 50
+    openstack_timeout: float = 60.0
+    openstack_retry_max: int = 2
+    openstack_retry_backoff: float = 0.5
+    openstack_list_limit: int = 200
+
     kubernetes_kubeconfig_path: str = ""
     kubernetes_in_cluster: bool = False
     kubernetes_namespace: str = "default"

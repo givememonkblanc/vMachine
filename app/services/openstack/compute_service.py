@@ -14,11 +14,12 @@ class ComputeService:
         settings = get_settings()
         self._image_cache = TTLCache[str](ttl_seconds=settings.cache_ttl_seconds)
         self._flavor_cache = TTLCache[str](ttl_seconds=settings.cache_ttl_seconds)
+        self._list_limit = settings.openstack_list_limit
 
     def list_servers(self) -> list[ServerSummary]:
         conn = self.factory.create()
         try:
-            servers = conn.compute.servers()
+            servers = conn.compute.servers(limit=self._list_limit)
             return [self._serialize_server_summary(server) for server in servers]
         except Exception as exc:
             raise OpenStackIntegrationException(f"Failed to list servers: {exc}") from exc

@@ -1,19 +1,21 @@
 from app.clients.openstack.connection import OpenStackConnectionFactory
 from app.common.exceptions.base import AppException, OpenStackIntegrationException
 from app.common.utils.serializers import serialize_resource
+from app.core.config.settings import get_settings
 from app.schemas.openstack.volume import VolumeCreateRequest, VolumeSummary
 
 
 class VolumeService:
     def __init__(self, factory: OpenStackConnectionFactory):
         self.factory = factory
+        self._list_limit = get_settings().openstack_list_limit
 
     def list_volumes(self) -> list[VolumeSummary]:
         conn = self.factory.create()
         try:
             return [
                 VolumeSummary(**serialize_resource(volume, ["id", "name", "status", "size", "bootable"]))
-                for volume in conn.block_storage.volumes()
+                for volume in conn.block_storage.volumes(limit=self._list_limit)
             ]
         except Exception as exc:
             raise OpenStackIntegrationException(f"Failed to list volumes: {exc}") from exc

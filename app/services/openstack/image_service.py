@@ -5,12 +5,14 @@ from typing import Any
 from app.clients.openstack.connection import OpenStackConnectionFactory
 from app.common.exceptions.base import AppException, OpenStackIntegrationException
 from app.common.utils.serializers import serialize_resource
+from app.core.config.settings import get_settings
 from app.schemas.openstack.image import ImageCreateRequest, ImageSummary
 
 
 class ImageService:
     def __init__(self, factory: OpenStackConnectionFactory):
         self.factory = factory
+        self._list_limit = get_settings().openstack_list_limit
 
     def list_images(self) -> list[ImageSummary]:
         conn = self.factory.create()
@@ -19,7 +21,7 @@ class ImageService:
                 ImageSummary(
                     **serialize_resource(image, ["id", "name", "status", "visibility", "container_format", "disk_format"])
                 )
-                for image in conn.image.images()
+                for image in conn.image.images(limit=self._list_limit)
             ]
         except Exception as exc:
             raise OpenStackIntegrationException(f"Failed to list images: {exc}") from exc
