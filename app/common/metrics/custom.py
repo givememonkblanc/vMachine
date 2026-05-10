@@ -77,3 +77,42 @@ db_pool_overflow = Gauge(
     name="vmachine_db_pool_overflow",
     documentation="Current database connection pool overflow connections.",
 )
+
+# ---------------------------------------------------------------------------
+# Redis cache metrics
+# ---------------------------------------------------------------------------
+
+redis_cache_hits = Counter(
+    name="redis_cache_hits_total",
+    documentation="Redis cache hits by resource type.",
+    labelnames=("resource",),
+)
+
+redis_cache_misses = Counter(
+    name="redis_cache_misses_total",
+    documentation="Redis cache misses by resource type.",
+    labelnames=("resource",),
+)
+
+redis_cache_invalidations = Counter(
+    name="redis_cache_invalidations_total",
+    documentation="Redis cache invalidations by resource type.",
+    labelnames=("resource",),
+)
+
+redis_cache_latency = Histogram(
+    name="redis_cache_latency_seconds",
+    documentation="Redis cache operation latency.",
+    labelnames=("operation",),
+    buckets=(0.0001, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.025, 0.05, 0.1, 0.5, 1.0),
+)
+
+redis_cache_errors = Counter(
+    name="redis_cache_errors_total",
+    documentation="Total Redis cache errors.",
+)
+
+cache_backend_status = Gauge(
+    name="cache_backend_status",
+    documentation="Active cache backend: 1=redis, 0=memory",
+)

@@ -9,15 +9,21 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from app.api.router import api_router
 from app.common.exceptions.handlers import register_exception_handlers
 from app.common.metrics.custom import (
-    cache_hits,
-    cache_misses,
-    cache_invalidations,
+    cache_backend_status,
     cache_hit_ratio,
+    cache_hits,
+    cache_invalidations,
+    cache_misses,
+    redis_cache_errors,
+    redis_cache_hits,
+    redis_cache_invalidations,
+    redis_cache_latency,
+    redis_cache_misses,
     worker_count,
 )
 from app.common.middleware.audit import AuditMiddleware
 from app.common.middleware.request_id import RequestIDMiddleware
-from app.common.utils.cache import collect_cache_metrics
+from app.common.utils.openstack_cache import configure_from_settings, collect_metrics, is_redis
 from app.core.config.settings import get_settings
 from app.events import on_shutdown, on_startup
 from app.services.core.audit_service import audit_flush_worker, drain_audit_queue, enqueue_shutdown_signal
@@ -29,12 +35,16 @@ async def lifespan(app_: FastAPI):
     audit_flush = asyncio.create_task(audit_flush_worker())
     metric_flush = asyncio.create_task(metric_flush_worker())
 
+    # Initialise cache backend (memory or Redis) from settings
+    configure_from_settings()
+    cache_backend_status.set(1.0 if is_redis() else 0.0)
+
     # background task: sync in-memory cache counters → Prometheus
     async def _sync_cache_metrics() -> None:
         while True:
             try:
                 await asyncio.sleep(15)
-                metrics_ = collect_cache_metrics()
+                metrics_ = collect_metrics()
                 for resource in ("servers", "images", "networks", "volumes"):
                     h = metrics_["hits"].get(resource, 0)
                     m = metrics_["misses"].get(resource, 0)
@@ -47,6 +57,10 @@ async def lifespan(app_: FastAPI):
                         cache_invalidations.labels(resource=resource).inc(inv)
                     total = h + m
                     cache_hit_ratio.labels(resource=resource).set(h / total if total else 1.0)
+
+                # If Redis backend, also sync Redis-specific metrics
+                if is_redis():
+                    _sync_redis_metrics(metrics_)
             except Exception:
                 pass
 
@@ -76,6 +90,29 @@ async def lifespan(app_: FastAPI):
         await metric_flush
     except asyncio.CancelledError:
         pass
+
+
+# Helper: sync Redis-specific counters from the metrics snapshot
+def _sync_redis_metrics(metrics_: dict) -> None:
+    for resource in ("servers", "images", "networks", "volumes"):
+        h = metrics_.get("hits", {}).get(resource, 0)
+        m = metrics_.get("misses", {}).get(resource, 0)
+        v = metrics_.get("invalidations", {}).get(resource, 0)
+        if h:
+            redis_cache_hits.labels(resource=resource).inc(h)
+        if m:
+            redis_cache_misses.labels(resource=resource).inc(m)
+        if v:
+            redis_cache_invalidations.labels(resource=resource).inc(v)
+
+    errs = metrics_.get("redis_errors", 0)
+    if errs:
+        redis_cache_errors.inc(errs)
+
+    lat_samples = metrics_.get("redis_latency_samples", [])
+    if lat_samples:
+        for lat in lat_samples:
+            redis_cache_latency.labels(operation="get").observe(lat)
 
 
 def create_application() -> FastAPI:

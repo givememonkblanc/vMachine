@@ -1,4 +1,4 @@
-"""OpenStack API response cache — TTL-based in-memory with metrics.
+"""OpenStack API response cache — backend-agnostic (memory or Redis).
 
 Reduces Nova/Glance/Neutron/Cinder call frequency by caching list
 responses for configurable durations.  Each resource type has its own
@@ -16,30 +16,32 @@ TTL tuned to its expected churn rate:
 
 Usage::
 
-    from app.common.utils.openstack_cache import openstack_cache
+    from app.common.utils.openstack_cache import cache_get, cache_set, cache_invalidate
 
-    # Cache a list response
-    openstack_cache.set("servers", server_list)
-    cached = openstack_cache.get("servers")
+    # Cache a list response (backend-agnostic)
+    openstack_cache_invalidate("servers")
+
+    cached = cache_get("servers")
 
     # Invalidate on mutation
-    openstack_cache.invalidate("servers")
+    cache_invalidate("servers")
 
     # Global metrics
-    metrics = openstack_cache.collect_metrics()
+    metrics = collect_cache_metrics()
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, Generic, TypeVar
+import logging
+from typing import Any
 
-from app.common.utils.cache import TTLCache, collect_cache_metrics, record_invalidation
+from app.core.config.settings import get_settings
 
-T = TypeVar("T")
+logger = logging.getLogger("vmachine.openstack_cache")
 
+# ---------------------------------------------------------------------------
 # Default TTLs (seconds) — tuned per resource type
-# Overridden at startup by app.core.config.settings if provided.
+# ---------------------------------------------------------------------------
 DEFAULT_TTLS: dict[str, int] = {
     "servers": 5,
     "images": 30,
@@ -47,16 +49,21 @@ DEFAULT_TTLS: dict[str, int] = {
     "volumes": 10,
 }
 
+# ---------------------------------------------------------------------------
+# Backend instance (set once at startup by ``init_cache_backend()``)
+# ---------------------------------------------------------------------------
+_backend: Any = None  # TTLCache per-resource dict | RedisCache
+_backend_type: str = "memory"  # "memory" | "redis"
+
 
 def configure_from_settings() -> None:
-    """Read cache TTLs from ``Settings`` and apply them to the global defaults.
+    """Read cache TTLs and backend type from ``Settings``, then initialise.
 
     Call once at application startup so environment variables can override
     the built-in defaults.
     """
-    from app.core.config.settings import get_settings
-
     settings = get_settings()
+    # Apply TTL overrides
     overrides = {
         "servers": settings.cache_ttl_servers,
         "images": settings.cache_ttl_images,
@@ -65,51 +72,102 @@ def configure_from_settings() -> None:
     }
     for resource, ttl in overrides.items():
         DEFAULT_TTLS[resource] = ttl
-        if resource in _instances:
-            _instances[resource]._ttl = float(ttl)
 
-# Singleton cache instances per resource type
-_instances: dict[str, TTLCache[Any]] = {}
+    # Initialise the selected backend
+    init_cache_backend(settings.cache_backend, settings.redis_url, settings.openstack_project_name)
 
 
-def _get_cache(resource: str) -> TTLCache[Any]:
-    if resource not in _instances:
-        ttl = DEFAULT_TTLS.get(resource, 30)
+def init_cache_backend(backend: str, redis_url: str = "", project_name: str = "admin") -> None:
+    """Create the cache backend singleton.
+
+    Parameters
+    ----------
+    backend : str
+        ``"memory"`` (default) or ``"redis"``.
+    redis_url : str
+        Redis connection URL (ignored for memory backend).
+    project_name : str
+        OpenStack project name used as Redis key namespace.
+    """
+    global _backend, _backend_type
+
+    if backend == "redis" and redis_url:
+        try:
+            from app.common.utils.redis_cache import RedisCache
+
+            _backend = RedisCache(redis_url, project_name)
+            _backend_type = "redis"
+            logger.info("Cache backend: Redis (%s)", redis_url)
+            return
+        except Exception as exc:
+            logger.warning(
+                "Redis init failed (%s), falling back to memory cache", exc
+            )
+
+    # Fallback: in-memory TTLCache (one per resource)
+    from app.common.utils.cache import TTLCache
+
+    _instances: dict[str, Any] = {}
+    for resource, ttl in DEFAULT_TTLS.items():
         _instances[resource] = TTLCache[Any](ttl_seconds=ttl, name=resource)
-    return _instances[resource]
+    _backend = _instances
+    _backend_type = "memory"
+    logger.info("Cache backend: in-memory TTLCache")
+
+
+def is_redis() -> bool:
+    return _backend_type == "redis"
 
 
 # ---------------------------------------------------------------------------
-# Public API
+# Public API  (unchanged — service layer imports these)
 # ---------------------------------------------------------------------------
 
 
 def cache_get(resource: str) -> list[Any] | None:
     """Return the cached list for *resource*, or ``None`` on miss/expiry."""
-    return _get_cache(resource).get(resource)
+    if _backend_type == "redis":
+        return _backend.get(resource)
+    # Memory backend: TTLCache per resource
+    cache = _backend.get(resource)
+    if cache is None:
+        return None
+    return cache.get(resource)
 
 
 def cache_set(resource: str, value: list[Any]) -> None:
     """Store *value* in the cache for *resource* using its default TTL."""
-    _get_cache(resource).set(resource, value)
+    if _backend_type == "redis":
+        _backend.set(resource, value)
+    else:
+        _backend.get(resource).set(resource, value)
 
 
 def cache_invalidate(resource: str) -> None:
     """Invalidate the cached entry for a single *resource*."""
-    cache = _get_cache(resource)
-    cache.invalidate_all()
-    record_invalidation(resource)
+    if _backend_type == "redis":
+        _backend.invalidate(resource)
+    else:
+        cache = _backend.get(resource)
+        if cache:
+            cache.invalidate_all()
+            from app.common.utils.cache import record_invalidation
+            record_invalidation(resource)
 
 
 def cache_invalidate_all() -> None:
     """Invalidate all OpenStack caches (use sparingly — heavyweight)."""
-    for resource in list(_instances):
+    for resource in ("servers", "images", "networks", "volumes"):
         cache_invalidate(resource)
 
 
 def collect_metrics() -> dict[str, Any]:
     """Return a snapshot of cache hit/miss/invalidation counters."""
-    return collect_cache_metrics()
+    from app.common.utils.cache import collect_cache_metrics as _collect_mem
+
+    if _backend_type == "redis":
+        return _backend.collect_metrics()
+    return _collect_mem()
 
 
 def get_ttl(resource: str) -> int:
@@ -122,10 +180,16 @@ def set_ttl(resource: str, ttl_seconds: int) -> None:
 
 def get_cache_status() -> dict[str, Any]:
     """Return per-resource cache size and TTL for observability."""
+    if _backend_type == "redis":
+        return {"backend": "redis", "ttls": dict(DEFAULT_TTLS)}
     return {
-        name: {
-            "ttl_seconds": DEFAULT_TTLS.get(name, 30),
-            "size": cache.size,
-        }
-        for name, cache in _instances.items()
+        "backend": "memory",
+        "ttls": dict(DEFAULT_TTLS),
+        "resources": {
+            name: {
+                "ttl_seconds": DEFAULT_TTLS.get(name, 30),
+                "size": cache.size,
+            }
+            for name, cache in (_backend or {}).items()
+        },
     }

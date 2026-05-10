@@ -47,7 +47,11 @@ OKAstro Backend는 OpenStack 기반의 서버 가상화 자원과 Kubernetes 컨
 - `DATABASE_URL`: DB 접속 정보
 - `OPENSTACK_*`: OpenStack 접속 정보 (auth_url, username, password 등)
 - `KUBERNETES_KUBECONFIG_PATH`: Kubernetes 설정 파일 경로
-- `REDIS_URL`: 백그라운드 워커를 위한 Redis 접속 정보
+- `REDIS_URL`: Redis 접속 정보 (백그라운드 워커 및 캐시 공유)
+- `CACHE_BACKEND`: 캐시 백엔드 선택 (`memory` 또는 `redis`, 기본값: `memory`)
+
+  - `memory`: 각 Gunicorn 워커가 독립적인 in-memory TTLCache 사용 (기본값)
+  - `redis`: 모든 워커가 Redis를 통해 캐시 공유 (권장, worker 간 cache consistency 보장)
 
 ### 2. 패키지 설치
 
@@ -117,10 +121,16 @@ curl http://localhost:8083/metrics
 
 ```
 사용자 → Nginx (:8083) → Gunicorn (:8002) → FastAPI Workers (×8)
-                              ├── Worker 1 (in-memory cache)
-                              ├── Worker 2 (in-memory cache)
-                              ├── …
-                              └── Worker 8 (in-memory cache)
+                              ├── Worker 1 ─┐
+                              ├── Worker 2 ─┤
+                              ├── …         ├─→ Redis Cache (선택 사항)
+                              └── Worker 8 ─┘      └── CACHE_BACKEND=redis (기본: memory)
+
+                     ┌── Memory Cache (per-worker, fallback)
+                     │    └── CACHE_BACKEND=memory (각 워커 독립 캐시)
+                     │
+                     └── Redis Cache (cross-worker, 권장)
+                          └── CACHE_BACKEND=redis (모든 워커 공유 캐시)
 
 Prometheus → /metrics → Nginx → Gunicorn → MultiProcessCollector
 ```
@@ -157,11 +167,12 @@ python benchmarks/system_monitor.py --duration 300
 
 ### Architecture Performance Evolution
 
-| Phase | Deployment | Workers | Metrics | Status |
-|-------|-----------|---------|---------|--------|
-| Baseline | Single Uvicorn (:8000) | 1 | — | Legacy |
-| Phase 0 | Gunicorn + Nginx (:8083→:8002) | **8** (recommended) | — | ✅ Active |
-| Phase 1 | Prometheus /metrics | 8 | HTTP + Custom | ✅ Active |
+| Phase | Deployment | Workers | Cache | Status |
+|-------|-----------|---------|-------|--------|
+| Baseline | Single Uvicorn (:8000) | 1 | In-memory (per-worker) | Legacy |
+| Phase 0 | Gunicorn + Nginx (:8083→:8002) | **8** (recommended) | In-memory (per-worker) | ✅ Active |
+| Phase 1 | Prometheus /metrics | 8 | In-memory (per-worker) | ✅ Active |
+| Phase 2 | Redis Distributed Cache | 8 | **Redis (cross-worker)** | ✅ **Active** |
 
 ### Worker Count Recommendation
 

@@ -46,6 +46,10 @@ class Settings(BaseSettings):
     vmware_no_verify_ssl: bool = True
 
     redis_url: str = "redis://localhost:6379/0"
+
+    # Cache backend: "memory" (in-process TTLCache) or "redis" (shared Redis)
+    cache_backend: str = "memory"
+
     migration_disk_dir: str = "/tmp/migrations"
     cache_ttl_seconds: int = 300
 
