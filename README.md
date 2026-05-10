@@ -64,14 +64,65 @@ alembic upgrade head
 
 ### 4. 서버 실행
 
+#### 개발 모드 (단일 Uvicorn)
 ```bash
 ./scripts/run_dev.sh
 # 또는
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
+
+#### 운영 모드 (Gunicorn + Nginx)
+```bash
+# Gunicorn 직접 실행 (port 8002)
+gunicorn app.main:app -c gunicorn.conf.py
+
+# Nginx reverse proxy (port 8083)
+# Nginx 설정: /etc/nginx/sites-available/vmachine-api
+# listen 8083 → proxy_pass → 127.0.0.1:8002
+
+# systemd service (/etc/systemd/system/okastro-backend.service)
+sudo systemctl daemon-reload && sudo systemctl restart okastro-backend
+```
 Swagger UI는 `http://localhost:8000/docs`에서 확인할 수 있습니다.
 
-### 5. 백그라운드 워커 실행 (선택)
+### 5. Prometheus Metrics
+
+운영 모드에서는 `/metrics` 엔드포인트에서 Prometheus 메트릭을 제공합니다.
+
+```bash
+curl http://localhost:8083/metrics
+```
+
+**Gunicorn 다중 프로세스 환경**에서는 `MultiProcessCollector`를 통해 모든 워커의 메트릭을 집계합니다:
+- 각 워커는 `/tmp/prometheus_multiproc/`에 메트릭 파일을 기록
+- `/metrics` 요청 시 모든 워커의 데이터를 취합하여 반환
+- `PID` 레이블로 개별 워커 식별 가능
+
+**주요 메트릭:**
+
+| 메트릭 | 타입 | 설명 |
+|--------|------|------|
+| `http_requests_total` | Counter | 전체 HTTP 요청 수 (method, status, handler) |
+| `http_request_duration_seconds` | Histogram | 핸들러별 요청 지연 시간 |
+| `vmachine_worker_count` | Gauge | 활성 Gunicorn 워커 수 |
+| `vmachine_cache_hit_ratio` | Gauge | 리소스별 캐시 히트율 |
+| `vmachine_openstack_api_duration_seconds` | Histogram | OpenStack SDK 호출 지연 시간 |
+
+### 6. 시스템 아키텍처 (운영)
+
+```
+사용자 → Nginx (:8083) → Gunicorn (:8002) → FastAPI Workers (×16)
+                              ├── Worker 1 (in-memory cache)
+                              ├── Worker 2 (in-memory cache)
+                              ├── …
+                              └── Worker 16 (in-memory cache)
+
+Prometheus → /metrics → Nginx → Gunicorn → MultiProcessCollector
+```
+
+성능 및 운영에 대한 자세한 내용은 `docs/performance_report.md`를 참고하세요.
+
+### 7. 백그라운드 워커 실행 (선택)
 
 마이그레이션 등 무거운 비동기 처리를 위해 Redis 서버와 워커를 실행해야 합니다.
 
@@ -86,15 +137,26 @@ This project includes benchmark scripts for evaluating API latency, concurrent r
 Benchmark tools are located in the `benchmarks/` directory.
 
 ```bash
-# API Latency Benchmark
-python benchmarks/api_benchmark.py --base-url http://localhost:8000
+# API Latency Benchmark (Gunicorn direct)
+python benchmarks/api_benchmark.py --base-url http://127.0.0.1:8002
+
+# API Latency Benchmark (via Nginx)
+python benchmarks/api_benchmark.py --base-url http://127.0.0.1:8083
 
 # Locust Load Testing (Concurrency)
-locust -f benchmarks/load_test_locust.py --host http://localhost:8000
+locust -f benchmarks/load_test_locust.py --host http://127.0.0.1:8083
 
 # System Resource Monitoring
 python benchmarks/system_monitor.py --duration 300
 ```
+
+### Architecture Performance Evolution
+
+| Phase | Deployment | Workers | Metrics | Status |
+|-------|-----------|---------|---------|--------|
+| Baseline | Single Uvicorn (:8000) | 1 | — | Legacy |
+| Phase 0 | Gunicorn + Nginx (:8083→:8002) | 16 | — | ✅ Active |
+| Phase 1 | Prometheus /metrics | 16 | HTTP + Custom | ✅ Active |
 
 Detailed benchmark methodology, bottleneck analysis, and architecture improvements are available in:
 `docs/performance_report.md`
