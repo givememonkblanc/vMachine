@@ -122,6 +122,52 @@ Synthetic benchmarks do NOT predict:
 - pyVmomi serialization cost for large VM configurations
 - Real-world network jitter and timeout behavior
 
+### 4.4 Dataset-Based Benchmark Interpretation
+
+Phase 5A introduced **dataset-based benchmarks** that bridge the gap between fully synthetic and live validation.
+
+#### 4.4.1 What Dataset Benchmarks Add
+
+| Factor | Synthetic | Dataset-Based | Live |
+|--------|:---------:|:-------------:|:----:|
+| Pydantic deserialization overhead | ❌ | ✅ | ✅ |
+| Realistic VM data diversity | ❌ | ✅ | ✅ |
+| JSON I/O for inventory loading | ❌ | ✅ | ✅ |
+| OpenStack catalog parsing | ❌ | ✅ | ✅ |
+| Flavor mapping from catalog | Mock only | ✅ Mock | ✅ Real |
+| Disk/NIC hardware variety | ❌ | ✅ | ✅ |
+| Edge case coverage | Manual | ✅ 23 scenarios | Limited |
+| vCenter API latency | ❌ | ❌ | ✅ |
+| OpenStack API latency | ❌ | ❌ | ✅ |
+| Network RTT / TLS overhead | ❌ | ❌ | ✅ |
+
+#### 4.4.2 Interpreting Dataset Benchmark Results
+
+Dataset benchmarks are reliable for:
+
+- **Engine correctness**: All engine paths exercised with realistic data shapes
+- **Scalability estimation**: 100/500/1000 VM datasets provide throughput scaling data (linear up to 1000 VMs)
+- **Mapping plausibility**: Flavor/network mapping results can be inspected for reasonableness
+- **Incompatibility profiling**: Realistic distribution of OS, hardware, and configuration issues
+- **Edge case handling**: 23 pre-defined scenarios verify correct behavior for unusual configurations
+
+Dataset benchmarks are NOT reliable for:
+
+- **End-to-end latency**: No network I/O, no pyVmomi SDK calls
+- **Concurrency limits**: No real vCenter session pool contention
+- **Database write throughput**: Assessment persistence not included
+- **Timeout behavior**: No external API timeouts to trigger retry logic
+
+#### 4.4.3 When to Use Each Layer
+
+| Goal | Use |
+|------|-----|
+| Fast code iteration / regression check | `benchmark_vmware_assessment.py` (synthetic) |
+| Validate with realistic VM data | `benchmark_from_dataset.py --all` |
+| Test edge cases and OS/hardware diversity | Dataset scenarios in `benchmark_data/scenarios/` |
+| Validate resilience without live infra | `recovery_validation.py` |
+| Production readiness sign-off | `validate_vcenter.py` + `validate_openstack_mapping.py` (live) |
+
 ## 5. Migration Risk Classification
 
 ### 5.1 VM Risk Levels

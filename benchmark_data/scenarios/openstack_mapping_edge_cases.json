@@ -1,0 +1,122 @@
+{
+  "scenario": "openstack_mapping_edge_cases",
+  "description": "Edge case scenarios for mapping validation — unusual VM profiles, unsupported configurations, corner cases",
+  "generated_at": "2026-05-11T00:00:00Z",
+  "cases": [
+    {
+      "name": "unsupported_os_solaris",
+      "vm_profile": {"vcpus": 4, "ram_mb": 8192, "disk_gb": 80},
+      "guest_os": "Solaris 11",
+      "expected_compatible": false,
+      "expected_severity": "critical",
+      "expected_issues": ["Unsupported guest OS"],
+      "tags": ["edge", "os"]
+    },
+    {
+      "name": "unsupported_os_hpux",
+      "vm_profile": {"vcpus": 2, "ram_mb": 4096, "disk_gb": 40},
+      "guest_os": "HP-UX 11i",
+      "expected_compatible": false,
+      "expected_severity": "critical",
+      "expected_issues": ["Unsupported guest OS"],
+      "tags": ["edge", "os"]
+    },
+    {
+      "name": "uefi_firmware",
+      "vm_profile": {"vcpus": 8, "ram_mb": 16384, "disk_gb": 160},
+      "firmware": "efi",
+      "expected_compatible": true,
+      "expected_severity": "medium",
+      "expected_issues": ["EFI/UEFI firmware"],
+      "tags": ["edge", "firmware"]
+    },
+    {
+      "name": "secure_boot_enabled",
+      "vm_profile": {"vcpus": 4, "ram_mb": 8192, "disk_gb": 80},
+      "firmware": "efi",
+      "secure_boot": true,
+      "expected_compatible": false,
+      "expected_severity": "high",
+      "expected_issues": ["Secure Boot enabled"],
+      "tags": ["edge", "firmware", "secureboot"]
+    },
+    {
+      "name": "suspended_vm",
+      "vm_profile": {"vcpus": 2, "ram_mb": 4096, "disk_gb": 40},
+      "power_state": "suspended",
+      "expected_compatible": false,
+      "expected_severity": "critical",
+      "expected_issues": ["VM is suspended"],
+      "tags": ["edge", "power"]
+    },
+    {
+      "name": "no_vcpus",
+      "vm_profile": {"vcpus": 0, "ram_mb": 4096, "disk_gb": 40},
+      "expected_compatible": false,
+      "expected_severity": "critical",
+      "expected_issues": ["No vCPUs"],
+      "tags": ["edge", "hardware"]
+    },
+    {
+      "name": "no_disks",
+      "vm_profile": {"vcpus": 2, "ram_mb": 4096, "disk_gb": 0, "disk_count": 0},
+      "expected_compatible": true,
+      "expected_severity": "high",
+      "expected_issues": ["No disks attached"],
+      "tags": ["edge", "hardware"]
+    },
+    {
+      "name": "vmxnet2_nic",
+      "vm_profile": {"vcpus": 2, "ram_mb": 4096, "disk_gb": 40},
+      "nic_type": "vmxnet2",
+      "expected_compatible": true,
+      "expected_severity": "medium",
+      "expected_issues": ["NIC type vmxnet2"],
+      "tags": ["edge", "nic"]
+    },
+    {
+      "name": "sriov_nic",
+      "vm_profile": {"vcpus": 8, "ram_mb": 32768, "disk_gb": 320},
+      "nic_type": "sriov",
+      "expected_compatible": true,
+      "expected_severity": "medium",
+      "expected_issues": ["SR-IOV NIC"],
+      "tags": ["edge", "nic"]
+    },
+    {
+      "name": "nvme_controller",
+      "vm_profile": {"vcpus": 16, "ram_mb": 65536, "disk_gb": 640},
+      "disk_controller": "nvme",
+      "expected_compatible": true,
+      "expected_severity": "medium",
+      "expected_issues": ["NVMe controller"],
+      "tags": ["edge", "controller"]
+    },
+    {
+      "name": "ide_controller",
+      "vm_profile": {"vcpus": 2, "ram_mb": 2048, "disk_gb": 20},
+      "disk_controller": "ide",
+      "expected_compatible": false,
+      "expected_severity": "high",
+      "expected_issues": ["IDE controller"],
+      "tags": ["edge", "controller"]
+    },
+    {
+      "name": "unknown_os",
+      "vm_profile": {"vcpus": 4, "ram_mb": 8192, "disk_gb": 80},
+      "guest_os": "Unknown OS v3.14",
+      "expected_compatible": true,
+      "expected_severity": "low",
+      "expected_issues": ["Unknown guest OS"],
+      "tags": ["edge", "os"]
+    },
+    {
+      "name": "no_network_adapters",
+      "vm_profile": {"vcpus": 2, "ram_mb": 4096, "disk_gb": 40, "nic_count": 0},
+      "expected_compatible": true,
+      "expected_severity": "low",
+      "expected_issues": ["No network adapters"],
+      "tags": ["edge", "network"]
+    }
+  ]
+}

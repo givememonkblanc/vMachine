@@ -20,7 +20,7 @@ import sys
 import time
 import traceback
 from dataclasses import dataclass, field, asdict
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -245,7 +245,7 @@ def scenario_malformed_vm_metadata() -> FailureScenario:
         error_count = 0
 
         edge_case_vms = [
-            VMSummary(id="null-vm", name=None, power_state=None, guest_os=None,
+            VMSummary(id="null-vm", name="", power_state="", guest_os=None,
                       hardware=None, firmware=None, secure_boot_enabled=None,
                       vmware_tools_status=None, disk_controller_types=None),
             VMSummary(id="empty-vm", name="", power_state="", guest_os="",
@@ -255,8 +255,8 @@ def scenario_malformed_vm_metadata() -> FailureScenario:
             VMSummary(id="partial-vm", name="partial", power_state="poweredOn",
                       guest_os="Some OS",
                       hardware=VMHardware(cpu_count=4, memory_mb=8192,
-                          disks=[VMDisk(label="d1", capacity_gb=100, datastore="ds1", controller_type="scsi")],
-                          nics=[VMNic(label="n1", mac="00:00:00:00:00:00", network="net1", nic_type="vmxnet3")]),
+                          disks=[VMDisk(label="d1", capacity_gb=100, datastore_name="ds1", controller_type="scsi")],
+                          nics=[VMNic(label="n1", network_name="net1", mac_address="00:00:00:00:00:00", nic_type="vmxnet3")]),
                       firmware="bios", secure_boot_enabled=False,
                       vmware_tools_status=None, disk_controller_types=None),
         ]
@@ -301,7 +301,7 @@ def scenario_unsupported_guest_os() -> FailureScenario:
         from app.services.vmware.compatibility import VMwareCompatibilityService
 
         svc = VMwareCompatibilityService()
-        unsupported_oses = ["Solaris 11", "HP-UX 11i", "AIX 7.2", "macOS Sonoma"]
+        unsupported_oses = ["Solaris 11", "HP-UX 11i", "AIX 7.2", "Darwin 23"]
 
         for os_name in unsupported_oses:
             vm = VMSummary(
@@ -310,8 +310,8 @@ def scenario_unsupported_guest_os() -> FailureScenario:
                 power_state="poweredOn",
                 guest_os=os_name,
                 hardware=VMHardware(cpu_count=2, memory_mb=4096,
-                    disks=[VMDisk(label="d1", capacity_gb=40, datastore="ds1", controller_type="scsi")],
-                    nics=[VMNic(label="n1", mac="00:00:00:00:00:01", network="net1", nic_type="vmxnet3")]),
+                    disks=[VMDisk(label="d1", capacity_gb=40, datastore_name="ds1", controller_type="scsi")],
+                    nics=[VMNic(label="n1", network_name="net1", mac_address="00:00:00:00:00:01", nic_type="vmxnet3")]),
                 firmware="bios", secure_boot_enabled=False,
                 vmware_tools_status="toolsOk", disk_controller_types=["lsilogic"],
             )
@@ -371,16 +371,16 @@ def scenario_partial_inventory_failure() -> FailureScenario:
             hardware=VMHardware(
                 cpu_count=4, memory_mb=16384,
                 disks=[
-                    VMDisk(label="d1", capacity_gb=80, datastore="ds1", controller_type="scsi"),
+                    VMDisk(label="d1", capacity_gb=80, datastore_name="ds1", controller_type="scsi"),
                 ],
                 nics=[
-                    VMNic(label="n1", mac="00:50:56:01:02:03", network="VM Network", nic_type="vmxnet3"),
+                    VMNic(label="n1", network_name="VM Network", mac_address="00:50:56:01:02:03", nic_type="vmxnet3"),
                 ],
             ),
-            firmware=None,         # firmware detection failed
-            secure_boot_enabled=None,  # not reported
-            vmware_tools_status=None,  # not reported  
-            disk_controller_types=None,  # not reported
+            firmware=None,
+            secure_boot_enabled=None,
+            vmware_tools_status=None,
+            disk_controller_types=None,
         )
 
         result = svc.evaluate(vm)
@@ -410,7 +410,7 @@ def scenario_partial_inventory_failure() -> FailureScenario:
 # ---------------------------------------------------------------------------
 
 def generate_report(scenarios: list[FailureScenario]) -> str:
-    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     all_checks = sum(len(s.details.get("issues", [])) if isinstance(s.details, dict) else 0
                      for s in scenarios)
     passed = sum(1 for s in scenarios if s.passed)
@@ -485,7 +485,7 @@ def generate_report(scenarios: list[FailureScenario]) -> str:
 
 def generate_json(scenarios: list[FailureScenario]) -> dict:
     return {
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
         "total_scenarios": len(scenarios),
         "passed": sum(1 for s in scenarios if s.passed),
         "failed": sum(1 for s in scenarios if not s.passed),

@@ -1,0 +1,72 @@
+{
+  "scenario": "openstack_mapping_large_scale",
+  "description": "Large-scale mapping validation scenarios — batch processing, variety mixes, and stress patterns",
+  "generated_at": "2026-05-11T00:00:00Z",
+  "vm_mix": {
+    "total_profiles": 50,
+    "linux_pct": 0.55,
+    "windows_pct": 0.30,
+    "unsupported_os_pct": 0.15,
+    "uefi_pct": 0.25,
+    "secure_boot_pct": 0.10,
+    "suspended_pct": 0.05,
+    "multi_disk_2plus_pct": 0.60,
+    "multi_nic_2plus_pct": 0.50,
+    "legacy_nic_e1000_pct": 0.20,
+    "legacy_controller_ide_pct": 0.10
+  },
+  "expected_distribution": {
+    "compatible_pct": {"min": 0.50, "max": 0.95},
+    "critical_incompatible_pct": {"min": 0.01, "max": 0.30},
+    "uefi_issue_pct": {"min": 0.05, "max": 0.40},
+    "secure_boot_issue_pct": {"min": 0.01, "max": 0.20}
+  },
+  "flavor_catalog": "benchmark_data/openstack_catalog.json",
+  "cases": [
+    {
+      "name": "batch_10_vms",
+      "vm_count": 10,
+      "description": "Small batch — quick validation of batch processing",
+      "expected_min_compatible": 5,
+      "tags": ["scale", "batch"]
+    },
+    {
+      "name": "batch_50_vms",
+      "vm_count": 50,
+      "description": "Medium batch — typical datacenter rack",
+      "expected_min_compatible": 25,
+      "tags": ["scale", "batch"]
+    },
+    {
+      "name": "batch_100_vms",
+      "vm_count": 100,
+      "description": "Large batch — full cluster assessment",
+      "expected_min_compatible": 50,
+      "tags": ["scale", "batch"]
+    },
+    {
+      "name": "batch_1000_vms",
+      "vm_count": 1000,
+      "description": "Stress batch — full datacenter assessment",
+      "expected_min_compatible": 500,
+      "tags": ["scale", "batch", "stress"]
+    },
+    {
+      "name": "mixed_compatibility_50",
+      "vm_count": 50,
+      "scenario_mix": "mixed_compatibility",
+      "description": "Mixed compatibility — diverse VM configurations",
+      "expected_min_compatible": 10,
+      "tags": ["scale", "mix"]
+    },
+    {
+      "name": "high_risk_50",
+      "vm_count": 50,
+      "scenario_mix": "high_risk",
+      "description": "High risk — 60% unsupported OS, many edge cases",
+      "expected_min_compatible": 0,
+      "expected_max_compatible": 40,
+      "tags": ["scale", "risk"]
+    }
+  ]
+}

@@ -1,0 +1,785 @@
+{
+  "generator": {
+    "script": "generate_benchmark_inventory.py",
+    "seed": 42,
+    "scenario": "high_risk",
+    "generated_at": "2026-05-11T01:42:33.486081"
+  },
+  "summary": {
+    "vm_count": 10,
+    "datastore_count": 9,
+    "network_count": 8,
+    "cluster_count": 5,
+    "host_count": 8,
+    "linux_vms": 3,
+    "windows_vms": 3,
+    "unsupported_os_vms": 4,
+    "uefi_vms": 2,
+    "secure_boot_vms": 2,
+    "suspended_vms": 2,
+    "no_tools_vms": 2
+  },
+  "datastores": [
+    {
+      "id": "ds-00",
+      "name": "datastore1",
+      "capacity_gb": 16000,
+      "free_gb": 742,
+      "type": "vSAN"
+    },
+    {
+      "id": "ds-01",
+      "name": "datastore2",
+      "capacity_gb": 1000,
+      "free_gb": 1574,
+      "type": "NFS"
+    },
+    {
+      "id": "ds-02",
+      "name": "datastore3",
+      "capacity_gb": 16000,
+      "free_gb": 733,
+      "type": "vSAN"
+    },
+    {
+      "id": "ds-03",
+      "name": "datastore4",
+      "capacity_gb": 8000,
+      "free_gb": 768,
+      "type": "NFS"
+    },
+    {
+      "id": "ds-04",
+      "name": "datastore5",
+      "capacity_gb": 4000,
+      "free_gb": 1235,
+      "type": "VMFS"
+    },
+    {
+      "id": "ds-05",
+      "name": "vsanDatastore",
+      "capacity_gb": 2000,
+      "free_gb": 961,
+      "type": "vSAN"
+    },
+    {
+      "id": "ds-06",
+      "name": "nfsDatastore",
+      "capacity_gb": 8000,
+      "free_gb": 1487,
+      "type": "vSAN"
+    },
+    {
+      "id": "ds-07",
+      "name": "ssdDatastore",
+      "capacity_gb": 2000,
+      "free_gb": 1360,
+      "type": "vSAN"
+    },
+    {
+      "id": "ds-08",
+      "name": "localDatastore",
+      "capacity_gb": 4000,
+      "free_gb": 931,
+      "type": "vSAN"
+    }
+  ],
+  "networks": [
+    {
+      "id": "net-00",
+      "name": "VM Network",
+      "type": "standard",
+      "vlan_id": 861
+    },
+    {
+      "id": "net-01",
+      "name": "Management Network",
+      "type": "distributed",
+      "vlan_id": 2485
+    },
+    {
+      "id": "net-02",
+      "name": "Storage Network",
+      "type": "distributed",
+      "vlan_id": 1812
+    },
+    {
+      "id": "net-03",
+      "name": "vMotion Network",
+      "type": "standard",
+      "vlan_id": 3252
+    },
+    {
+      "id": "net-04",
+      "name": "Public Network",
+      "type": "standard",
+      "vlan_id": 1163
+    },
+    {
+      "id": "net-05",
+      "name": "Private Network",
+      "type": "distributed",
+      "vlan_id": null
+    },
+    {
+      "id": "net-06",
+      "name": "DMZ Network",
+      "type": "standard",
+      "vlan_id": 921
+    },
+    {
+      "id": "net-07",
+      "name": "iSCSI Network",
+      "type": "standard",
+      "vlan_id": null
+    }
+  ],
+  "clusters": [
+    {
+      "id": "cl-00",
+      "name": "Compute-Cluster",
+      "host_count": 2,
+      "total_cpu_ghz": 160.2,
+      "total_mem_gb": 1229
+    },
+    {
+      "id": "cl-01",
+      "name": "GPU-Cluster",
+      "host_count": 6,
+      "total_cpu_ghz": 432.4,
+      "total_mem_gb": 405
+    },
+    {
+      "id": "cl-02",
+      "name": "Management-Cluster",
+      "host_count": 5,
+      "total_cpu_ghz": 236.5,
+      "total_mem_gb": 1545
+    },
+    {
+      "id": "cl-03",
+      "name": "Storage-Cluster",
+      "host_count": 6,
+      "total_cpu_ghz": 137.5,
+      "total_mem_gb": 1682
+    },
+    {
+      "id": "cl-04",
+      "name": "DR-Cluster",
+      "host_count": 5,
+      "total_cpu_ghz": 272.5,
+      "total_mem_gb": 755
+    }
+  ],
+  "hosts": [
+    {
+      "id": "host-00",
+      "name": "esxi-01.local",
+      "cluster": "GPU-Cluster",
+      "cpu_cores": 16,
+      "memory_gb": 128,
+      "vm_count": 32
+    },
+    {
+      "id": "host-01",
+      "name": "esxi-02.local",
+      "cluster": "GPU-Cluster",
+      "cpu_cores": 24,
+      "memory_gb": 1024,
+      "vm_count": 8
+    },
+    {
+      "id": "host-02",
+      "name": "esxi-03.local",
+      "cluster": "DR-Cluster",
+      "cpu_cores": 24,
+      "memory_gb": 128,
+      "vm_count": 34
+    },
+    {
+      "id": "host-03",
+      "name": "esxi-04.local",
+      "cluster": "GPU-Cluster",
+      "cpu_cores": 48,
+      "memory_gb": 512,
+      "vm_count": 33
+    },
+    {
+      "id": "host-04",
+      "name": "esxi-05.local",
+      "cluster": "DR-Cluster",
+      "cpu_cores": 64,
+      "memory_gb": 1024,
+      "vm_count": 40
+    },
+    {
+      "id": "host-05",
+      "name": "esxi-06.local",
+      "cluster": "Storage-Cluster",
+      "cpu_cores": 24,
+      "memory_gb": 1024,
+      "vm_count": 33
+    },
+    {
+      "id": "host-06",
+      "name": "esxi-07.local",
+      "cluster": "Management-Cluster",
+      "cpu_cores": 24,
+      "memory_gb": 512,
+      "vm_count": 38
+    },
+    {
+      "id": "host-07",
+      "name": "esxi-08.local",
+      "cluster": "Storage-Cluster",
+      "cpu_cores": 24,
+      "memory_gb": 512,
+      "vm_count": 33
+    }
+  ],
+  "vms": [
+    {
+      "id": "vm-00000",
+      "name": "vm-00000-CentOS-7",
+      "power_state": "poweredOn",
+      "guest_os": "CentOS 7",
+      "os_family": "linux",
+      "os_supported": true,
+      "hardware": {
+        "cpu_count": 6,
+        "memory_mb": 512,
+        "disks": [
+          {
+            "label": "disk0",
+            "capacity_gb": 1000,
+            "datastore": "datastore1",
+            "controller_type": "ide",
+            "disk_type": "thick"
+          }
+        ],
+        "nics": [
+          {
+            "label": "nic0",
+            "mac": "00:50:56:8e:00:4f",
+            "network": "vMotion Network",
+            "nic_type": "vmxnet2"
+          }
+        ]
+      },
+      "firmware": "bios",
+      "secure_boot_enabled": false,
+      "vmware_tools_status": null,
+      "disk_controller_types": [
+        "ide",
+        "lsilogic",
+        "sata"
+      ],
+      "cluster": "Management-Cluster",
+      "host": "esxi-02.local"
+    },
+    {
+      "id": "vm-00001",
+      "name": "vm-00001-Solaris-11",
+      "power_state": "poweredOff",
+      "guest_os": "Solaris 11",
+      "os_family": "unix",
+      "os_supported": false,
+      "hardware": {
+        "cpu_count": 30,
+        "memory_mb": 32768,
+        "disks": [
+          {
+            "label": "disk0",
+            "capacity_gb": 80,
+            "datastore": "datastore4",
+            "controller_type": "lsilogic",
+            "disk_type": "thick"
+          },
+          {
+            "label": "disk1",
+            "capacity_gb": 500,
+            "datastore": "vsanDatastore",
+            "controller_type": "lsilogic",
+            "disk_type": "thick"
+          },
+          {
+            "label": "disk2",
+            "capacity_gb": 250,
+            "datastore": "datastore5",
+            "controller_type": "lsilogic",
+            "disk_type": "thick"
+          },
+          {
+            "label": "disk3",
+            "capacity_gb": 40,
+            "datastore": "nfsDatastore",
+            "controller_type": "ide",
+            "disk_type": "thick"
+          },
+          {
+            "label": "disk4",
+            "capacity_gb": 2000,
+            "datastore": "datastore1",
+            "controller_type": "lsilogic",
+            "disk_type": "thick"
+          },
+          {
+            "label": "disk5",
+            "capacity_gb": 10,
+            "datastore": "datastore2",
+            "controller_type": "lsilogic",
+            "disk_type": "thick"
+          }
+        ],
+        "nics": [
+          {
+            "label": "nic0",
+            "mac": "00:50:56:a1:00:6c",
+            "network": "iSCSI Network",
+            "nic_type": "e1000e"
+          }
+        ]
+      },
+      "firmware": "bios",
+      "secure_boot_enabled": false,
+      "vmware_tools_status": null,
+      "disk_controller_types": [
+        "lsilogic",
+        "ide"
+      ],
+      "cluster": "Storage-Cluster",
+      "host": "esxi-08.local"
+    },
+    {
+      "id": "vm-00002",
+      "name": "vm-00002-Solaris-11",
+      "power_state": "poweredOn",
+      "guest_os": "Solaris 11",
+      "os_family": "unix",
+      "os_supported": false,
+      "hardware": {
+        "cpu_count": 28,
+        "memory_mb": 32768,
+        "disks": [
+          {
+            "label": "disk0",
+            "capacity_gb": 10,
+            "datastore": "datastore3",
+            "controller_type": "sata",
+            "disk_type": "thin"
+          }
+        ],
+        "nics": [
+          {
+            "label": "nic0",
+            "mac": "00:50:56:ef:00:80",
+            "network": "VM Network",
+            "nic_type": "sriov"
+          },
+          {
+            "label": "nic1",
+            "mac": "00:50:56:3a:01:88",
+            "network": "Private Network",
+            "nic_type": "unknown"
+          },
+          {
+            "label": "nic2",
+            "mac": "00:50:56:96:02:de",
+            "network": "Storage Network",
+            "nic_type": "vmxnet3"
+          },
+          {
+            "label": "nic3",
+            "mac": "00:50:56:01:03:86",
+            "network": "Storage Network",
+            "nic_type": "sriov"
+          }
+        ]
+      },
+      "firmware": "bios",
+      "secure_boot_enabled": false,
+      "vmware_tools_status": "toolsOk",
+      "disk_controller_types": [
+        "ide",
+        "sata"
+      ],
+      "cluster": "DR-Cluster",
+      "host": "esxi-02.local"
+    },
+    {
+      "id": "vm-00003",
+      "name": "vm-00003-Windows-10",
+      "power_state": "suspended",
+      "guest_os": "Windows 10",
+      "os_family": "windows",
+      "os_supported": true,
+      "hardware": {
+        "cpu_count": 11,
+        "memory_mb": 512,
+        "disks": [
+          {
+            "label": "disk0",
+            "capacity_gb": 80,
+            "datastore": "ssdDatastore",
+            "controller_type": "ide",
+            "disk_type": "thick"
+          },
+          {
+            "label": "disk1",
+            "capacity_gb": 2000,
+            "datastore": "ssdDatastore",
+            "controller_type": "nvme",
+            "disk_type": "thick"
+          }
+        ],
+        "nics": [
+          {
+            "label": "nic0",
+            "mac": "00:50:56:66:00:9f",
+            "network": "DMZ Network",
+            "nic_type": "vmxnet3"
+          },
+          {
+            "label": "nic1",
+            "mac": "00:50:56:bf:01:e0",
+            "network": "iSCSI Network",
+            "nic_type": "unknown"
+          },
+          {
+            "label": "nic2",
+            "mac": "00:50:56:7e:02:73",
+            "network": "Management Network",
+            "nic_type": "vmxnet3"
+          },
+          {
+            "label": "nic3",
+            "mac": "00:50:56:0a:03:75",
+            "network": "vMotion Network",
+            "nic_type": "vmxnet2"
+          }
+        ]
+      },
+      "firmware": "bios",
+      "secure_boot_enabled": false,
+      "vmware_tools_status": "toolsOk",
+      "disk_controller_types": [
+        "ide",
+        "lsilogic",
+        "nvme"
+      ],
+      "cluster": "Compute-Cluster",
+      "host": "esxi-02.local"
+    },
+    {
+      "id": "vm-00004",
+      "name": "vm-00004-CentOS-7",
+      "power_state": "poweredOn",
+      "guest_os": "CentOS 7",
+      "os_family": "linux",
+      "os_supported": true,
+      "hardware": {
+        "cpu_count": 32,
+        "memory_mb": 2048,
+        "disks": [
+          {
+            "label": "disk0",
+            "capacity_gb": 500,
+            "datastore": "nfsDatastore",
+            "controller_type": "nvme",
+            "disk_type": "thick"
+          }
+        ],
+        "nics": [
+          {
+            "label": "nic0",
+            "mac": "00:50:56:1b:00:32",
+            "network": "VM Network",
+            "nic_type": "unknown"
+          },
+          {
+            "label": "nic1",
+            "mac": "00:50:56:ad:01:37",
+            "network": "vMotion Network",
+            "nic_type": "sriov"
+          },
+          {
+            "label": "nic2",
+            "mac": "00:50:56:e5:02:47",
+            "network": "DMZ Network",
+            "nic_type": "e1000"
+          },
+          {
+            "label": "nic3",
+            "mac": "00:50:56:7f:03:26",
+            "network": "iSCSI Network",
+            "nic_type": "e1000"
+          }
+        ]
+      },
+      "firmware": "efi",
+      "secure_boot_enabled": true,
+      "vmware_tools_status": "toolsOk",
+      "disk_controller_types": [
+        "nvme"
+      ],
+      "cluster": "DR-Cluster",
+      "host": "esxi-02.local"
+    },
+    {
+      "id": "vm-00005",
+      "name": "vm-00005-macOS-Vent",
+      "power_state": "poweredOn",
+      "guest_os": "macOS Ventura",
+      "os_family": "unix",
+      "os_supported": false,
+      "hardware": {
+        "cpu_count": 32,
+        "memory_mb": 32768,
+        "disks": [
+          {
+            "label": "disk0",
+            "capacity_gb": 1000,
+            "datastore": "localDatastore",
+            "controller_type": "nvme",
+            "disk_type": "thick"
+          }
+        ],
+        "nics": [
+          {
+            "label": "nic0",
+            "mac": "00:50:56:1f:00:a0",
+            "network": "VM Network",
+            "nic_type": "vmxnet3"
+          },
+          {
+            "label": "nic1",
+            "mac": "00:50:56:f4:01:50",
+            "network": "VM Network",
+            "nic_type": "vmxnet3"
+          },
+          {
+            "label": "nic2",
+            "mac": "00:50:56:29:02:5f",
+            "network": "Management Network",
+            "nic_type": "e1000e"
+          }
+        ]
+      },
+      "firmware": "bios",
+      "secure_boot_enabled": false,
+      "vmware_tools_status": "toolsOk",
+      "disk_controller_types": [
+        "lsilogic",
+        "nvme"
+      ],
+      "cluster": "DR-Cluster",
+      "host": "esxi-02.local"
+    },
+    {
+      "id": "vm-00006",
+      "name": "vm-00006-Ubuntu-20.",
+      "power_state": "suspended",
+      "guest_os": "Ubuntu 20.04",
+      "os_family": "linux",
+      "os_supported": true,
+      "hardware": {
+        "cpu_count": 6,
+        "memory_mb": 16384,
+        "disks": [
+          {
+            "label": "disk0",
+            "capacity_gb": 100,
+            "datastore": "datastore2",
+            "controller_type": "ide",
+            "disk_type": "thin"
+          },
+          {
+            "label": "disk1",
+            "capacity_gb": 1000,
+            "datastore": "datastore4",
+            "controller_type": "ide",
+            "disk_type": "thick"
+          },
+          {
+            "label": "disk2",
+            "capacity_gb": 40,
+            "datastore": "datastore4",
+            "controller_type": "ide",
+            "disk_type": "thick"
+          },
+          {
+            "label": "disk3",
+            "capacity_gb": 100,
+            "datastore": "localDatastore",
+            "controller_type": "ide",
+            "disk_type": "thick"
+          },
+          {
+            "label": "disk4",
+            "capacity_gb": 2000,
+            "datastore": "localDatastore",
+            "controller_type": "ide",
+            "disk_type": "thin"
+          },
+          {
+            "label": "disk5",
+            "capacity_gb": 20,
+            "datastore": "datastore2",
+            "controller_type": "ide",
+            "disk_type": "thick"
+          }
+        ],
+        "nics": [
+          {
+            "label": "nic0",
+            "mac": "00:50:56:af:00:68",
+            "network": "Public Network",
+            "nic_type": "unknown"
+          },
+          {
+            "label": "nic1",
+            "mac": "00:50:56:fa:01:80",
+            "network": "VM Network",
+            "nic_type": "e1000e"
+          }
+        ]
+      },
+      "firmware": "bios",
+      "secure_boot_enabled": false,
+      "vmware_tools_status": null,
+      "disk_controller_types": [
+        "ide"
+      ],
+      "cluster": "Compute-Cluster",
+      "host": "esxi-07.local"
+    },
+    {
+      "id": "vm-00007",
+      "name": "vm-00007-Windows-Se",
+      "power_state": "poweredOn",
+      "guest_os": "Windows Server 2019",
+      "os_family": "windows",
+      "os_supported": true,
+      "hardware": {
+        "cpu_count": 28,
+        "memory_mb": 1024,
+        "disks": [
+          {
+            "label": "disk0",
+            "capacity_gb": 250,
+            "datastore": "datastore1",
+            "controller_type": "lsilogic",
+            "disk_type": "thick"
+          }
+        ],
+        "nics": [
+          {
+            "label": "nic0",
+            "mac": "00:50:56:6b:00:7f",
+            "network": "Management Network",
+            "nic_type": "vmxnet2"
+          }
+        ]
+      },
+      "firmware": "efi",
+      "secure_boot_enabled": true,
+      "vmware_tools_status": null,
+      "disk_controller_types": [
+        "ide",
+        "lsilogic",
+        "sata"
+      ],
+      "cluster": "Management-Cluster",
+      "host": "esxi-07.local"
+    },
+    {
+      "id": "vm-00008",
+      "name": "vm-00008-Windows-Se",
+      "power_state": "poweredOn",
+      "guest_os": "Windows Server 2022",
+      "os_family": "windows",
+      "os_supported": true,
+      "hardware": {
+        "cpu_count": 12,
+        "memory_mb": 16384,
+        "disks": [
+          {
+            "label": "disk0",
+            "capacity_gb": 10,
+            "datastore": "ssdDatastore",
+            "controller_type": "ide",
+            "disk_type": "thin"
+          },
+          {
+            "label": "disk1",
+            "capacity_gb": 100,
+            "datastore": "datastore4",
+            "controller_type": "ide",
+            "disk_type": "thick"
+          },
+          {
+            "label": "disk2",
+            "capacity_gb": 250,
+            "datastore": "datastore5",
+            "controller_type": "ide",
+            "disk_type": "thick"
+          },
+          {
+            "label": "disk3",
+            "capacity_gb": 2000,
+            "datastore": "localDatastore",
+            "controller_type": "ide",
+            "disk_type": "thin"
+          }
+        ],
+        "nics": [
+          {
+            "label": "nic0",
+            "mac": "00:50:56:85:00:5b",
+            "network": "Public Network",
+            "nic_type": "vmxnet3"
+          }
+        ]
+      },
+      "firmware": "bios",
+      "secure_boot_enabled": false,
+      "vmware_tools_status": "toolsNotRunning",
+      "disk_controller_types": [
+        "lsilogic",
+        "ide"
+      ],
+      "cluster": "Compute-Cluster",
+      "host": "esxi-02.local"
+    },
+    {
+      "id": "vm-00009",
+      "name": "vm-00009-HP-UX-11i",
+      "power_state": "poweredOff",
+      "guest_os": "HP-UX 11i",
+      "os_family": "unix",
+      "os_supported": false,
+      "hardware": {
+        "cpu_count": 25,
+        "memory_mb": 4096,
+        "disks": [],
+        "nics": [
+          {
+            "label": "nic0",
+            "mac": "00:50:56:64:00:ba",
+            "network": "DMZ Network",
+            "nic_type": "unknown"
+          }
+        ]
+      },
+      "firmware": "bios",
+      "secure_boot_enabled": false,
+      "vmware_tools_status": "toolsNotRunning",
+      "disk_controller_types": [
+        "lsilogic",
+        "sata"
+      ],
+      "cluster": "Compute-Cluster",
+      "host": "esxi-06.local"
+    }
+  ]
+}

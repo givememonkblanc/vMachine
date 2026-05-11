@@ -1,0 +1,60 @@
+{
+  "scenario": "openstack_mapping_basic",
+  "description": "Basic OpenStack mapping validation scenarios — standard VM profiles against standard flavor catalog",
+  "generated_at": "2026-05-11T00:00:00Z",
+  "cases": [
+    {
+      "name": "exact_flavor_match_tiny",
+      "vm_profile": {"vcpus": 1, "ram_mb": 512, "disk_gb": 1},
+      "expected_flavor": "m1.tiny",
+      "expected_compatible": true,
+      "expected_severity": "info",
+      "tags": ["basic", "flavor"]
+    },
+    {
+      "name": "exact_flavor_match_large",
+      "vm_profile": {"vcpus": 4, "ram_mb": 8192, "disk_gb": 80},
+      "expected_flavor": "m1.large",
+      "expected_compatible": true,
+      "expected_severity": "info",
+      "tags": ["basic", "flavor"]
+    },
+    {
+      "name": "overprovision_flavor_6c_12g_100d",
+      "vm_profile": {"vcpus": 6, "ram_mb": 12288, "disk_gb": 100},
+      "expected_flavor": "m1.large",
+      "expected_compatible": true,
+      "expected_severity": "low",
+      "expected_issues": ["CPU overprovision", "RAM overprovision"],
+      "tags": ["basic", "flavor", "overprovision"]
+    },
+    {
+      "name": "network_exact_match",
+      "vm_network": "public_net",
+      "expected_network": "public_net",
+      "expected_mapped": true,
+      "tags": ["basic", "network"]
+    },
+    {
+      "name": "network_case_insensitive",
+      "vm_network": "Public_Net",
+      "expected_network": "public_net",
+      "expected_mapped": true,
+      "tags": ["basic", "network"]
+    },
+    {
+      "name": "supported_os_ubuntu",
+      "vm_profile": {"vcpus": 2, "ram_mb": 4096, "disk_gb": 40},
+      "guest_os": "Ubuntu 22.04",
+      "expected_compatible": true,
+      "tags": ["basic", "os"]
+    },
+    {
+      "name": "supported_os_windows",
+      "vm_profile": {"vcpus": 4, "ram_mb": 16384, "disk_gb": 160},
+      "guest_os": "Windows Server 2022",
+      "expected_compatible": true,
+      "tags": ["basic", "os"]
+    }
+  ]
+}

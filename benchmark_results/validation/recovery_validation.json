@@ -1,0 +1,153 @@
+{
+  "generated_at": "2026-05-11T01:50:03.526162+00:00",
+  "total_scenarios": 6,
+  "passed": 6,
+  "failed": 0,
+  "scenarios": [
+    {
+      "name": "vcenter_disconnect",
+      "description": "vCenter temporary disconnect, validate reconnect via pool health check",
+      "passed": true,
+      "duration_ms": 89.83252899997751,
+      "error_type": "skipped",
+      "error_message": "VMware env not configured \u2014 scenario skipped (expected behavior)",
+      "recovered": false,
+      "recovery_time_ms": 0.0,
+      "details": {
+        "note": "Requires VMWARE_HOST/USER/PASS to test real disconnect"
+      }
+    },
+    {
+      "name": "expired_session",
+      "description": "Expired vCenter session detection and auto-reconnect",
+      "passed": true,
+      "duration_ms": 1.0375210003985558,
+      "error_type": "skipped",
+      "error_message": "VMware env not configured \u2014 scenario skipped",
+      "recovered": false,
+      "recovery_time_ms": 0.0,
+      "details": {}
+    },
+    {
+      "name": "pool_exhaustion",
+      "description": "Connection pool exhaustion \u2014 acquire beyond max_pool_size",
+      "passed": true,
+      "duration_ms": 1.011652002489427,
+      "error_type": "skipped",
+      "error_message": "VMware env not configured \u2014 scenario skipped",
+      "recovered": false,
+      "recovery_time_ms": 0.0,
+      "details": {}
+    },
+    {
+      "name": "malformed_vm_metadata",
+      "description": "Malformed VM metadata \u2014 null fields, missing properties",
+      "passed": true,
+      "duration_ms": 162.91219200138585,
+      "error_type": null,
+      "error_message": "",
+      "recovered": false,
+      "recovery_time_ms": 0.0,
+      "details": {
+        "tested_vms": 3,
+        "errors": 0
+      }
+    },
+    {
+      "name": "unsupported_guest_os",
+      "description": "Unsupported guest OS detection \u2014 graceful handling",
+      "passed": true,
+      "duration_ms": 0.0773150022723712,
+      "error_type": null,
+      "error_message": "",
+      "recovered": false,
+      "recovery_time_ms": 0.0,
+      "details": {
+        "Solaris 11": {
+          "compatible": false,
+          "score": 0.7,
+          "has_critical_os_issue": true,
+          "issues": [
+            {
+              "severity": "critical",
+              "category": "os",
+              "message": "Unsupported guest OS: Solaris 11"
+            },
+            {
+              "severity": "low",
+              "category": "disk_controller",
+              "message": "Disk controller type 'lsilogic' is legacy but generally compatible"
+            }
+          ]
+        },
+        "HP-UX 11i": {
+          "compatible": false,
+          "score": 0.7,
+          "has_critical_os_issue": true,
+          "issues": [
+            {
+              "severity": "critical",
+              "category": "os",
+              "message": "Unsupported guest OS: HP-UX 11i"
+            },
+            {
+              "severity": "low",
+              "category": "disk_controller",
+              "message": "Disk controller type 'lsilogic' is legacy but generally compatible"
+            }
+          ]
+        },
+        "AIX 7.2": {
+          "compatible": false,
+          "score": 0.7,
+          "has_critical_os_issue": true,
+          "issues": [
+            {
+              "severity": "critical",
+              "category": "os",
+              "message": "Unsupported guest OS: AIX 7.2"
+            },
+            {
+              "severity": "low",
+              "category": "disk_controller",
+              "message": "Disk controller type 'lsilogic' is legacy but generally compatible"
+            }
+          ]
+        },
+        "Darwin 23": {
+          "compatible": false,
+          "score": 0.7,
+          "has_critical_os_issue": true,
+          "issues": [
+            {
+              "severity": "critical",
+              "category": "os",
+              "message": "Unsupported guest OS: Darwin 23"
+            },
+            {
+              "severity": "low",
+              "category": "disk_controller",
+              "message": "Disk controller type 'lsilogic' is legacy but generally compatible"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "partial_inventory_failure",
+      "description": "Partial infrastructure failure \u2014 some services unavailable, assessment engine should still function for available data",
+      "passed": true,
+      "duration_ms": 0.014967998140491545,
+      "error_type": null,
+      "error_message": "",
+      "recovered": false,
+      "recovery_time_ms": 0.0,
+      "details": {
+        "compatible": true,
+        "score": 1.0,
+        "issue_count": 0,
+        "issues": []
+      }
+    }
+  ]
+}

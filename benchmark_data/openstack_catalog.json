@@ -1,0 +1,101 @@
+{
+  "catalog": {
+    "name": "synthetic-openstack-katakse",
+    "version": "Victoria",
+    "generated_at": "2026-05-11T00:00:00Z"
+  },
+  "summary": {
+    "flavor_count": 12,
+    "network_count": 6,
+    "image_count": 8,
+    "availability_zone_count": 3,
+    "security_group_count": 4
+  },
+  "flavors": [
+    {"id": "1", "name": "m1.tiny",     "vcpus": 1,  "ram_mb": 512,   "disk_gb": 1,   "ephemeral_gb": 0, "extra_specs": {}},
+    {"id": "2", "name": "m1.small",    "vcpus": 1,  "ram_mb": 2048,  "disk_gb": 20,  "ephemeral_gb": 0, "extra_specs": {}},
+    {"id": "3", "name": "m1.medium",   "vcpus": 2,  "ram_mb": 4096,  "disk_gb": 40,  "ephemeral_gb": 0, "extra_specs": {}},
+    {"id": "4", "name": "m1.large",    "vcpus": 4,  "ram_mb": 8192,  "disk_gb": 80,  "ephemeral_gb": 0, "extra_specs": {}},
+    {"id": "5", "name": "m1.xlarge",   "vcpus": 8,  "ram_mb": 16384, "disk_gb": 160, "ephemeral_gb": 0, "extra_specs": {}},
+    {"id": "6", "name": "m1.2xlarge",  "vcpus": 12, "ram_mb": 32768, "disk_gb": 320, "ephemeral_gb": 0, "extra_specs": {}},
+    {"id": "7", "name": "m1.4xlarge",  "vcpus": 16, "ram_mb": 65536, "disk_gb": 640, "ephemeral_gb": 0, "extra_specs": {}},
+    {"id": "8", "name": "m1.8xlarge",  "vcpus": 32, "ram_mb": 131072,"disk_gb": 1280,"ephemeral_gb": 0, "extra_specs": {}},
+    {"id": "9", "name": "gpu.large",   "vcpus": 8,  "ram_mb": 32768, "disk_gb": 160, "ephemeral_gb": 0,
+     "extra_specs": {"pci_passthrough:alias": "nvidia-t4:1", "hw_firmware_type": "uefi"}},
+    {"id": "10", "name": "compute.ceph", "vcpus": 16, "ram_mb": 65536, "disk_gb": 0, "ephemeral_gb": 0,
+     "extra_specs": {"hw_rng:allowed": "True"}},
+    {"id": "11", "name": "io.optimized", "vcpus": 8,  "ram_mb": 16384, "disk_gb": 80, "ephemeral_gb": 0,
+     "extra_specs": {"hw_disk_bus": "nvme"}},
+    {"id": "12", "name": "uefi.boot",    "vcpus": 4,  "ram_mb": 8192,  "disk_gb": 40,  "ephemeral_gb": 0,
+     "extra_specs": {"hw_firmware_type": "uefi", "hw_boot_menu": "True"}}
+  ],
+  "flavor_categories": {
+    "exact_match": [
+      {"vm_profile": {"vcpus": 1, "ram_mb": 512, "disk_gb": 1}, "expected": "m1.tiny"},
+      {"vm_profile": {"vcpus": 4, "ram_mb": 8192, "disk_gb": 80}, "expected": "m1.large"},
+      {"vm_profile": {"vcpus": 8, "ram_mb": 16384, "disk_gb": 160}, "expected": "m1.xlarge"}
+    ],
+    "overprovision_match": [
+      {"vm_profile": {"vcpus": 6, "ram_mb": 12000, "disk_gb": 100}, "expected": "m1.large",
+       "note": "CPU 4→6 (+50%), RAM 8192→12000, slightly overprovisioned but best fit"},
+      {"vm_profile": {"vcpus": 10, "ram_mb": 24000, "disk_gb": 250}, "expected": "m1.2xlarge"}
+    ],
+    "underprovision_risk": [
+      {"vm_profile": {"vcpus": 24, "ram_mb": 96000, "disk_gb": 500}, "expected": "m1.8xlarge",
+       "note": "32 vCPUs available but VM needs 24 — CPU OK, check RAM/disk"},
+      {"vm_profile": {"vcpus": 3, "ram_mb": 6000, "disk_gb": 60}, "expected": "m1.medium",
+       "note": "Medium has 2 vCPUs, VM needs 3 — slight CPU risk"}
+    ],
+    "no_suitable_flavor": [
+      {"vm_profile": {"vcpus": 64, "ram_mb": 524288, "disk_gb": 5000}, "expected": null,
+       "note": "Exceeds all flavors in both CPU and RAM"},
+      {"vm_profile": {"vcpus": 48, "ram_mb": 262144, "disk_gb": 3000}, "expected": null,
+       "note": "Exceeds all flavors in RAM and disk"}
+    ]
+  },
+  "networks": [
+    {"id": "net-public",  "name": "public_net",  "vlan_id": 100, "mtu": 1500, "type": "flat"},
+    {"id": "net-private", "name": "private_net", "vlan_id": 200, "mtu": 1500, "type": "vlan"},
+    {"id": "net-storage", "name": "storage_net", "vlan_id": 300, "mtu": 9000, "type": "vlan"},
+    {"id": "net-mgmt",    "name": "management_net", "vlan_id": 10,  "mtu": 1500, "type": "vlan"},
+    {"id": "net-vmotion", "name": "vmotion_net", "vlan_id": null, "mtu": 9000, "type": "flat"},
+    {"id": "net-dmz",     "name": "DMZ Network", "vlan_id": 999, "mtu": 1500, "type": "vlan"}
+  ],
+  "network_categories": {
+    "exact_name_match": [
+      {"vm_network": "public_net", "expected": "public_net"}
+    ],
+    "case_insensitive_match": [
+      {"vm_network": "Public_Net", "expected": "public_net"},
+      {"vm_network": "PUBLIC_NET", "expected": "public_net"}
+    ],
+    "unmapped_network": [
+      {"vm_network": "Unknown_Network_42", "expected": null}
+    ],
+    "multiple_candidates": [
+      {"vm_network": "DMZ Network", "candidates": ["DMZ Network", "dmz_network"],
+       "note": "vCenter and OpenStack both have DMZ-like networks"}
+    ]
+  },
+  "images": [
+    {"id": "img-centos-9",    "name": "CentOS 9",       "os_distro": "centos",  "disk_format": "qcow2"},
+    {"id": "img-ubuntu-2404", "name": "Ubuntu 24.04",   "os_distro": "ubuntu",  "disk_format": "qcow2"},
+    {"id": "img-rhel-9",      "name": "RHEL 9",         "os_distro": "rhel",    "disk_format": "qcow2"},
+    {"id": "img-windows-2022","name": "Windows Server 2022", "os_distro": "windows", "disk_format": "iso"},
+    {"id": "img-debian-12",   "name": "Debian 12",      "os_distro": "debian",  "disk_format": "qcow2"},
+    {"id": "img-suse-15",     "name": "SUSE 15",        "os_distro": "suse",    "disk_format": "qcow2"},
+    {"id": "img-freebsd-14",  "name": "FreeBSD 14",     "os_distro": "freebsd", "disk_format": "qcow2"},
+    {"id": "img-custom",      "name": "Custom Image",   "os_distro": null,      "disk_format": "raw"}
+  ],
+  "availability_zones": [
+    {"name": "nova", "state": "available"},
+    {"name": "storage-az", "state": "available"},
+    {"name": "gpu-az", "state": "available"}
+  ],
+  "security_groups": [
+    {"name": "default", "description": "Default security group"},
+    {"name": "web", "description": "HTTP/HTTPS access"},
+    {"name": "ssh", "description": "SSH access"},
+    {"name": "management", "description": "Management network access"}
+  ]
+}
