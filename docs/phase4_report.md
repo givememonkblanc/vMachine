@@ -10,22 +10,22 @@ Build a pre-migration assessment layer that evaluates VMware VM compatibility wi
 - `docs/vmware_migration_architecture.md` — Architecture overview, data flow, component layout
 - `docs/migration_assessment_api.md` — Full API reference (11 endpoints, request/response schemas, error codes)
 
-### Code Implementation (13 files)
+### Code Implementation (18 files)
 
 | Layer | File | Purpose |
 |-------|------|---------|
 | **Schemas** | `app/schemas/vmware/inventory.py` | VMSummary, VMHardware, VMDisk, VMNic, DatastoreSummary, NetworkSummary |
-| | `app/schemas/vmware/assessment.py` | FlavorMatchResult, NetworkMappingResult, VMCompatibilityResult, AssessmentResponse, MigrationPlanResponse |
+| | `app/schemas/vmware/assessment.py` | FlavorMatchResult, NetworkMappingResult, ScoredCompatibilityResult, AssessmentResponse, MigrationPlanResponse |
 | **Client** | `app/clients/vmware/connection.py` | Extended with list_vms, list_datastores, list_networks, get_vm_detail, get_datastore_detail, get_network_detail, validate_credentials |
 | **Services** | `app/services/vmware/inventory_service.py` | VMware inventory collection, caching, DB snapshot sync via ResourceSnapshot model |
 | | `app/services/vmware/mapping_engine.py` | Flavor matching (weighted Euclidean distance: cpu=0.4, ram=0.4, disk=0.2), network matching (exact → case-insensitive), disk mapping |
 | | `app/services/vmware/compatibility.py` | OS/CPU/memory/disk/network compatibility checks, known OS prefix catalog |
 | | `app/services/vmware/plan_service.py` | Migration plan generation with priority sorting, step-by-step workflow |
 | **Endpoints** | `app/api/v1/endpoints/vmware/inventory.py` | GET /vms, GET /vms/{id}, GET /datastores, GET /networks, POST /sync |
-| | `app/api/v1/endpoints/vmware/assessment.py` | POST /assess, POST /assess/{id}/compatibility, POST /assess/{id}/mapping, POST /plan |
+| | `app/api/v1/endpoints/vmware/assessment.py` | POST /assess, POST /assess/{id}/compatibility, POST /assess/{id}/mapping, POST /assess/parallel, GET /assess/parallel/{task_id}, POST /plan, GET /assessments, GET /assessment/{id}, GET /plans, GET /plan/{id} |
 | **Integration** | `app/api/router.py` | vmware namespace registration |
 | | `app/api/deps/services.py` | VMware factory + 4 service dependency providers |
-| | `app/common/metrics/custom.py` | 4 Prometheus metrics (assessment counter, plan counter, sync duration, inventory gauge) |
+| | `app/common/metrics/custom.py` | 9 Prometheus metrics (connection pool, assessment counter, plan counter, sync duration, inventory gauge, reconnect counter, etc.) |
 
 ### Key Design Decisions
 
@@ -35,7 +35,7 @@ Build a pre-migration assessment layer that evaluates VMware VM compatibility wi
 4. **In-memory cache**: TTLCache (5min TTL) for VMware inventory endpoints; DB snapshots for persistence across restarts
 5. **Async DB writes**: Inventory sync uses `asyncio.create_task` for non-blocking snapshot upsert
 
-### API Endpoints
+### API Endpoints (15 routes)
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -47,7 +47,13 @@ Build a pre-migration assessment layer that evaluates VMware VM compatibility wi
 | POST | `/api/v1/vmware/assess` | Assess multiple VMs |
 | POST | `/api/v1/vmware/assess/{id}/compatibility` | Single VM compatibility |
 | POST | `/api/v1/vmware/assess/{id}/mapping` | Single VM resource mapping |
+| POST | `/api/v1/vmware/assess/parallel` | Parallel assessment of multiple VMs |
+| GET | `/api/v1/vmware/assess/parallel/{task_id}` | Get parallel assessment progress |
 | POST | `/api/v1/vmware/plan` | Generate migration plan |
+| GET | `/api/v1/vmware/assessments` | List persisted assessments |
+| GET | `/api/v1/vmware/assessment/{id}` | Get assessment detail + plans |
+| GET | `/api/v1/vmware/plans` | List persisted plans |
+| GET | `/api/v1/vmware/plan/{id}` | Get plan detail + assessment |
 
 ### Out of Scope (explicitly excluded per roadmap)
 - GPU Telemetry, GPU Observability, Grafana Dashboard
