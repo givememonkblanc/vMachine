@@ -20,7 +20,7 @@ It is the authoritative reference for distinguishing **synthetic benchmark resul
 | Component | Status | Date | Notes |
 |-----------|--------|------|-------|
 | Synthetic benchmark | ✅ Completed | 2026-05-11 | 10/50/100/500 VMs, internal throughput only |
-| Dataset-based benchmark | ✅ Completed | 2026-05-11 | 100/1000 VMs, compatibility + mapping + plan + parallel (see `docs/dataset_benchmark_report.md`) |
+| Dataset-based benchmark | ✅ Completed | 2026-05-11 | 100/1000 VMs, compatibility + mapping + plan + parallel (see `docs/benchmark_interpretation.md`) |
 | Recovery validation (local) | ✅ Completed | 2026-05-11 | 6/6 scenarios passed (3 skip without vCenter, 3 verified local resilience) |
 | Stress test (100 VMs) | ✅ Completed | 2026-05-11 | Synthetic — no live vCenter required |
 | Stress test (500 VMs) | ✅ Completed | 2026-05-11 | Synthetic — no live vCenter required |

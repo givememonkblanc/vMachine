@@ -211,10 +211,10 @@ def validate_metrics() -> list[TestCase]:
     """Verify Phase 6 metrics are registered and functional."""
 
     from app.common.metrics.custom import (
-        vm_active_count,
-        vm_create_duration,
-        vm_create_failures,
-        vm_lifecycle_operations,
+        vmw_vm_active_count,
+        vmw_vm_create_duration,
+        vmw_vm_create_failures,
+        vmw_vm_lifecycle_operations,
     )
 
     cases: list[TestCase] = []
@@ -236,9 +236,9 @@ def validate_metrics() -> list[TestCase]:
 
     c = TestCase(name="metric_inc_failures")
     try:
-        before = vm_create_failures.labels(error_type="test_error")._value.get()
-        vm_create_failures.labels(error_type="test_error").inc()
-        after = vm_create_failures.labels(error_type="test_error")._value.get()
+        before = vmw_vm_create_failures.labels(error_type="test_error")._value.get()
+        vmw_vm_create_failures.labels(error_type="test_error").inc()
+        after = vmw_vm_create_failures.labels(error_type="test_error")._value.get()
         c.passed = after == before + 1
         c.detail = {"before": before, "after": after}
     except Exception as e:
@@ -247,11 +247,11 @@ def validate_metrics() -> list[TestCase]:
 
     c = TestCase(name="metric_inc_lifecycle")
     try:
-        before = vm_lifecycle_operations.labels(
+        before = vmw_vm_lifecycle_operations.labels(
             operation="start", status="success"
         )._value.get()
-        vm_lifecycle_operations.labels(operation="start", status="success").inc()
-        after = vm_lifecycle_operations.labels(
+        vmw_vm_lifecycle_operations.labels(operation="start", status="success").inc()
+        after = vmw_vm_lifecycle_operations.labels(
             operation="start", status="success"
         )._value.get()
         c.passed = after == before + 1
@@ -262,7 +262,7 @@ def validate_metrics() -> list[TestCase]:
 
     c = TestCase(name="metric_observe_duration")
     try:
-        vm_create_duration.labels(status="success").observe(1.5)
+        vmw_vm_create_duration.labels(status="success").observe(1.5)
         c.passed = True
     except Exception as e:
         c.error = str(e)
@@ -270,11 +270,11 @@ def validate_metrics() -> list[TestCase]:
 
     c = TestCase(name="metric_gauge_active")
     try:
-        before = vm_active_count._value.get()
-        vm_active_count.set(10)
-        mid = vm_active_count._value.get()
-        vm_active_count.dec()
-        after = vm_active_count._value.get()
+        before = vmw_vm_active_count._value.get()
+        vmw_vm_active_count.set(10)
+        mid = vmw_vm_active_count._value.get()
+        vmw_vm_active_count.dec()
+        after = vmw_vm_active_count._value.get()
         c.passed = mid == 10 and after == 9
         c.detail = {"set(10)": mid, "after_dec": after}
     except Exception as e:

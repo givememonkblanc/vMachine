@@ -59,20 +59,6 @@ class MigrationService:
             await session.commit()
             await session.refresh(task)
 
-            if payload.migration_type == "vmware_to_openstack":
-                from app.worker import get_redis_pool
-
-                redis_pool = await get_redis_pool()
-
-                target_flavor = "default_flavor"
-                target_network = "default_network"
-                await redis_pool.enqueue_job(
-                    "execute_vmware_migration_task",
-                    task.id,
-                    payload.source_ref or "unknown",
-                    target_flavor,
-                    target_network,
-                )
             return self._serialize(task)
 
     async def update_migration_progress(

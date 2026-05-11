@@ -1,7 +1,7 @@
 # OpenStack VM Lifecycle — Engine Architecture
 
 > Phase 6 — VM Lifecycle & Readiness Engine  
-> **Validation Status: Live VM Lifecycle Validated** (see `docs/vm_engine_validation.md` and `docs/live_vm_lifecycle_analysis.md`)
+> **Validation Status: Live VM Lifecycle Validated** (see `docs/live_vm_lifecycle_analysis.md`)
 
 ## Positioning
 

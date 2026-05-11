@@ -589,7 +589,7 @@ Benchmarked with single Uvicorn worker, no vCenter configured (all VMware endpoi
 |--------|------|
 | **Implementation** | ✅ **Completed** — All 8 sub-tasks implemented (inventory fix, connection pooling, persistence, rules-based compatibility, parallel assessment, benchmark endpoints, performance report, status update) |
 | **Live Validation** | ⏳ **Pending** — Requires real vCenter + OpenStack environment |
-| **Parallel Benchmark** | ✅ **Completed** — Simulated assessment benchmark validated on synthetic 10/50/100/500 VM payloads. See [`docs/vmware_benchmark_results.md`](vmware_benchmark_results.md) for full results. Best throughput: ~64K VM/s (compatibility), ~24K VM/s (mapping), ~5.8K VM/s (parallel assessment at 500 VMs concurrency=10). |
+| **Parallel Benchmark** | ✅ **Completed** — Simulated assessment benchmark validated on synthetic 10/50/100/500 VM payloads. See [`docs/benchmark_interpretation.md`](benchmark_interpretation.md) for full analysis. Best throughput: ~64K VM/s (compatibility), ~24K VM/s (mapping), ~5.8K VM/s (parallel assessment at 500 VMs concurrency=10). |
 | **Schema Change** | ⚠️ **Breaking** — `VMCompatibilityResult` replaced by `ScoredCompatibilityResult` on `/assess/{id}/compatibility` endpoint. Old clients expecting `power_state`, `os_supported`, `cpu_compatible`, etc. flat fields must migrate to the new `issues[]` + `score` format. |
 
 ### Synthetic Benchmark Summary
@@ -601,7 +601,7 @@ Benchmarked with single Uvicorn worker, no vCenter configured (all VMware endpoi
 | 100 | 0.58 ms | 1.47 ms | 1.38 ms | 0.61 ms | 12.11 ms |
 | 500 | 2.60 ms | 6.90 ms | 6.87 ms | 3.64 ms | 28.67 ms |
 
-> **Disclaimer:** These synthetic benchmarks validate internal engine throughput only and do not include real vCenter, OpenStack, Redis, or database round-trip latency. Full report in [`docs/vmware_benchmark_results.md`](vmware_benchmark_results.md).
+> **Disclaimer:** These synthetic benchmarks validate internal engine throughput only and do not include real vCenter, OpenStack, Redis, or database round-trip latency. Full analysis in [`docs/benchmark_interpretation.md`](benchmark_interpretation.md).
 
 ### Known Benchmark Limitations
 
@@ -1077,7 +1077,7 @@ Note: Cache misses are low because each worker has its own cache. With 16 worker
 - 3 validation scripts: dry-run (4/4), negative case + metrics (43/43), benchmark harness (3 cases)
 - **Live validated (7/7)** against real Kolla OpenStack 2025.2: create (17.8s), reboot (28.0s), stop (21.1s), start (17.6s), delete (13.1s) — see [`docs/live_vm_lifecycle_analysis.md`](live_vm_lifecycle_analysis.md)
 - Structured exceptions, cleanup guarantees, VM name prefix safety (`vmachine-test-`)
-- Full documentation: architecture (`docs/openstack_vm_lifecycle.md`), validation (`docs/vm_engine_validation.md`), benchmark report, negative case report, live analysis
+- Full documentation: architecture (`docs/openstack_vm_lifecycle.md`), live validation analysis (`docs/live_vm_lifecycle_analysis.md`), benchmark interpretation (`docs/benchmark_interpretation.md`)
 
 ### Design Constraints for Next Phase
 - **Do not** change existing metric names or labels (backward compatibility)

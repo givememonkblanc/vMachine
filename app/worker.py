@@ -3,30 +3,7 @@ from typing import Any
 from arq import create_pool
 from arq.connections import RedisSettings
 
-from app.clients.openstack.connection import OpenStackConnectionFactory
-from app.clients.vmware.connection import VMwareClientFactory
 from app.core.config.settings import get_settings
-from app.modules.migration.manager import MigrationManager
-
-
-async def execute_vmware_migration_task(
-    ctx: dict[str, Any],
-    task_id: str,
-    vm_name: str,
-    target_flavor: str,
-    target_network: str,
-) -> None:
-    settings = get_settings()
-    vmware_factory = VMwareClientFactory(settings)
-    os_factory = OpenStackConnectionFactory(settings)
-    manager = MigrationManager(vmware_factory, os_factory)
-
-    await manager.execute_vmware_migration(
-        task_id=task_id,
-        vm_name=vm_name,
-        target_flavor=target_flavor,
-        target_network=target_network,
-    )
 
 
 async def health_check_task(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -72,7 +49,6 @@ redis_settings = RedisSettings.from_dsn(settings.redis_url)
 
 class WorkerSettings:
     functions = [
-        execute_vmware_migration_task,
         health_check_task,
         cleanup_stale_migrations_task,
     ]
