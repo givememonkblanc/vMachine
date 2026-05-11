@@ -7,6 +7,7 @@ from app.services.core.audit_service import AuditService
 from app.services.identity.auth_service import AuthService
 from app.services.orchestration.cluster_service import ClusterService
 from app.services.openstack.compute_service import ComputeService
+from app.services.openstack.vm_provisioning_engine import VMProvisioningEngine
 from app.services.openstack.flavor_service import FlavorService
 from app.services.openstack.image_service import ImageService
 from app.services.openstack.keypair_service import KeypairService
@@ -151,6 +152,10 @@ def get_vmware_plan_service() -> VMwarePlanService:
 
 def get_assessment_persistence_service() -> AssessmentPersistenceService:
     return AssessmentPersistenceService()
+
+
+def get_vm_provisioning_engine() -> VMProvisioningEngine:
+    return VMProvisioningEngine(get_openstack_factory())
 
 
 def get_parallel_assessment_service() -> ParallelAssessmentService:

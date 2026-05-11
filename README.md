@@ -1,6 +1,10 @@
-# OKAstro Backend
+# vMachine — Virtualization Operations Platform
 
-OKAstro Backend는 OpenStack 기반의 서버 가상화 자원과 Kubernetes 컨테이너 워크로드, VMware 마이그레이션 및 인프라 모니터링을 통합적으로 관리하기 위해 구축된 클라우드 플랫폼 백엔드입니다. FastAPI 기반의 비동기 처리 구조를 가지고 있으며, 확장성과 모듈화가 용이하도록 설계되었습니다.
+**VM Lifecycle & Readiness Engine**
+
+vMachine은 OpenStack 기반의 서버 가상화 자원과 Kubernetes 컨테이너 워크로드, VMware 마이그레이션 평가 및 VM 라이프사이클 운영을 통합적으로 관리하기 위한 **Virtualization Operations Platform**입니다. FastAPI 기반의 비동기 처리 구조를 가지고 있으며, 확장성과 모듈화가 용이하도록 설계되었습니다.
+
+> **Product positioning**: vMachine is a **Virtualization Operations Platform** and **VM Lifecycle & Readiness Engine**. It is **not** a full migration execution platform — it provides pre-migration assessment, compatibility validation, and VM lifecycle operations, but does not execute end-to-end disk export/upload/provisioning flows.
 
 ## 주요 기능 (Core Features)
 
@@ -9,22 +13,30 @@ OKAstro Backend는 OpenStack 기반의 서버 가상화 자원과 Kubernetes 컨
    - 네트워크 (Neutron): 네트워크, 서브넷, 라우터, 보안 그룹 관리
    - 스토리지 (Cinder): 볼륨 생성, 삭제, 인스턴스 연결
 
-2. **컨테이너 워크로드 제어 (K8s)**
+2. **VM Lifecycle Engine**
+   - VM 생성 (create_vm) — async-safe, timeout, structured exceptions
+   - VM 전원 제어 (start/stop/reboot) — state transition validation
+   - VM 삭제 (delete) — 자동 cleanup 보장
+   - Prometheus 메트릭: 생성 지연 시간, 실패율, 라이프사이클 작업 수, 활성 VM 수
+
+3. **컨테이너 워크로드 제어 (K8s)**
    - Kubernetes Pod, Deployment, Service 라이프사이클 관리
    - Deployment 스케일 업/다운
    - 클러스터 노드 및 리소스 모니터링
 
-3. **마이그레이션 (VMware to OpenStack)**
-   - VMware vSphere 인프라(pyvmomi) 연결
-   - VM 디스크 추출 및 OpenStack Glance 업로드
-   - Nova를 통한 신규 인스턴스 프로비저닝 (비동기 백그라운드 처리)
+4. **마이그레이션 준비도 평가 (VMware to OpenStack)**
+   - VMware vSphere 인프라(pyvmomi) 연결 및 인벤토리 수집
+   - VM 호환성 평가 (규칙 기반, 0.0–1.0 점수)
+   - 플레이버/네트워크 매핑 (유클리드 거리 기반)
+   - 병렬 평가 (asyncio.Semaphore, 설정 가능한 동시성)
+   - 마이그레이션 계획 생성 (우선순위 정렬)
 
-4. **운영 자동화 및 모니터링**
+5. **운영 자동화 및 모니터링**
    - AutoScaling 정책 관리
    - 예약 작업(Scheduled Tasks) 스케줄링
    - 메트릭 및 알람(Alerts) 수집 및 대시보드 데이터 제공
 
-5. **비동기 백그라운드 큐 (Arq + Redis)**
+6. **비동기 백그라운드 큐 (Arq + Redis)**
    - 무거운 마이그레이션 작업이나 배치 배포 작업 등을 차질 없이 처리하기 위한 Redis 기반의 `arq` 워커 시스템 연동
 
 ## 기술 스택 (Tech Stack)

@@ -213,3 +213,31 @@ vmw_unsupported_hardware_total = Counter(
     documentation="Total unsupported VM hardware configurations detected.",
     labelnames=("category",),
 )
+
+# ---------------------------------------------------------------------------
+# Phase 6 — VM provisioning & lifecycle metrics
+# ---------------------------------------------------------------------------
+
+vm_create_duration = Histogram(
+    name="vmware_vm_create_duration_seconds",
+    documentation="VM creation duration via OpenStack Nova.",
+    labelnames=("status",),
+    buckets=(0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0),
+)
+
+vm_create_failures = Counter(
+    name="vmware_vm_create_failures_total",
+    documentation="Total VM creation failures.",
+    labelnames=("error_type",),
+)
+
+vm_lifecycle_operations = Counter(
+    name="vmware_vm_lifecycle_operations_total",
+    documentation="Total VM lifecycle operations by type and status.",
+    labelnames=("operation", "status"),
+)
+
+vm_active_count = Gauge(
+    name="vmware_vm_active_count",
+    documentation="Current number of ACTIVE VM instances.",
+)

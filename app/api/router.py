@@ -7,6 +7,7 @@ from app.api.v1.endpoints.orchestration import clusters, migrations, operations
 from app.api.v1.endpoints.kubernetes import kubernetes
 from app.api.v1.endpoints.monitoring import monitoring
 from app.api.v1.endpoints.vmware import inventory as vmware_inventory, assessment as vmware_assessment
+from app.api.v1.endpoints.openstack import vm_lifecycle
 
 api_router = APIRouter()
 
@@ -43,3 +44,6 @@ api_router.include_router(monitoring.router, prefix="/monitoring", tags=["monito
 # VMware
 api_router.include_router(vmware_inventory.router, prefix="/vmware", tags=["vmware"])
 api_router.include_router(vmware_assessment.router, prefix="/vmware", tags=["vmware"])
+
+# VM Lifecycle (Phase 6)
+api_router.include_router(vm_lifecycle.router, prefix="/openstack", tags=["openstack-vm"])
