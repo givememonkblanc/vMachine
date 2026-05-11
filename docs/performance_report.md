@@ -1101,3 +1101,52 @@ Note: Cache misses are low because each worker has its own cache. With 16 worker
 - **Workers**: Gunicorn 4/8/16 (UvicornWorker)
 - **Iterations**: 50 sequential requests per endpoint
 - **Success criteria**: 100% success rate, 0 failures
+
+---
+
+## Architectural Interpretation
+
+### Scaling Analysis
+
+The assessment engine (compatibility, mapping, plan generation) is **CPU-bound on pure computation**. Dataset benchmarks across 10–5000 VMs confirm sub-linear scaling — a 10× VM increase produces less than 10× runtime increase. The engine processes approximately **36,000 VMs/second per core** in synthetic benchmarks.
+
+Concurrency does not improve throughput for CPU-bound assessment work. The parallel assessment service (asyncio.Semaphore) is designed for I/O-bound vCenter API calls, not CPU-bound computation. In synthetic benchmarks without real vCenter latency, concurrency >1 adds scheduling overhead. This is architecturally correct and expected.
+
+### Bottleneck Identification
+
+| Layer | Bottleneck | Type | Evidence |
+|-------|-----------|:----:|----------|
+| Assessment engine | Single-core CPU saturation | CPU | Concurrency sweep shows no benefit at any worker count |
+| VM lifecycle | Nova API call latency | I/O | Unknown — no live validation performed |
+| VM lifecycle | `_wait_for_active()` polling loop | I/O | 3s interval — acceptable but sub-optimal |
+| vCenter integration | pyVmomi SOAP serialization | CPU+I/O | Unknown — no live validation performed |
+| Recovery | Connection pool auth refresh | I/O | Unknown — requires live vCenter |
+
+### Memory Profile
+
+Memory is stable under assessment loads: ~1.5–3 MB growth per 1000 VMs assessed. Stress benchmark confirms zero memory leak across 1600 repeated assessments. The engine is suitable for continuous operation.
+
+### Observability Maturity
+
+Phase 6 adds 4 provisioning metrics to the existing 6 assessment metrics (Phase 5) and ~15 infrastructure metrics (Phases 0–4). The total observability surface covers:
+- HTTP request latency and throughput
+- Cache hit ratios (memory + Redis)
+- OpenStack API call latency
+- VMware connection pool health
+- VM creation/lifecycle operations
+- Assessment queue depth and timeouts
+- Unsupported hardware distribution
+
+**Gap**: No `vmware_vm_state_distribution` or `vmware_vm_delete_duration_seconds` metrics.
+
+### Maturity Classification
+
+```
+Synthetic validation     ✅✅✅✅✅  (datasets, benchmarks, stress at 10–5000 VMs)
+Dry-run validation       ✅✅✅     (state transitions, payloads, cleanup plans)
+Live infrastructure      ⬜⬜⬜⬜⬜  (no real OpenStack/vCenter calls)
+```
+
+See full analysis in:
+- [docs/benchmark_interpretation.md](benchmark_interpretation.md) — Deep architectural analysis (scaling, bottlenecks, lifecycle, recovery, observability, maturity)
+- [docs/final_phase6_analysis.md](final_phase6_analysis.md) — Final technical interpretation: what the benchmarks prove and what they do not prove
