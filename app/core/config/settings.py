@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     # Cache backend: "memory" (in-process TTLCache) or "redis" (shared Redis)
     cache_backend: str = "memory"
 
+    otel_service_name: str = "okastro"
+    otel_endpoint: str = ""  # OTLP gRPC endpoint, e.g. "http://jaeger:4317"
+
     migration_disk_dir: str = "/tmp/migrations"
     cache_ttl_seconds: int = 300
 
