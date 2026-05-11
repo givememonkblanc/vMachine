@@ -339,6 +339,25 @@ Benchmarked with single Uvicorn worker, no vCenter configured (all VMware endpoi
 
 > **Disclaimer:** These synthetic benchmarks validate internal engine throughput only and do not include real vCenter, OpenStack, Redis, or database round-trip latency. Full report in [`docs/vmware_benchmark_results.md`](vmware_benchmark_results.md).
 
+### Known Benchmark Limitations
+
+The synthetic benchmark suite validates internal assessment engine throughput only.
+
+The following production factors are not included:
+- vCenter API latency
+- pyVmomi serialization overhead
+- OpenStack API round-trip latency
+- Redis network RTT
+- Database persistence contention
+- WAN/network jitter
+- TLS handshake overhead
+- Large-scale concurrent session exhaustion
+
+Real-world performance validation requires integration against:
+- live vCenter
+- OpenStack control plane
+- production-scale VM inventory
+
 ### vCenter Integration Status
 
 | Feature | Status | Notes |
