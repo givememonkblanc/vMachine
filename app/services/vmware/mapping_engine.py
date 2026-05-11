@@ -52,13 +52,13 @@ class VMwareMappingEngine:
         t0 = time.perf_counter()
         try:
             raw = self.os_factory.call("compute", "flavors")
-            vmw_openstack_api_duration.labels(service="compute", operation="flavors", status="success").observe(
-                time.perf_counter() - t0
-            )
+            vmw_openstack_api_duration.labels(
+                service="compute", operation="flavors", status="success"
+            ).observe(time.perf_counter() - t0)
         except Exception:
-            vmw_openstack_api_duration.labels(service="compute", operation="flavors", status="error").observe(
-                time.perf_counter() - t0
-            )
+            vmw_openstack_api_duration.labels(
+                service="compute", operation="flavors", status="error"
+            ).observe(time.perf_counter() - t0)
             raise
         self._flavor_cache = [
             OSFlavorSummary(id=f.id, name=f.name, vcpus=f.vcpus, ram=f.ram, disk=f.disk)
@@ -72,18 +72,15 @@ class VMwareMappingEngine:
         t0 = time.perf_counter()
         try:
             raw = self.os_factory.call("network", "networks")
-            vmw_openstack_api_duration.labels(service="network", operation="networks", status="success").observe(
-                time.perf_counter() - t0
-            )
+            vmw_openstack_api_duration.labels(
+                service="network", operation="networks", status="success"
+            ).observe(time.perf_counter() - t0)
         except Exception:
-            vmw_openstack_api_duration.labels(service="network", operation="networks", status="error").observe(
-                time.perf_counter() - t0
-            )
+            vmw_openstack_api_duration.labels(
+                service="network", operation="networks", status="error"
+            ).observe(time.perf_counter() - t0)
             raise
-        self._network_cache = [
-            OSNetworkSummary(id=n.id, name=n.name)
-            for n in raw
-        ]
+        self._network_cache = [OSNetworkSummary(id=n.id, name=n.name) for n in raw]
         return self._network_cache
 
     def _match_flavor(self, vm: VMSummary) -> FlavorMatchResult | None:
@@ -92,13 +89,17 @@ class VMwareMappingEngine:
 
         target_cpu = vm.hardware.cpu_count
         target_ram = vm.hardware.memory_mb
-        target_disk = sum(d.capacity_gb for d in vm.hardware.disks) if vm.hardware.disks else 0
+        target_disk = (
+            sum(d.capacity_gb for d in vm.hardware.disks) if vm.hardware.disks else 0
+        )
 
         flavors = self._get_flavors()
         if not flavors:
             return None
 
-        max_cpu = max(v for f in flavors if f.vcpus is not None for v in (f.vcpus,)) or 1
+        max_cpu = (
+            max(v for f in flavors if f.vcpus is not None for v in (f.vcpus,)) or 1
+        )
         max_ram = max(v for f in flavors if f.ram is not None for v in (f.ram,)) or 1
         max_disk = max(v for f in flavors if f.disk is not None for v in (f.disk,)) or 1
 
@@ -119,20 +120,37 @@ class VMwareMappingEngine:
                 + self.WEIGHT_DISK * norm_disk**2
             )
 
-            if flavor.vcpus < target_cpu or flavor.ram < target_ram or flavor.disk < target_disk:
+            if (
+                flavor.vcpus < target_cpu
+                or flavor.ram < target_ram
+                or flavor.disk < target_disk
+            ):
                 distance *= 1.5
 
             if distance < best_score:
                 best_score = distance
                 best_flavor = flavor
 
-        if not best_flavor or best_flavor.vcpus is None or best_flavor.ram is None or best_flavor.disk is None:
+        if (
+            not best_flavor
+            or best_flavor.vcpus is None
+            or best_flavor.ram is None
+            or best_flavor.disk is None
+        ):
             return None
 
         normalized_score = max(0.0, 1.0 - best_score)
 
-        over = best_flavor.vcpus >= target_cpu and best_flavor.ram >= target_ram and best_flavor.disk >= target_disk
-        under = best_flavor.vcpus < target_cpu or best_flavor.ram < target_ram or best_flavor.disk < target_disk
+        over = (
+            best_flavor.vcpus >= target_cpu
+            and best_flavor.ram >= target_ram
+            and best_flavor.disk >= target_disk
+        )
+        under = (
+            best_flavor.vcpus < target_cpu
+            or best_flavor.ram < target_ram
+            or best_flavor.disk < target_disk
+        )
 
         return FlavorMatchResult(
             flavor_id=best_flavor.id or "",
@@ -196,7 +214,9 @@ class VMwareMappingEngine:
                 DiskMappingResult(
                     vm_disk_label=disk.label,
                     vm_disk_gb=disk.capacity_gb,
-                    openstack_volume_type="ceph" if not disk.thin_provisioned else "ceph-rbd",
+                    openstack_volume_type="ceph"
+                    if not disk.thin_provisioned
+                    else "ceph-rbd",
                     openstack_size_gb=os_size,
                     bootable=(i == 0),  # First disk assumed bootable
                 )

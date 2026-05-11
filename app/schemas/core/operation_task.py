@@ -3,8 +3,12 @@ from pydantic import BaseModel, Field
 
 class OperationTaskQueryParams(BaseModel):
     limit: int = Field(default=50, ge=1, le=200, description="최대 반환 개수")
-    state: str | None = Field(default=None, description="상태 필터링 (예: queued, running, succeeded, failed)")
-    target_type: str | None = Field(default=None, description="타겟 리소스 타입 (예: server, network, volume)")
+    state: str | None = Field(
+        default=None, description="상태 필터링 (예: queued, running, succeeded, failed)"
+    )
+    target_type: str | None = Field(
+        default=None, description="타겟 리소스 타입 (예: server, network, volume)"
+    )
 
 
 class OperationTaskSummary(BaseModel):

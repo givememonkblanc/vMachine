@@ -20,7 +20,6 @@ from app.schemas.openstack.image import ImageSummary
 from app.schemas.openstack.network import NetworkSummary
 from app.schemas.openstack.volume import VolumeSummary
 
-
 # ── helpers ──────────────────────────────────────────────────────────────
 
 

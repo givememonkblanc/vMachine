@@ -1,4 +1,3 @@
-
 from app.common.exceptions.base import AppException
 from app.core.config.settings import Settings
 
@@ -30,13 +29,15 @@ class KubernetesClientFactory:
             )
 
         try:
-            import kubernetes.config as k8s_config
             import kubernetes.client as k8s_client
+            import kubernetes.config as k8s_config
 
             if self.settings.kubernetes_in_cluster:
                 k8s_config.load_incluster_config()
             else:
-                k8s_config.load_kube_config(config_file=self.settings.kubernetes_kubeconfig_path)
+                k8s_config.load_kube_config(
+                    config_file=self.settings.kubernetes_kubeconfig_path
+                )
 
             api_class = getattr(k8s_client, api_name)
             return api_class()

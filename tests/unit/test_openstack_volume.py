@@ -1,8 +1,10 @@
-import pytest
 from unittest.mock import MagicMock
-from app.services.openstack.volume_service import VolumeService
-from app.schemas.openstack.volume import VolumeCreateRequest
+
+import pytest
+
 from app.clients.openstack.connection import OpenStackConnectionFactory
+from app.schemas.openstack.volume import VolumeCreateRequest
+from app.services.openstack.volume_service import VolumeService
 
 
 @pytest.fixture
@@ -23,7 +25,7 @@ def test_list_volumes(mock_openstack_factory):
     mock_vol.status = "available"
     mock_vol.size = 100
     mock_vol.bootable = "false"
-    
+
     conn.block_storage.volumes.return_value = [mock_vol]
 
     result = volume_service.list_volumes()
@@ -43,13 +45,11 @@ def test_create_volume(mock_openstack_factory):
     mock_vol.status = "creating"
     mock_vol.size = 50
     mock_vol.bootable = "false"
-    
+
     conn.block_storage.create_volume.return_value = mock_vol
 
     payload = VolumeCreateRequest(
-        name="new-data-vol",
-        size=50,
-        description="test volume"
+        name="new-data-vol", size=50, description="test volume"
     )
 
     result = volume_service.create_volume(payload)
@@ -57,7 +57,5 @@ def test_create_volume(mock_openstack_factory):
     assert result.id == "new-vol"
     assert result.size == 50
     conn.block_storage.create_volume.assert_called_once_with(
-        name="new-data-vol",
-        size=50,
-        description="test volume"
+        name="new-data-vol", size=50, description="test volume"
     )

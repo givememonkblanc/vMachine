@@ -26,7 +26,7 @@ import json
 import os
 import sys
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -39,12 +39,11 @@ os.environ["APP_ENV"] = "validation"
 from app.clients.vmware.connection import VMwareClientFactory
 from app.clients.vmware.pool import VMwareConnectionPool
 from app.core.config.settings import Settings
-from app.schemas.vmware.inventory import VMSummary
-
 
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ValidationResult:
@@ -71,6 +70,7 @@ class VMDetail:
     nic_count: int
     nic_types: list[str]
 
+
 # ---------------------------------------------------------------------------
 # Utilities
 # ---------------------------------------------------------------------------
@@ -79,6 +79,7 @@ class VMDetail:
 # in Gunicorn multiproc context)
 try:
     from app.common.metrics.custom import vmw_vcenter_api_duration
+
     _HAS_METRICS = True
 except ImportError:
     _HAS_METRICS = False
@@ -91,18 +92,23 @@ def _measure(label: str, fn: callable, *args, **kwargs) -> tuple[Any, float]:
         result = fn(*args, **kwargs)
         dur = (time.perf_counter() - start) * 1000
         if _HAS_METRICS:
-            vmw_vcenter_api_duration.labels(operation=label, status="success").observe(dur / 1000)
+            vmw_vcenter_api_duration.labels(operation=label, status="success").observe(
+                dur / 1000
+            )
         return result, dur
     except Exception:
         dur = (time.perf_counter() - start) * 1000
         if _HAS_METRICS:
-            vmw_vcenter_api_duration.labels(operation=label, status="error").observe(dur / 1000)
+            vmw_vcenter_api_duration.labels(operation=label, status="error").observe(
+                dur / 1000
+            )
         raise  # re-raise after measuring
 
 
 def _get_rss_mb() -> float:
     try:
         import psutil
+
         return psutil.Process(os.getpid()).memory_info().rss / (1024 * 1024)
     except ImportError:
         return 0.0
@@ -112,49 +118,59 @@ def _get_rss_mb() -> float:
 # Validation logic
 # ---------------------------------------------------------------------------
 
+
 def validate_connection(settings: Settings) -> list[ValidationResult]:
     """Step 1: Validate vCenter connectivity and credential handling."""
     results: list[ValidationResult] = []
 
     # --- Valid connection ---
     if not settings.vmware_ready:
-        results.append(ValidationResult(
-            "vmware_connection", False, 0.0,
-            "VMware env vars not set (VMWARE_HOST/USER/PASS)"
-        ))
+        results.append(
+            ValidationResult(
+                "vmware_connection",
+                False,
+                0.0,
+                "VMware env vars not set (VMWARE_HOST/USER/PASS)",
+            )
+        )
         return results
 
     try:
         factory = VMwareClientFactory(settings)
         si, dur = _measure("connect", factory.connect)
-        results.append(ValidationResult(
-            "vmware_connection", True, dur,
-            f"Connected to vCenter at {settings.vmware_host}"
-        ))
+        results.append(
+            ValidationResult(
+                "vmware_connection",
+                True,
+                dur,
+                f"Connected to vCenter at {settings.vmware_host}",
+            )
+        )
     except Exception as e:
-        results.append(ValidationResult(
-            "vmware_connection", False, 0.0,
-            f"Connection failed: {e}"
-        ))
+        results.append(
+            ValidationResult("vmware_connection", False, 0.0, f"Connection failed: {e}")
+        )
         return results
 
     # --- vCenter version ---
     try:
         about = si.content.about
-        results.append(ValidationResult(
-            "vcenter_version", True, 0.0,
-            detail="",
-            properties={
-                "version": about.version,
-                "build": about.build,
-                "fullName": about.fullName,
-                "osType": about.osType,
-            }
-        ))
+        results.append(
+            ValidationResult(
+                "vcenter_version",
+                True,
+                0.0,
+                detail="",
+                properties={
+                    "version": about.version,
+                    "build": about.build,
+                    "fullName": about.fullName,
+                    "osType": about.osType,
+                },
+            )
+        )
     except Exception as e:
-        results.append(ValidationResult(
-            "vcenter_version", False, 0.0, str(e)
-        ))
+        results.append(ValidationResult("vcenter_version", False, 0.0, str(e)))
 
     return results
 
@@ -166,15 +182,17 @@ def validate_inventory(factory: VMwareClientFactory) -> list[ValidationResult]:
     # --- List VMs ---
     try:
         raw_vms, dur = _measure("list_vms", factory.list_vms)
-        results.append(ValidationResult(
-            "inventory_vms", True, dur,
-            f"Retrieved {len(raw_vms)} VMs",
-            properties={"vm_count": len(raw_vms)}
-        ))
+        results.append(
+            ValidationResult(
+                "inventory_vms",
+                True,
+                dur,
+                f"Retrieved {len(raw_vms)} VMs",
+                properties={"vm_count": len(raw_vms)},
+            )
+        )
     except Exception as e:
-        results.append(ValidationResult(
-            "inventory_vms", False, 0.0, str(e)
-        ))
+        results.append(ValidationResult("inventory_vms", False, 0.0, str(e)))
         raw_vms = []
 
     # --- Get VM detail (first 5 VMs) ---
@@ -187,13 +205,19 @@ def validate_inventory(factory: VMwareClientFactory) -> list[ValidationResult]:
 
             # Extract key properties
             hw = detail.get("hardware", {})
-            controllers = hw.get("disk_controller_types", []) if isinstance(hw, dict) else []
+            controllers = (
+                hw.get("disk_controller_types", []) if isinstance(hw, dict) else []
+            )
             nics = hw.get("nics", []) if isinstance(hw, dict) else []
-            nic_types = [n.get("nic_type", "unknown") for n in nics] if isinstance(nics, list) else []
+            nic_types = (
+                [n.get("nic_type", "unknown") for n in nics]
+                if isinstance(nics, list)
+                else []
+            )
 
             vm_info = VMDetail(
                 name=detail.get("name", "unknown"),
-                id=detail.get("id", vm.name if hasattr(vm, 'name') else "unknown"),
+                id=detail.get("id", vm.name if hasattr(vm, "name") else "unknown"),
                 power_state=detail.get("power_state", "unknown"),
                 guest_os=detail.get("guest_os", "unknown"),
                 firmware=detail.get("firmware"),
@@ -208,77 +232,102 @@ def validate_inventory(factory: VMwareClientFactory) -> list[ValidationResult]:
             )
             spot_check_details.append(vm_info)
 
-        except Exception as e:
-            vm_name = vm.name if hasattr(vm, 'name') else "unknown"
-            spot_check_details.append(VMDetail(
-                name=vm_name, id="unknown", power_state="error",
-                guest_os="", firmware=None, secure_boot=None,
-                tools_status=None, cpu_count=0, memory_mb=0,
-                disk_count=0, disk_controller_types=[], nic_count=0, nic_types=[]
-            ))
+        except Exception:
+            vm_name = vm.name if hasattr(vm, "name") else "unknown"
+            spot_check_details.append(
+                VMDetail(
+                    name=vm_name,
+                    id="unknown",
+                    power_state="error",
+                    guest_os="",
+                    firmware=None,
+                    secure_boot=None,
+                    tools_status=None,
+                    cpu_count=0,
+                    memory_mb=0,
+                    disk_count=0,
+                    disk_controller_types=[],
+                    nic_count=0,
+                    nic_types=[],
+                )
+            )
 
-    results.append(ValidationResult(
-        "spot_check_vms", True, 0.0,
-        f"Checked {vms_checked}/{min(5, len(raw_vms))} VM details",
-        properties={"vms": [asdict(d) for d in spot_check_details]}
-    ))
+    results.append(
+        ValidationResult(
+            "spot_check_vms",
+            True,
+            0.0,
+            f"Checked {vms_checked}/{min(5, len(raw_vms))} VM details",
+            properties={"vms": [asdict(d) for d in spot_check_details]},
+        )
+    )
 
     # --- List datastores ---
     try:
         ds_list, dur = _measure("list_datastores", factory.list_datastores)
-        results.append(ValidationResult(
-            "inventory_datastores", True, dur,
-            f"Retrieved {len(ds_list)} datastores",
-            properties={"ds_count": len(ds_list)}
-        ))
+        results.append(
+            ValidationResult(
+                "inventory_datastores",
+                True,
+                dur,
+                f"Retrieved {len(ds_list)} datastores",
+                properties={"ds_count": len(ds_list)},
+            )
+        )
     except Exception as e:
-        results.append(ValidationResult(
-            "inventory_datastores", False, 0.0, str(e)
-        ))
+        results.append(ValidationResult("inventory_datastores", False, 0.0, str(e)))
 
     # --- List networks ---
     try:
         net_list, dur = _measure("list_networks", factory.list_networks)
-        results.append(ValidationResult(
-            "inventory_networks", True, dur,
-            f"Retrieved {len(net_list)} networks",
-            properties={"net_count": len(net_list)}
-        ))
+        results.append(
+            ValidationResult(
+                "inventory_networks",
+                True,
+                dur,
+                f"Retrieved {len(net_list)} networks",
+                properties={"net_count": len(net_list)},
+            )
+        )
     except Exception as e:
-        results.append(ValidationResult(
-            "inventory_networks", False, 0.0, str(e)
-        ))
+        results.append(ValidationResult("inventory_networks", False, 0.0, str(e)))
 
     # --- List clusters ---
     try:
         cl_list, dur = _measure("list_clusters", factory.list_clusters)
-        results.append(ValidationResult(
-            "inventory_clusters", True, dur,
-            f"Retrieved {len(cl_list)} clusters",
-            properties={"cluster_count": len(cl_list)}
-        ))
+        results.append(
+            ValidationResult(
+                "inventory_clusters",
+                True,
+                dur,
+                f"Retrieved {len(cl_list)} clusters",
+                properties={"cluster_count": len(cl_list)},
+            )
+        )
     except Exception as e:
-        results.append(ValidationResult(
-            "inventory_clusters", False, 0.0, str(e)
-        ))
+        results.append(ValidationResult("inventory_clusters", False, 0.0, str(e)))
 
     # --- List hosts ---
     try:
         host_list, dur = _measure("list_hosts", factory.list_hosts)
-        results.append(ValidationResult(
-            "inventory_hosts", True, dur,
-            f"Retrieved {len(host_list)} hosts",
-            properties={"host_count": len(host_list)}
-        ))
+        results.append(
+            ValidationResult(
+                "inventory_hosts",
+                True,
+                dur,
+                f"Retrieved {len(host_list)} hosts",
+                properties={"host_count": len(host_list)},
+            )
+        )
     except Exception as e:
-        results.append(ValidationResult(
-            "inventory_hosts", False, 0.0, str(e)
-        ))
+        results.append(ValidationResult("inventory_hosts", False, 0.0, str(e)))
 
     return results
 
 
-def validate_latency_profile(factory: VMwareClientFactory, repeat: int = 5) -> list[ValidationResult]:
+def validate_latency_profile(
+    factory: VMwareClientFactory, repeat: int = 5
+) -> list[ValidationResult]:
     """Step 3: Profile latency of key operations."""
     results: list[ValidationResult] = []
     latencies: dict[str, list[float]] = {
@@ -315,19 +364,23 @@ def validate_latency_profile(factory: VMwareClientFactory, repeat: int = 5) -> l
         p50 = durs[len(durs) // 2]
         p95 = durs[int(len(durs) * 0.95)]
         p99 = durs[int(len(durs) * 0.99)]
-        results.append(ValidationResult(
-            f"latency_{op_name}", True, avg_ms,
-            f"p50={p50:.2f}ms p95={p95:.2f}ms p99={p99:.2f}ms (n={len(durs)})",
-            properties={
-                "avg_ms": round(avg_ms, 2),
-                "p50_ms": round(p50, 2),
-                "p95_ms": round(p95, 2),
-                "p99_ms": round(p99, 2),
-                "min_ms": round(min(durs), 2),
-                "max_ms": round(max(durs), 2),
-                "sample_count": len(durs),
-            }
-        ))
+        results.append(
+            ValidationResult(
+                f"latency_{op_name}",
+                True,
+                avg_ms,
+                f"p50={p50:.2f}ms p95={p95:.2f}ms p99={p99:.2f}ms (n={len(durs)})",
+                properties={
+                    "avg_ms": round(avg_ms, 2),
+                    "p50_ms": round(p50, 2),
+                    "p95_ms": round(p95, 2),
+                    "p99_ms": round(p99, 2),
+                    "min_ms": round(min(durs), 2),
+                    "max_ms": round(max(durs), 2),
+                    "sample_count": len(durs),
+                },
+            )
+        )
 
     return results
 
@@ -337,52 +390,55 @@ def validate_pool_reconnect(settings: Settings) -> list[ValidationResult]:
     results: list[ValidationResult] = []
     try:
         pool = VMwareConnectionPool(
-            settings, max_pool_size=2, session_ttl_seconds=30,
-            health_check_interval=5
+            settings, max_pool_size=2, session_ttl_seconds=30, health_check_interval=5
         )
         factory = VMwareClientFactory(settings, pool=pool)
 
         # Acquire connection
         conn1 = pool.acquire()
-        results.append(ValidationResult(
-            "pool_acquire", True, 0.0,
-            "Connection acquired from pool"
-        ))
+        results.append(
+            ValidationResult("pool_acquire", True, 0.0, "Connection acquired from pool")
+        )
 
         # Force expire — use the connection to check if alive
         alive = conn1.is_alive()
-        results.append(ValidationResult(
-            "pool_is_alive", alive, 0.0,
-            f"Connection alive check: {alive}"
-        ))
+        results.append(
+            ValidationResult(
+                "pool_is_alive", alive, 0.0, f"Connection alive check: {alive}"
+            )
+        )
 
         # Release
         pool.release(conn1)
-        results.append(ValidationResult(
-            "pool_release", True, 0.0,
-            "Connection released back to pool"
-        ))
+        results.append(
+            ValidationResult(
+                "pool_release", True, 0.0, "Connection released back to pool"
+            )
+        )
 
         # Re-acquire
         conn2 = pool.acquire()
-        results.append(ValidationResult(
-            "pool_reacquire", True, 0.0,
-            "Connection re-acquired from pool"
-        ))
+        results.append(
+            ValidationResult(
+                "pool_reacquire", True, 0.0, "Connection re-acquired from pool"
+            )
+        )
         pool.release(conn2)
 
         # Disconnect all
         pool.disconnect_all()
-        results.append(ValidationResult(
-            "pool_disconnect_all", True, 0.0,
-            "All pool connections disconnected"
-        ))
+        results.append(
+            ValidationResult(
+                "pool_disconnect_all", True, 0.0, "All pool connections disconnected"
+            )
+        )
 
     except Exception as e:
-        results.append(ValidationResult(
-            "pool_validation", False, 0.0,
-            f"Pool validation failed: {e}"
-        ))
+        results.append(
+            ValidationResult(
+                "pool_validation", False, 0.0, f"Pool validation failed: {e}"
+            )
+        )
 
     return results
 
@@ -390,6 +446,7 @@ def validate_pool_reconnect(settings: Settings) -> list[ValidationResult]:
 # ---------------------------------------------------------------------------
 # Report generation
 # ---------------------------------------------------------------------------
+
 
 def generate_report(settings: Settings, all_results: list[ValidationResult]) -> str:
     """Generate markdown report from validation results."""
@@ -399,44 +456,44 @@ def generate_report(settings: Settings, all_results: list[ValidationResult]) -> 
     failed = total - passed
 
     lines = [
-        f"# vCenter Validation Report",
-        f"",
+        "# vCenter Validation Report",
+        "",
         f"> Generated: {now}",
         f"> Target: {settings.vmware_host or '(not set)'}",
         f"> Result: **{passed}/{total} checks passed**",
-        f"",
-        f"## Summary",
-        f"",
-        f"| Status | Count |",
-        f"|--------|:-----:|",
+        "",
+        "## Summary",
+        "",
+        "| Status | Count |",
+        "|--------|:-----:|",
         f"| Passed | {passed} |",
         f"| Failed | {failed} |",
         f"| Total  | {total} |",
-        f"",
-        f"## Operation Results",
-        f"",
-        f"| Operation | Status | Duration (ms) | Detail |",
-        f"|-----------|:------:|:-------------:|--------|",
+        "",
+        "## Operation Results",
+        "",
+        "| Operation | Status | Duration (ms) | Detail |",
+        "|-----------|:------:|:-------------:|--------|",
     ]
 
     for r in all_results:
         status = "✅" if r.success else "❌"
         dur = f"{r.duration_ms:.1f}" if r.duration_ms > 0 else "-"
         detail_escaped = r.detail.replace("|", "\\|")
-        lines.append(
-            f"| {r.operation} | {status} | {dur} | {detail_escaped} |"
-        )
+        lines.append(f"| {r.operation} | {status} | {dur} | {detail_escaped} |")
 
     # Append VM details
     for r in all_results:
         if r.operation == "spot_check_vms" and r.properties.get("vms"):
-            lines.extend([
-                f"",
-                f"## Spot-Checked VM Details",
-                f"",
-                f"| Name | Power | OS | Firmware | SecureBoot | Tools | vCPUs | RAM(MB) | Disks | Controllers | NICs | NIC Types |",
-                f"|------|:-----:|:--:|:--------:|:----------:|:-----:|:-----:|:-------:|:-----:|:-----------:|:----:|:---------:|",
-            ])
+            lines.extend(
+                [
+                    "",
+                    "## Spot-Checked VM Details",
+                    "",
+                    "| Name | Power | OS | Firmware | SecureBoot | Tools | vCPUs | RAM(MB) | Disks | Controllers | NICs | NIC Types |",
+                    "|------|:-----:|:--:|:--------:|:----------:|:-----:|:-----:|:-------:|:-----:|:-----------:|:----:|:---------:|",
+                ]
+            )
             for vmd in r.properties["vms"]:
                 lines.append(
                     f"| {vmd['name']} | {vmd['power_state']} | {vmd['guest_os'][:40]} | "
@@ -449,13 +506,15 @@ def generate_report(settings: Settings, all_results: list[ValidationResult]) -> 
     # Append latency profile
     latency_results = [r for r in all_results if r.operation.startswith("latency_")]
     if latency_results:
-        lines.extend([
-            f"",
-            f"## Latency Profile (avg of {latency_results[0].properties.get('sample_count', 'N')} samples)",
-            f"",
-            f"| Operation | Avg (ms) | p50 (ms) | p95 (ms) | p99 (ms) |",
-            f"|-----------|:--------:|:--------:|:--------:|:--------:|",
-        ])
+        lines.extend(
+            [
+                "",
+                f"## Latency Profile (avg of {latency_results[0].properties.get('sample_count', 'N')} samples)",
+                "",
+                "| Operation | Avg (ms) | p50 (ms) | p95 (ms) | p99 (ms) |",
+                "|-----------|:--------:|:--------:|:--------:|:--------:|",
+            ]
+        )
         for r in latency_results:
             op_name = r.operation.replace("latency_", "")
             p = r.properties
@@ -464,13 +523,14 @@ def generate_report(settings: Settings, all_results: list[ValidationResult]) -> 
                 f"{p.get('p95_ms', '-')} | {p.get('p99_ms', '-')} |"
             )
 
-    lines.append(f"\n---\n*Report generated by validate_vcenter.py*")
+    lines.append("\n---\n*Report generated by validate_vcenter.py*")
     return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
 # JSON export
 # ---------------------------------------------------------------------------
+
 
 def generate_json(all_results: list[ValidationResult]) -> dict:
     return {
@@ -494,6 +554,7 @@ def generate_json(all_results: list[ValidationResult]) -> dict:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main():
     parser = argparse.ArgumentParser(description="Live vCenter Validation")

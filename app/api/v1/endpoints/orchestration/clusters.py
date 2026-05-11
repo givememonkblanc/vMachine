@@ -10,8 +10,8 @@ from app.schemas.orchestration.deployment import (
     ClusterListResponse,
     ClusterSummary,
 )
-from app.services.orchestration.cluster_service import ClusterService
 from app.services.core.operation_task_service import OperationTaskService
+from app.services.orchestration.cluster_service import ClusterService
 
 router = APIRouter()
 
@@ -37,7 +37,9 @@ async def get_cluster(
 async def create_cluster(
     payload: ClusterCreateRequest,
     cluster_service: Annotated[ClusterService, Depends(get_cluster_service)],
-    operation_task_service: Annotated[OperationTaskService, Depends(get_operation_task_service)],
+    operation_task_service: Annotated[
+        OperationTaskService, Depends(get_operation_task_service)
+    ],
 ) -> ClusterSummary:
     """새로운 클러스터를 생성합니다."""
     task = await operation_task_service.create_task(
@@ -49,10 +51,14 @@ async def create_cluster(
 
     try:
         cluster = await cluster_service.create_cluster(payload)
-        _ = await operation_task_service.update_task(task.id, state="succeeded", target_id=cluster.id)
+        _ = await operation_task_service.update_task(
+            task.id, state="succeeded", target_id=cluster.id
+        )
         return cluster.model_copy(update={"operation_task_id": task.id})
     except Exception as exc:
-        _ = await operation_task_service.update_task(task.id, state="failed", error_message=str(exc))
+        _ = await operation_task_service.update_task(
+            task.id, state="failed", error_message=str(exc)
+        )
         raise
 
 
@@ -60,7 +66,9 @@ async def create_cluster(
 async def delete_cluster(
     cluster_id: str,
     cluster_service: Annotated[ClusterService, Depends(get_cluster_service)],
-    operation_task_service: Annotated[OperationTaskService, Depends(get_operation_task_service)],
+    operation_task_service: Annotated[
+        OperationTaskService, Depends(get_operation_task_service)
+    ],
 ) -> Response:
     """클러스터를 삭제합니다."""
     task = await operation_task_service.create_task(
@@ -74,7 +82,9 @@ async def delete_cluster(
         await cluster_service.delete_cluster(cluster_id)
         _ = await operation_task_service.update_task(task.id, state="succeeded")
     except Exception as exc:
-        _ = await operation_task_service.update_task(task.id, state="failed", error_message=str(exc))
+        _ = await operation_task_service.update_task(
+            task.id, state="failed", error_message=str(exc)
+        )
         raise
 
     response = Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -87,7 +97,9 @@ async def batch_deploy(
     cluster_id: str,
     payload: BatchDeployRequest,
     cluster_service: Annotated[ClusterService, Depends(get_cluster_service)],
-    operation_task_service: Annotated[OperationTaskService, Depends(get_operation_task_service)],
+    operation_task_service: Annotated[
+        OperationTaskService, Depends(get_operation_task_service)
+    ],
 ) -> BatchDeployResponse:
     """클러스터에 다수 인스턴스를 일괄 배포합니다."""
     task = await operation_task_service.create_task(
@@ -102,5 +114,7 @@ async def batch_deploy(
         _ = await operation_task_service.update_task(task.id, state="succeeded")
         return result.model_copy(update={"operation_task_id": task.id})
     except Exception as exc:
-        _ = await operation_task_service.update_task(task.id, state="failed", error_message=str(exc))
+        _ = await operation_task_service.update_task(
+            task.id, state="failed", error_message=str(exc)
+        )
         raise

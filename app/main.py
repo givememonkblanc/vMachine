@@ -23,13 +23,24 @@ from app.common.metrics.custom import (
 )
 from app.common.middleware.audit import AuditMiddleware
 from app.common.middleware.request_id import RequestIDMiddleware
-from app.common.utils.openstack_cache import configure_from_settings, collect_metrics, is_redis
+from app.common.utils.openstack_cache import (
+    collect_metrics,
+    configure_from_settings,
+    is_redis,
+)
 from app.core.config.settings import get_settings
 from app.core.telemetry import init_tracer, register_instrumentations
 from app.db.session import init_db_engine
 from app.events import on_shutdown, on_startup
-from app.services.core.audit_service import audit_flush_worker, drain_audit_queue, enqueue_shutdown_signal
-from app.services.monitoring.monitoring_service import enqueue_metric_shutdown, metric_flush_worker
+from app.services.core.audit_service import (
+    audit_flush_worker,
+    drain_audit_queue,
+    enqueue_shutdown_signal,
+)
+from app.services.monitoring.monitoring_service import (
+    enqueue_metric_shutdown,
+    metric_flush_worker,
+)
 
 
 @asynccontextmanager
@@ -81,9 +92,15 @@ async def lifespan(app_: FastAPI):
                         cache_invalidations.labels(resource=resource).inc(dinv)
 
                     total = h + m
-                    cache_hit_ratio.labels(resource=resource).set(h / total if total else 1.0)
+                    cache_hit_ratio.labels(resource=resource).set(
+                        h / total if total else 1.0
+                    )
 
-                    _last_cache[resource] = {"hits": h, "misses": m, "invalidations": inv}
+                    _last_cache[resource] = {
+                        "hits": h,
+                        "misses": m,
+                        "invalidations": inv,
+                    }
 
                 # If Redis backend, also sync Redis-specific metrics
                 if is_redis():

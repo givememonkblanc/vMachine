@@ -1,16 +1,14 @@
 from datetime import datetime, timezone
-from uuid import uuid4
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session.session import SessionLocal
 from app.models.migration_assessment import MigrationAssessment, MigrationPlan
 from app.schemas.vmware.assessment import (
-    PersistedAssessmentSummary,
     PersistedAssessmentDetail,
-    PersistedPlanSummary,
+    PersistedAssessmentSummary,
     PersistedPlanDetail,
+    PersistedPlanSummary,
 )
 
 
@@ -38,7 +36,9 @@ class AssessmentPersistenceService:
         async with SessionLocal() as session:
             expires_at = datetime.now(timezone.utc)
             try:
-                expires_at = expires_at.replace(hour=23, minute=59, second=0, microsecond=0)
+                expires_at = expires_at.replace(
+                    hour=23, minute=59, second=0, microsecond=0
+                )
             except ValueError:
                 pass
 
@@ -100,9 +100,8 @@ class AssessmentPersistenceService:
     @staticmethod
     async def get_assessment(assessment_id: str) -> PersistedAssessmentDetail | None:
         async with SessionLocal() as session:
-            stmt = (
-                select(MigrationAssessment)
-                .where(MigrationAssessment.id == assessment_id)
+            stmt = select(MigrationAssessment).where(
+                MigrationAssessment.id == assessment_id
             )
             result = await session.execute(stmt)
             record = result.scalar_one_or_none()
@@ -113,10 +112,7 @@ class AssessmentPersistenceService:
     @staticmethod
     async def get_plan(plan_id: str) -> PersistedPlanDetail | None:
         async with SessionLocal() as session:
-            stmt = (
-                select(MigrationPlan)
-                .where(MigrationPlan.id == plan_id)
-            )
+            stmt = select(MigrationPlan).where(MigrationPlan.id == plan_id)
             result = await session.execute(stmt)
             record = result.scalar_one_or_none()
             if not record:
@@ -153,9 +149,7 @@ class AssessmentPersistenceService:
         assessment_id: str | None = None, limit: int = 20, offset: int = 0
     ) -> list[PersistedPlanSummary]:
         async with SessionLocal() as session:
-            stmt = select(MigrationPlan).order_by(
-                MigrationPlan.created_at.desc()
-            )
+            stmt = select(MigrationPlan).order_by(MigrationPlan.created_at.desc())
             if assessment_id:
                 stmt = stmt.where(MigrationPlan.assessment_id == assessment_id)
             stmt = stmt.offset(offset).limit(limit)

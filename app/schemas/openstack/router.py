@@ -10,9 +10,13 @@ class RouterSummary(BaseModel):
 
 
 class RouterCreateRequest(BaseModel):
-    name: str = Field(..., min_length=1, max_length=255, description="생성할 라우터 이름")
+    name: str = Field(
+        ..., min_length=1, max_length=255, description="생성할 라우터 이름"
+    )
     admin_state_up: bool = Field(default=True, description="관리자 상태 활성화 여부")
-    external_network_id: str | None = Field(default=None, description="외부 게이트웨이로 연결할 네트워크 UUID")
+    external_network_id: str | None = Field(
+        default=None, description="외부 게이트웨이로 연결할 네트워크 UUID"
+    )
 
 
 class RouterCreateResponse(BaseModel):

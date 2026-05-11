@@ -1,6 +1,5 @@
 import asyncio
 from asyncio import Queue
-from collections.abc import AsyncGenerator
 from typing import Any
 from uuid import uuid4
 
@@ -9,7 +8,6 @@ from sqlalchemy import Select, select
 from app.db.session.session import SessionLocal
 from app.models.audit_log import AuditLog
 from app.schemas.core.audit import AuditLogSummary
-
 
 # ---------------------------------------------------------------------------
 # Batch audit queue — accumulates entries and flushes them periodically
@@ -58,7 +56,11 @@ async def enqueue_audit_entry(
     """
     if not action:
         return
-    await _AUDIT_QUEUE.put(_make_entry(actor, action, resource_type, resource_id, status, request_id, payload))
+    await _AUDIT_QUEUE.put(
+        _make_entry(
+            actor, action, resource_type, resource_id, status, request_id, payload
+        )
+    )
 
 
 async def log_audit_entry(
@@ -161,7 +163,9 @@ class AuditService:
         resource_type: str | None = None,
         status: str | None = None,
     ) -> list[AuditLogSummary]:
-        query: Select[tuple[AuditLog]] = select(AuditLog).order_by(AuditLog.created_at.desc()).limit(limit)
+        query: Select[tuple[AuditLog]] = (
+            select(AuditLog).order_by(AuditLog.created_at.desc()).limit(limit)
+        )
 
         if resource_type:
             query = query.where(AuditLog.resource_type == resource_type)

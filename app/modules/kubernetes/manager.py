@@ -1,4 +1,7 @@
-from app.schemas.kubernetes.kubernetes import DeploymentCreateRequest, ServiceCreateRequest
+from app.schemas.kubernetes.kubernetes import (
+    DeploymentCreateRequest,
+    ServiceCreateRequest,
+)
 from app.services.kubernetes.kubernetes_service import KubernetesService
 
 
@@ -12,10 +15,14 @@ class KubernetesManager:
     def __init__(self, kubernetes_service: KubernetesService) -> None:
         self._k8s = kubernetes_service
 
-    def deploy_workload(self, name: str, image: str, replicas: int = 1, port: int | None = None) -> dict:
+    def deploy_workload(
+        self, name: str, image: str, replicas: int = 1, port: int | None = None
+    ) -> dict:
         """Deployment + Service를 한 번에 배포합니다."""
         dep = self._k8s.create_deployment(
-            DeploymentCreateRequest(name=name, image=image, replicas=replicas, port=port)
+            DeploymentCreateRequest(
+                name=name, image=image, replicas=replicas, port=port
+            )
         )
         svc = self._k8s.create_service(
             ServiceCreateRequest(name=name, port=port or 80, selector={"app": name})

@@ -20,8 +20,6 @@ from typing import Any
 import redis
 from redis.exceptions import RedisError
 
-
-
 logger = logging.getLogger("vmachine.redis_cache")
 
 PROM_RESOURCE_LABELS: dict[str, str] = {
@@ -76,7 +74,9 @@ class RedisCache:
             raw: str | None = self._client.get(key)  # type: ignore[assignment]
             self._record_latency(time.monotonic() - t0)
         except RedisError:
-            logger.warning("Redis GET %s failed, falling back to miss", key, exc_info=True)
+            logger.warning(
+                "Redis GET %s failed, falling back to miss", key, exc_info=True
+            )
             self._incr(self._misses, resource)
             self._errors += 1
             return None
@@ -127,7 +127,9 @@ class RedisCache:
             "total_hits": total_h,
             "total_misses": total_m,
             "total_requests": total_h + total_m,
-            "hit_ratio": round(total_h / (total_h + total_m), 4) if (total_h + total_m) else 0.0,
+            "hit_ratio": round(total_h / (total_h + total_m), 4)
+            if (total_h + total_m)
+            else 0.0,
             "redis_errors": self._errors,
             "redis_latency_samples": list(self._latencies),
         }
@@ -159,11 +161,13 @@ class RedisCache:
     @staticmethod
     def _deserialize(raw: str) -> list[Any]:
         import json
+
         return json.loads(raw)
 
     @staticmethod
     def _ttl_for(resource: str) -> int:
         from app.common.utils.openstack_cache import DEFAULT_TTLS
+
         return DEFAULT_TTLS.get(resource, 30)
 
     # ------------------------------------------------------------------

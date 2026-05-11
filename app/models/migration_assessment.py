@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import final
 from uuid import uuid4
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, JSON, String, Text, func
+from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base.base import Base
@@ -12,7 +12,9 @@ from app.db.base.base import Base
 class MigrationAssessment(Base):
     __tablename__ = "migration_assessments"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid4())
+    )
     vm_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     vm_name: Mapped[str] = mapped_column(String(255), nullable=False)
     vm_power_state: Mapped[str] = mapped_column(String(50), nullable=True)
@@ -34,7 +36,9 @@ class MigrationAssessment(Base):
     assessed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
-    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     plans: Mapped[list["MigrationPlan"]] = relationship(
         "MigrationPlan", back_populates="assessment", cascade="all, delete-orphan"
@@ -45,9 +49,13 @@ class MigrationAssessment(Base):
 class MigrationPlan(Base):
     __tablename__ = "migration_plans"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid4())
+    )
     assessment_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("migration_assessments.id", ondelete="CASCADE"), nullable=False
+        String(36),
+        ForeignKey("migration_assessments.id", ondelete="CASCADE"),
+        nullable=False,
     )
     vm_id: Mapped[str] = mapped_column(String(255), nullable=False)
 
@@ -68,7 +76,10 @@ class MigrationPlan(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
     )
 
     assessment: Mapped["MigrationAssessment"] = relationship(

@@ -1,9 +1,10 @@
 from collections.abc import Mapping, Sequence
 from typing import cast, final
 
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
+
 from app.core.logging.logger import get_logger
 from app.services.core.audit_service import enqueue_audit_entry
-from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 logger = get_logger(__name__)
 
@@ -27,7 +28,9 @@ class AuditMiddleware:
 
         method = cast(str, scope.get("method", "UNKNOWN"))
         path = cast(str, scope.get("path", "UNKNOWN"))
-        request_id = self._extract_request_id(cast(Sequence[tuple[bytes, bytes]], scope.get("headers", [])))
+        request_id = self._extract_request_id(
+            cast(Sequence[tuple[bytes, bytes]], scope.get("headers", []))
+        )
 
         status_code = 0
         send_orig = send
@@ -73,7 +76,11 @@ class AuditMiddleware:
 
     def _infer_action(self, method: str, path: str) -> str:
         method_map: Mapping[str, str] = {
-            "GET": "read", "POST": "create", "PUT": "update", "PATCH": "update", "DELETE": "delete",
+            "GET": "read",
+            "POST": "create",
+            "PUT": "update",
+            "PATCH": "update",
+            "DELETE": "delete",
         }
         parts = [p for p in path.split("/") if p]
         if method == "POST" and len(parts) >= 3 and parts[-1] == "actions":
@@ -83,9 +90,23 @@ class AuditMiddleware:
     def _infer_resource_id(self, path: str) -> str | None:
         parts = [p for p in path.split("/") if p]
         non_resource = {
-            "api", "v1", "auth", "compute", "networks", "volumes", "images", "flavors",
-            "tenants", "health", "servers", "projects", "session", "endpoints",
-            "config", "validate", "actions",
+            "api",
+            "v1",
+            "auth",
+            "compute",
+            "networks",
+            "volumes",
+            "images",
+            "flavors",
+            "tenants",
+            "health",
+            "servers",
+            "projects",
+            "session",
+            "endpoints",
+            "config",
+            "validate",
+            "actions",
         }
         for part in reversed(parts):
             if part not in non_resource:

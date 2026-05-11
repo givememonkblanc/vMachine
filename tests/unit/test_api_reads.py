@@ -15,14 +15,17 @@ from app.api.deps.services import (
     get_volume_service,
 )
 from app.main import app
+from app.schemas.identity.tenant import ProjectSummary
 from app.schemas.openstack.compute import ServerDetail, ServerSummary
 from app.schemas.openstack.flavor import FlavorSummary
 from app.schemas.openstack.image import ImageSummary
 from app.schemas.openstack.keypair import KeypairSummary
 from app.schemas.openstack.network import NetworkDetail, NetworkSummary, SubnetSummary
 from app.schemas.openstack.router import RouterSummary
-from app.schemas.openstack.security_group import SecurityGroupDetail, SecurityGroupSummary
-from app.schemas.identity.tenant import ProjectSummary
+from app.schemas.openstack.security_group import (
+    SecurityGroupDetail,
+    SecurityGroupSummary,
+)
 from app.schemas.openstack.volume import VolumeSummary
 from tests.conftest import create_test_client
 
@@ -35,7 +38,9 @@ def client() -> TestClient:
 def test_list_and_get_compute(client: TestClient) -> None:
     mock_svc = MagicMock()
     mock_svc.list_servers.return_value = [ServerSummary(id="server-1", name="test-vm")]
-    mock_svc.get_server.return_value = ServerDetail(id="server-1", name="test-vm", updated="now")
+    mock_svc.get_server.return_value = ServerDetail(
+        id="server-1", name="test-vm", updated="now"
+    )
     app.dependency_overrides[get_compute_service] = lambda: mock_svc
 
     try:
@@ -72,8 +77,12 @@ def test_list_and_get_network(client: TestClient) -> None:
 
 def test_list_and_get_security_group(client: TestClient) -> None:
     mock_svc = MagicMock()
-    mock_svc.list_security_groups.return_value = [SecurityGroupSummary(id="sg-1", name="test-sg")]
-    mock_svc.get_security_group.return_value = SecurityGroupDetail(id="sg-1", name="test-sg")
+    mock_svc.list_security_groups.return_value = [
+        SecurityGroupSummary(id="sg-1", name="test-sg")
+    ]
+    mock_svc.get_security_group.return_value = SecurityGroupDetail(
+        id="sg-1", name="test-sg"
+    )
     app.dependency_overrides[get_security_group_service] = lambda: mock_svc
 
     try:
@@ -103,7 +112,9 @@ def test_list_volumes(client: TestClient) -> None:
 
 def test_list_routers(client: TestClient) -> None:
     mock_svc = MagicMock()
-    mock_svc.list_routers.return_value = [RouterSummary(id="router-1", name="test-router")]
+    mock_svc.list_routers.return_value = [
+        RouterSummary(id="router-1", name="test-router")
+    ]
     app.dependency_overrides[get_router_service] = lambda: mock_svc
 
     try:
@@ -116,7 +127,9 @@ def test_list_routers(client: TestClient) -> None:
 
 def test_list_keypairs(client: TestClient) -> None:
     mock_svc = MagicMock()
-    mock_svc.list_keypairs.return_value = [KeypairSummary(name="test-key", public_key="pub")]
+    mock_svc.list_keypairs.return_value = [
+        KeypairSummary(name="test-key", public_key="pub")
+    ]
     app.dependency_overrides[get_keypair_service] = lambda: mock_svc
 
     try:
@@ -142,7 +155,9 @@ def test_list_images(client: TestClient) -> None:
 
 def test_list_flavors(client: TestClient) -> None:
     mock_svc = MagicMock()
-    mock_svc.list_flavors.return_value = [FlavorSummary(id="flv-1", name="m1.small", vcpus=1)]
+    mock_svc.list_flavors.return_value = [
+        FlavorSummary(id="flv-1", name="m1.small", vcpus=1)
+    ]
     app.dependency_overrides[get_flavor_service] = lambda: mock_svc
 
     try:

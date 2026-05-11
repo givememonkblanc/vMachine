@@ -34,7 +34,11 @@ class VMwarePlanService:
                 continue
 
             priority = overrides.get(vm.id, 5)
-            target_flavor_id = mapping.flavor_match.flavor_id if mapping and mapping.flavor_match else None
+            target_flavor_id = (
+                mapping.flavor_match.flavor_id
+                if mapping and mapping.flavor_match
+                else None
+            )
             target_network_ids = [
                 nm.openstack_network_id
                 for nm in (mapping.network_mappings if mapping else [])
@@ -77,7 +81,9 @@ class VMwarePlanService:
         )
 
     @staticmethod
-    def _build_steps(vm: VMSummary, mapping: VMMappingResult | None) -> list[MigrationStep]:
+    def _build_steps(
+        vm: VMSummary, mapping: VMMappingResult | None
+    ) -> list[MigrationStep]:
         steps: list[MigrationStep] = []
         order = 1
 
@@ -143,7 +149,7 @@ class VMwarePlanService:
             MigrationStep(
                 order=order,
                 action="create_server",
-                description=f"Create OpenStack server from imported image with matched flavor and networks",
+                description="Create OpenStack server from imported image with matched flavor and networks",
                 estimated_minutes=5,
             )
         )
@@ -167,7 +173,11 @@ class VMwarePlanService:
             return 0
         if power == "suspended":
             return 5
-        total_disk = sum(d.capacity_gb for d in (vm.hardware.disks if vm.hardware else [])) if vm.hardware else 0
+        total_disk = (
+            sum(d.capacity_gb for d in (vm.hardware.disks if vm.hardware else []))
+            if vm.hardware
+            else 0
+        )
         if total_disk > 500:
             return 30
         if total_disk > 100:

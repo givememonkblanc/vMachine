@@ -13,7 +13,11 @@ class SnapshotManager:
     def create_vm_snapshot(self, server_id: str, snapshot_name: str) -> dict:
         """VM의 현재 상태를 스냅샷 이미지로 생성합니다."""
         image_id = self._compute.create_server_image(server_id, snapshot_name)
-        return {"server_id": server_id, "image_id": image_id, "snapshot_name": snapshot_name}
+        return {
+            "server_id": server_id,
+            "image_id": image_id,
+            "snapshot_name": snapshot_name,
+        }
 
     def resize_server(self, server_id: str, flavor_id: str) -> None:
         """VM의 사양(Flavor)을 변경합니다."""

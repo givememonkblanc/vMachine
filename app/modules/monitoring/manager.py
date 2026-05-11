@@ -1,5 +1,5 @@
-from app.services.openstack.compute_service import ComputeService
 from app.services.monitoring.monitoring_service import MonitoringService
+from app.services.openstack.compute_service import ComputeService
 from app.services.openstack.network_service import NetworkService
 from app.services.openstack.volume_service import VolumeService
 

@@ -3,9 +3,13 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Response, status
 
 from app.api.deps.services import get_flavor_service, get_operation_task_service
-from app.schemas.openstack.flavor import FlavorCreateRequest, FlavorListResponse, FlavorSummary
-from app.services.openstack.flavor_service import FlavorService
+from app.schemas.openstack.flavor import (
+    FlavorCreateRequest,
+    FlavorListResponse,
+    FlavorSummary,
+)
 from app.services.core.operation_task_service import OperationTaskService
+from app.services.openstack.flavor_service import FlavorService
 
 router = APIRouter()
 
@@ -31,7 +35,9 @@ def get_flavor(
 async def create_flavor(
     payload: FlavorCreateRequest,
     flavor_service: Annotated[FlavorService, Depends(get_flavor_service)],
-    operation_task_service: Annotated[OperationTaskService, Depends(get_operation_task_service)],
+    operation_task_service: Annotated[
+        OperationTaskService, Depends(get_operation_task_service)
+    ],
 ) -> FlavorSummary:
     """새로운 플레이버(컴퓨팅 스펙) 생성"""
     task = await operation_task_service.create_task(
@@ -43,10 +49,14 @@ async def create_flavor(
 
     try:
         flavor = flavor_service.create_flavor(payload)
-        _ = await operation_task_service.update_task(task.id, state="succeeded", target_id=flavor.id)
+        _ = await operation_task_service.update_task(
+            task.id, state="succeeded", target_id=flavor.id
+        )
         return flavor.model_copy(update={"operation_task_id": task.id})
     except Exception as exc:
-        _ = await operation_task_service.update_task(task.id, state="failed", error_message=str(exc))
+        _ = await operation_task_service.update_task(
+            task.id, state="failed", error_message=str(exc)
+        )
         raise
 
 
@@ -54,7 +64,9 @@ async def create_flavor(
 async def delete_flavor(
     flavor_id: str,
     flavor_service: Annotated[FlavorService, Depends(get_flavor_service)],
-    operation_task_service: Annotated[OperationTaskService, Depends(get_operation_task_service)],
+    operation_task_service: Annotated[
+        OperationTaskService, Depends(get_operation_task_service)
+    ],
 ) -> Response:
     """플레이버 영구 삭제"""
     task = await operation_task_service.create_task(
@@ -66,9 +78,13 @@ async def delete_flavor(
 
     try:
         flavor_service.delete_flavor(flavor_id)
-        _ = await operation_task_service.update_task(task.id, state="succeeded", target_id=flavor_id)
+        _ = await operation_task_service.update_task(
+            task.id, state="succeeded", target_id=flavor_id
+        )
     except Exception as exc:
-        _ = await operation_task_service.update_task(task.id, state="failed", target_id=flavor_id, error_message=str(exc))
+        _ = await operation_task_service.update_task(
+            task.id, state="failed", target_id=flavor_id, error_message=str(exc)
+        )
         raise
 
     response = Response(status_code=status.HTTP_204_NO_CONTENT)

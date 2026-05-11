@@ -31,23 +31,33 @@ async def get_pool(
     return await storage_service.get_pool(pool_id)
 
 
-@router.post("/pools", response_model=StoragePoolSummary, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/pools", response_model=StoragePoolSummary, status_code=status.HTTP_201_CREATED
+)
 async def create_pool(
     payload: StoragePoolCreateRequest,
     storage_service: Annotated[StorageService, Depends(get_storage_service)],
-    operation_task_service: Annotated[OperationTaskService, Depends(get_operation_task_service)],
+    operation_task_service: Annotated[
+        OperationTaskService, Depends(get_operation_task_service)
+    ],
 ) -> StoragePoolSummary:
     """새로운 SDS 스토리지 풀을 생성합니다. ceph, nfs, lvm 유형 지원"""
     task = await operation_task_service.create_task(
-        operation_type="create_storage_pool", target_type="storage_pool", target_id=payload.name,
+        operation_type="create_storage_pool",
+        target_type="storage_pool",
+        target_id=payload.name,
     )
     _ = await operation_task_service.update_task(task.id, state="running")
     try:
         pool = await storage_service.create_pool(payload)
-        _ = await operation_task_service.update_task(task.id, state="succeeded", target_id=pool.id)
+        _ = await operation_task_service.update_task(
+            task.id, state="succeeded", target_id=pool.id
+        )
         return pool.model_copy(update={"operation_task_id": task.id})
     except Exception as exc:
-        _ = await operation_task_service.update_task(task.id, state="failed", error_message=str(exc))
+        _ = await operation_task_service.update_task(
+            task.id, state="failed", error_message=str(exc)
+        )
         raise
 
 
@@ -55,18 +65,24 @@ async def create_pool(
 async def delete_pool(
     pool_id: str,
     storage_service: Annotated[StorageService, Depends(get_storage_service)],
-    operation_task_service: Annotated[OperationTaskService, Depends(get_operation_task_service)],
+    operation_task_service: Annotated[
+        OperationTaskService, Depends(get_operation_task_service)
+    ],
 ) -> Response:
     """스토리지 풀을 삭제합니다."""
     task = await operation_task_service.create_task(
-        operation_type="delete_storage_pool", target_type="storage_pool", target_id=pool_id,
+        operation_type="delete_storage_pool",
+        target_type="storage_pool",
+        target_id=pool_id,
     )
     _ = await operation_task_service.update_task(task.id, state="running")
     try:
         await storage_service.delete_pool(pool_id)
         _ = await operation_task_service.update_task(task.id, state="succeeded")
     except Exception as exc:
-        _ = await operation_task_service.update_task(task.id, state="failed", error_message=str(exc))
+        _ = await operation_task_service.update_task(
+            task.id, state="failed", error_message=str(exc)
+        )
         raise
     response = Response(status_code=status.HTTP_204_NO_CONTENT)
     response.headers["X-Operation-Task-ID"] = task.id

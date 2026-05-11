@@ -16,7 +16,11 @@ class ImageService:
         if cached is not None:
             return cached
         result = [
-            ImageSummary(**serialize_resource(image, ["id", "name", "status", "visibility", "size", "created_at"]))
+            ImageSummary(
+                **serialize_resource(
+                    image, ["id", "name", "status", "visibility", "size", "created_at"]
+                )
+            )
             for image in self.factory.call("image", "images", limit=self._list_limit)
         ]
         cache_set("images", result)
@@ -25,8 +29,14 @@ class ImageService:
     def get_image(self, image_id: str) -> ImageSummary:
         image = self.factory.call("image", "get_image", image_id)
         if not image:
-            raise AppException(message="Image not found", status_code=404, error_code="image_not_found")
-        return ImageSummary(**serialize_resource(image, ["id", "name", "status", "visibility", "size", "created_at"]))
+            raise AppException(
+                message="Image not found", status_code=404, error_code="image_not_found"
+            )
+        return ImageSummary(
+            **serialize_resource(
+                image, ["id", "name", "status", "visibility", "size", "created_at"]
+            )
+        )
 
     def create_image(self, payload: ImageCreateRequest) -> ImageSummary:
         kwargs: dict[str, object] = {
@@ -45,15 +55,20 @@ class ImageService:
             kwargs["min_ram"] = payload.min_ram
         image = self.factory.call("image", "create_image", **kwargs)
         cache_invalidate("images")
-        return ImageSummary(**serialize_resource(image, ["id", "name", "status", "visibility", "size", "created_at"]))
+        return ImageSummary(
+            **serialize_resource(
+                image, ["id", "name", "status", "visibility", "size", "created_at"]
+            )
+        )
 
     def upload_image_data(self, image_id: str, data: bytes) -> None:
         self.factory.call("image", "upload_image", image_id, data, backend="store")
 
     def import_image(self, image_id: str, uri: str) -> None:
-        self.factory.call("image", "import_image", image_id, method="web-download", uri=uri)
+        self.factory.call(
+            "image", "import_image", image_id, method="web-download", uri=uri
+        )
 
     def delete_image(self, image_id: str) -> None:
         self.factory.call("image", "delete_image", image_id, ignore_missing=True)
         cache_invalidate("images")
-

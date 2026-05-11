@@ -6,18 +6,19 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 from app.core.config.settings import get_settings
 
-
 _tracer: trace.Tracer | None = None
 
 
 def init_tracer() -> None:
     settings = get_settings()
 
-    resource = Resource.create({
-        "service.name": settings.otel_service_name,
-        "service.version": "0.1.0",
-        "deployment.environment": settings.app_env,
-    })
+    resource = Resource.create(
+        {
+            "service.name": settings.otel_service_name,
+            "service.version": "0.1.0",
+            "deployment.environment": settings.app_env,
+        }
+    )
 
     provider = TracerProvider(resource=resource)
 

@@ -19,7 +19,7 @@ import os
 import sys
 import time
 import traceback
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -30,6 +30,7 @@ os.environ["APP_ENV"] = "validation"
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class FailureScenario:
@@ -48,6 +49,7 @@ class FailureScenario:
 # Scenario 1: vCenter Disconnect / Reconnect
 # ---------------------------------------------------------------------------
 
+
 def scenario_vcenter_disconnect() -> FailureScenario:
     """Simulate vCenter temporary disconnect and validate reconnection."""
     sc = FailureScenario(
@@ -62,13 +64,16 @@ def scenario_vcenter_disconnect() -> FailureScenario:
         if not settings.vmware_ready:
             sc.passed = True  # skip if no vCenter
             sc.error_type = "skipped"
-            sc.error_message = "VMware env not configured — scenario skipped (expected behavior)"
-            sc.details = {"note": "Requires VMWARE_HOST/USER/PASS to test real disconnect"}
+            sc.error_message = (
+                "VMware env not configured — scenario skipped (expected behavior)"
+            )
+            sc.details = {
+                "note": "Requires VMWARE_HOST/USER/PASS to test real disconnect"
+            }
             return sc
 
         pool = VMwareConnectionPool(
-            settings, max_pool_size=2, session_ttl_seconds=600,
-            health_check_interval=5
+            settings, max_pool_size=2, session_ttl_seconds=600, health_check_interval=5
         )
 
         # Acquire connection
@@ -95,10 +100,12 @@ def scenario_vcenter_disconnect() -> FailureScenario:
         sc.recovered = alive_after
         sc.recovery_time_ms = reconnect_ms
         sc.duration_ms = (time.perf_counter() - start) * 1000
-        sc.details.update({
-            "alive_after": alive_after,
-            "reconnect_ms": round(reconnect_ms, 2),
-        })
+        sc.details.update(
+            {
+                "alive_after": alive_after,
+                "reconnect_ms": round(reconnect_ms, 2),
+            }
+        )
 
     except Exception as e:
         sc.passed = False
@@ -111,6 +118,7 @@ def scenario_vcenter_disconnect() -> FailureScenario:
 # ---------------------------------------------------------------------------
 # Scenario 2: Expired VMware Session
 # ---------------------------------------------------------------------------
+
 
 def scenario_expired_session() -> FailureScenario:
     """Simulate expired vCenter session (stale connection in pool)."""
@@ -131,8 +139,7 @@ def scenario_expired_session() -> FailureScenario:
 
         # Pool with very short TTL to force expiry
         pool = VMwareConnectionPool(
-            settings, max_pool_size=2, session_ttl_seconds=1,
-            health_check_interval=1
+            settings, max_pool_size=2, session_ttl_seconds=1, health_check_interval=1
         )
 
         conn = pool.acquire()
@@ -152,10 +159,12 @@ def scenario_expired_session() -> FailureScenario:
         sc.passed = alive
         sc.recovered = alive
         sc.recovery_time_ms = reconnect_ms
-        sc.details.update({
-            "alive_after_expiry": alive,
-            "reconnect_ms": round(reconnect_ms, 2),
-        })
+        sc.details.update(
+            {
+                "alive_after_expiry": alive,
+                "reconnect_ms": round(reconnect_ms, 2),
+            }
+        )
 
     except Exception as e:
         sc.passed = False
@@ -168,6 +177,7 @@ def scenario_expired_session() -> FailureScenario:
 # ---------------------------------------------------------------------------
 # Scenario 3: Pool Exhaustion
 # ---------------------------------------------------------------------------
+
 
 def scenario_pool_exhaustion() -> FailureScenario:
     """Validate pool exhaustion behavior — acquire more than max_pool_size."""
@@ -187,8 +197,7 @@ def scenario_pool_exhaustion() -> FailureScenario:
             return sc
 
         pool = VMwareConnectionPool(
-            settings, max_pool_size=2, session_ttl_seconds=600,
-            health_check_interval=60
+            settings, max_pool_size=2, session_ttl_seconds=600, health_check_interval=60
         )
 
         # Acquire max connections
@@ -231,6 +240,7 @@ def scenario_pool_exhaustion() -> FailureScenario:
 # Scenario 4: Malformed VM Metadata
 # ---------------------------------------------------------------------------
 
+
 def scenario_malformed_vm_metadata() -> FailureScenario:
     """Validate that malformed VM metadata does not crash the engine."""
     sc = FailureScenario(
@@ -245,20 +255,58 @@ def scenario_malformed_vm_metadata() -> FailureScenario:
         error_count = 0
 
         edge_case_vms = [
-            VMSummary(id="null-vm", name="", power_state="", guest_os=None,
-                      hardware=None, firmware=None, secure_boot_enabled=None,
-                      vmware_tools_status=None, disk_controller_types=None),
-            VMSummary(id="empty-vm", name="", power_state="", guest_os="",
-                      hardware=VMHardware(cpu_count=0, memory_mb=0, disks=[], nics=[]),
-                      firmware="", secure_boot_enabled=False,
-                      vmware_tools_status="", disk_controller_types=[]),
-            VMSummary(id="partial-vm", name="partial", power_state="poweredOn",
-                      guest_os="Some OS",
-                      hardware=VMHardware(cpu_count=4, memory_mb=8192,
-                          disks=[VMDisk(label="d1", capacity_gb=100, datastore_name="ds1", controller_type="scsi")],
-                          nics=[VMNic(label="n1", network_name="net1", mac_address="00:00:00:00:00:00", nic_type="vmxnet3")]),
-                      firmware="bios", secure_boot_enabled=False,
-                      vmware_tools_status=None, disk_controller_types=None),
+            VMSummary(
+                id="null-vm",
+                name="",
+                power_state="",
+                guest_os=None,
+                hardware=None,
+                firmware=None,
+                secure_boot_enabled=None,
+                vmware_tools_status=None,
+                disk_controller_types=None,
+            ),
+            VMSummary(
+                id="empty-vm",
+                name="",
+                power_state="",
+                guest_os="",
+                hardware=VMHardware(cpu_count=0, memory_mb=0, disks=[], nics=[]),
+                firmware="",
+                secure_boot_enabled=False,
+                vmware_tools_status="",
+                disk_controller_types=[],
+            ),
+            VMSummary(
+                id="partial-vm",
+                name="partial",
+                power_state="poweredOn",
+                guest_os="Some OS",
+                hardware=VMHardware(
+                    cpu_count=4,
+                    memory_mb=8192,
+                    disks=[
+                        VMDisk(
+                            label="d1",
+                            capacity_gb=100,
+                            datastore_name="ds1",
+                            controller_type="scsi",
+                        )
+                    ],
+                    nics=[
+                        VMNic(
+                            label="n1",
+                            network_name="net1",
+                            mac_address="00:00:00:00:00:00",
+                            nic_type="vmxnet3",
+                        )
+                    ],
+                ),
+                firmware="bios",
+                secure_boot_enabled=False,
+                vmware_tools_status=None,
+                disk_controller_types=None,
+            ),
         ]
 
         for vm in edge_case_vms:
@@ -276,7 +324,9 @@ def scenario_malformed_vm_metadata() -> FailureScenario:
         }
         if error_count > 0:
             sc.error_type = "EvaluationError"
-            sc.error_message = f"{error_count}/{len(edge_case_vms)} edge case VMs caused errors"
+            sc.error_message = (
+                f"{error_count}/{len(edge_case_vms)} edge case VMs caused errors"
+            )
 
     except Exception as e:
         sc.passed = False
@@ -289,6 +339,7 @@ def scenario_malformed_vm_metadata() -> FailureScenario:
 # ---------------------------------------------------------------------------
 # Scenario 5: Unsupported Guest OS
 # ---------------------------------------------------------------------------
+
 
 def scenario_unsupported_guest_os() -> FailureScenario:
     """Validate unsupported guest OS detection."""
@@ -309,28 +360,51 @@ def scenario_unsupported_guest_os() -> FailureScenario:
                 name=os_name,
                 power_state="poweredOn",
                 guest_os=os_name,
-                hardware=VMHardware(cpu_count=2, memory_mb=4096,
-                    disks=[VMDisk(label="d1", capacity_gb=40, datastore_name="ds1", controller_type="scsi")],
-                    nics=[VMNic(label="n1", network_name="net1", mac_address="00:00:00:00:00:01", nic_type="vmxnet3")]),
-                firmware="bios", secure_boot_enabled=False,
-                vmware_tools_status="toolsOk", disk_controller_types=["lsilogic"],
+                hardware=VMHardware(
+                    cpu_count=2,
+                    memory_mb=4096,
+                    disks=[
+                        VMDisk(
+                            label="d1",
+                            capacity_gb=40,
+                            datastore_name="ds1",
+                            controller_type="scsi",
+                        )
+                    ],
+                    nics=[
+                        VMNic(
+                            label="n1",
+                            network_name="net1",
+                            mac_address="00:00:00:00:00:01",
+                            nic_type="vmxnet3",
+                        )
+                    ],
+                ),
+                firmware="bios",
+                secure_boot_enabled=False,
+                vmware_tools_status="toolsOk",
+                disk_controller_types=["lsilogic"],
             )
             result = svc.evaluate(vm)
             has_critical_os = any(
-                i.severity == "critical" and i.category == "os"
-                for i in result.issues
+                i.severity == "critical" and i.category == "os" for i in result.issues
             )
             sc.details[os_name] = {
                 "compatible": result.compatible,
                 "score": result.score,
                 "has_critical_os_issue": has_critical_os,
-                "issues": [{"severity": i.severity, "category": i.category, "message": i.message[:80]}
-                           for i in result.issues],
+                "issues": [
+                    {
+                        "severity": i.severity,
+                        "category": i.category,
+                        "message": i.message[:80],
+                    }
+                    for i in result.issues
+                ],
             }
 
         all_blocked = all(
-            sc.details[os]["compatible"] is False
-            for os in unsupported_oses
+            sc.details[os]["compatible"] is False for os in unsupported_oses
         )
         sc.passed = all_blocked
         if not all_blocked:
@@ -349,12 +423,13 @@ def scenario_unsupported_guest_os() -> FailureScenario:
 # Scenario 6: Service Degradation (Partial Failure)
 # ---------------------------------------------------------------------------
 
+
 def scenario_partial_inventory_failure() -> FailureScenario:
     """Simulate partial inventory failure — some services fail, others continue."""
     sc = FailureScenario(
         name="partial_inventory_failure",
         description="Partial infrastructure failure — some services unavailable, "
-                    "assessment engine should still function for available data",
+        "assessment engine should still function for available data",
     )
     try:
         from app.schemas.vmware.inventory import VMDisk, VMHardware, VMNic, VMSummary
@@ -369,12 +444,23 @@ def scenario_partial_inventory_failure() -> FailureScenario:
             power_state="poweredOn",
             guest_os="Ubuntu 22.04",
             hardware=VMHardware(
-                cpu_count=4, memory_mb=16384,
+                cpu_count=4,
+                memory_mb=16384,
                 disks=[
-                    VMDisk(label="d1", capacity_gb=80, datastore_name="ds1", controller_type="scsi"),
+                    VMDisk(
+                        label="d1",
+                        capacity_gb=80,
+                        datastore_name="ds1",
+                        controller_type="scsi",
+                    ),
                 ],
                 nics=[
-                    VMNic(label="n1", network_name="VM Network", mac_address="00:50:56:01:02:03", nic_type="vmxnet3"),
+                    VMNic(
+                        label="n1",
+                        network_name="VM Network",
+                        mac_address="00:50:56:01:02:03",
+                        nic_type="vmxnet3",
+                    ),
                 ],
             ),
             firmware=None,
@@ -389,8 +475,14 @@ def scenario_partial_inventory_failure() -> FailureScenario:
             "compatible": result.compatible,
             "score": result.score,
             "issue_count": len(result.issues),
-            "issues": [{"severity": i.severity, "category": i.category, "message": i.message[:80]}
-                       for i in result.issues],
+            "issues": [
+                {
+                    "severity": i.severity,
+                    "category": i.category,
+                    "message": i.message[:80],
+                }
+                for i in result.issues
+            ],
         }
         if not sc.passed:
             sc.error_type = "DegradationError"
@@ -409,31 +501,34 @@ def scenario_partial_inventory_failure() -> FailureScenario:
 # Report generation
 # ---------------------------------------------------------------------------
 
+
 def generate_report(scenarios: list[FailureScenario]) -> str:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-    all_checks = sum(len(s.details.get("issues", [])) if isinstance(s.details, dict) else 0
-                     for s in scenarios)
+    all_checks = sum(
+        len(s.details.get("issues", [])) if isinstance(s.details, dict) else 0
+        for s in scenarios
+    )
     passed = sum(1 for s in scenarios if s.passed)
     failed = len(scenarios) - passed
 
     lines = [
-        f"# Recovery Validation Report",
-        f"",
+        "# Recovery Validation Report",
+        "",
         f"> Generated: {now}",
         f"> Result: **{passed}/{len(scenarios)} scenarios passed**",
-        f"",
-        f"## Summary",
-        f"",
-        f"| Status | Count |",
-        f"|--------|:-----:|",
+        "",
+        "## Summary",
+        "",
+        "| Status | Count |",
+        "|--------|:-----:|",
         f"| Passed | {passed} |",
         f"| Failed | {failed} |",
         f"| Total  | {len(scenarios)} |",
-        f"",
-        f"## Scenario Results",
-        f"",
-        f"| Scenario | Status | Duration | Recovered | Recovery Time | Detail |",
-        f"|----------|:------:|:--------:|:---------:|:-------------:|--------|",
+        "",
+        "## Scenario Results",
+        "",
+        "| Scenario | Status | Duration | Recovered | Recovery Time | Detail |",
+        "|----------|:------:|:--------:|:---------:|:-------------:|--------|",
     ]
 
     for s in scenarios:
@@ -443,15 +538,19 @@ def generate_report(scenarios: list[FailureScenario]) -> str:
         rt = f"{s.recovery_time_ms:.0f}ms" if s.recovery_time_ms > 0 else "-"
         detail = s.error_message[:100] if s.error_message else s.description[:100]
         detail_escaped = detail.replace("|", "\\|")
-        lines.append(f"| {s.name} | {status} | {dur} | {rec} | {rt} | {detail_escaped} |")
+        lines.append(
+            f"| {s.name} | {status} | {dur} | {rec} | {rt} | {detail_escaped} |"
+        )
 
-    lines.extend([
-        f"",
-        f"## Failure Handling Matrix",
-        f"",
-        f"| Scenario | Graceful Degradation | Retry Verified | Reconnect Verified | Crash Protection |",
-        f"|----------|:--------------------:|:--------------:|:------------------:|:----------------:|",
-    ])
+    lines.extend(
+        [
+            "",
+            "## Failure Handling Matrix",
+            "",
+            "| Scenario | Graceful Degradation | Retry Verified | Reconnect Verified | Crash Protection |",
+            "|----------|:--------------------:|:--------------:|:------------------:|:----------------:|",
+        ]
+    )
 
     for s in scenarios:
         gd = "✅" if s.passed else "❌"
@@ -460,23 +559,27 @@ def generate_report(scenarios: list[FailureScenario]) -> str:
         cp = "✅" if s.passed else "❌"
         lines.append(f"| {s.name} | {gd} | {retry} | {rc} | {cp} |")
 
-    lines.extend([
-        f"",
-        f"## Detailed Failure Information",
-        f"",
-    ])
+    lines.extend(
+        [
+            "",
+            "## Detailed Failure Information",
+            "",
+        ]
+    )
 
     for s in scenarios:
         lines.append(f"### {s.name}")
-        lines.append(f"")
+        lines.append("")
         lines.append(f"- **Description**: {s.description}")
         lines.append(f"- **Passed**: {s.passed}")
         if s.error_type and s.error_type != "skipped":
             lines.append(f"- **Error Type**: {s.error_type}")
             lines.append(f"- **Error Message**: {s.error_message}")
         if s.details:
-            lines.append(f"- **Details**: `{json.dumps({k: v for k, v in s.details.items() if k != 'issues'}, default=str)}`")
-        lines.append(f"")
+            lines.append(
+                f"- **Details**: `{json.dumps({k: v for k, v in s.details.items() if k != 'issues'}, default=str)}`"
+            )
+        lines.append("")
 
     lines.append("---")
     lines.append("*Report generated by recovery_validation.py*")
@@ -497,13 +600,18 @@ def generate_json(scenarios: list[FailureScenario]) -> dict:
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Recovery Validation Harness")
     parser.add_argument("--json", action="store_true", help="Export JSON results")
-    parser.add_argument("--scenario", type=str, default=None,
-                        help="Comma-separated scenario names to run (default: all)")
+    parser.add_argument(
+        "--scenario",
+        type=str,
+        default=None,
+        help="Comma-separated scenario names to run (default: all)",
+    )
     args = parser.parse_args()
 
     scenario_registry = {
@@ -557,7 +665,9 @@ def main():
 
     if args.json:
         json_path = output_dir / "recovery_validation.json"
-        json_path.write_text(json.dumps(generate_json(scenarios), indent=2, default=str))
+        json_path.write_text(
+            json.dumps(generate_json(scenarios), indent=2, default=str)
+        )
         print(f"  JSON:   {json_path}")
 
     if passed < len(scenarios):

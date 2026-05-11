@@ -24,17 +24,23 @@ class SecurityGroupDetail(SecurityGroupSummary):
 
 
 class SecurityGroupCreateRequest(BaseModel):
-    name: str = Field(..., min_length=1, max_length=255, description="생성할 보안그룹 이름")
+    name: str = Field(
+        ..., min_length=1, max_length=255, description="생성할 보안그룹 이름"
+    )
     description: str | None = Field(default=None, description="보안그룹에 대한 설명")
 
 
 class SecurityGroupRuleCreateRequest(BaseModel):
     direction: str = Field(..., description="방향 (ingress 또는 egress)")
     ethertype: str = Field(default="IPv4", description="이더넷 타입 (IPv4 또는 IPv6)")
-    protocol: str | None = Field(default=None, description="프로토콜 (tcp, udp, icmp 등)")
+    protocol: str | None = Field(
+        default=None, description="프로토콜 (tcp, udp, icmp 등)"
+    )
     port_range_min: int | None = Field(default=None, description="최소 포트 번호")
     port_range_max: int | None = Field(default=None, description="최대 포트 번호")
-    remote_ip_prefix: str | None = Field(default=None, description="허용할 대상 IP 대역 (CIDR)")
+    remote_ip_prefix: str | None = Field(
+        default=None, description="허용할 대상 IP 대역 (CIDR)"
+    )
 
 
 class SecurityGroupCreateResponse(BaseModel):

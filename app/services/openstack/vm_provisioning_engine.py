@@ -1,10 +1,10 @@
-"""VM Provisioning Engine — Phase 6.
+"""VM Provisioning Engine.
 
 Async-safe service for OpenStack VM lifecycle operations with timeout handling,
 state validation, structured exceptions, operation logging, and Prometheus
 instrumentation.
 
-This is NOT a VMware migration engine. This validates OpenStack VM lifecycle
+This is NOT a VMware migration engine. This manages OpenStack VM lifecycle
 operations directly through Nova APIs.
 """
 
@@ -15,16 +15,24 @@ import time
 from collections.abc import Mapping
 from typing import Any
 
-from app.clients.openstack.connection import OpenStackConnectionFactory, call_with_timeout
+from app.clients.openstack.connection import (
+    OpenStackConnectionFactory,
+    call_with_timeout,
+)
 from app.common.exceptions.base import AppException, OpenStackIntegrationException
 from app.common.metrics.custom import (
-    vm_active_count,
-    vm_create_duration,
-    vm_create_failures,
-    vm_lifecycle_operations,
+    vmw_vm_active_count,
+    vmw_vm_create_duration,
+    vmw_vm_create_failures,
+    vmw_vm_lifecycle_operations,
 )
 from app.common.utils.serializers import serialize_resource
-from app.schemas.openstack.vm_lifecycle import VMCreateRequest, VMDetail, VMOperationResponse
+from app.schemas.openstack.vm_lifecycle import (
+    VMCreateRequest,
+    VMDetail,
+    VMOperationResponse,
+)
+from app.services.core.audit_service import enqueue_audit_entry
 
 logger = logging.getLogger("vm_provisioning_engine")
 
@@ -57,7 +65,12 @@ class VMProvisioningEngine:
     async def create_vm(self, request: VMCreateRequest) -> VMDetail:
         """Create a VM and wait until it reaches ACTIVE or an error state."""
         t0 = time.monotonic()
-        logger.info("Creating VM name=%s flavor=%s image=%s", request.name, request.flavor_id, request.image_id)
+        logger.info(
+            "Creating VM name=%s flavor=%s image=%s",
+            request.name,
+            request.flavor_id,
+            request.image_id,
+        )
 
         server = None
         try:
@@ -71,29 +84,54 @@ class VMProvisioningEngine:
             if request.keypair:
                 kwargs["key_name"] = request.keypair
             if request.security_groups:
-                kwargs["security_groups"] = [{"name": sg} for sg in request.security_groups]
+                kwargs["security_groups"] = [
+                    {"name": sg} for sg in request.security_groups
+                ]
             if request.availability_zone:
                 kwargs["availability_zone"] = request.availability_zone
-            server = await self._nova_call("create_server", PROVISIONING_TIMEOUT, **kwargs)
+            server = await self._nova_call(
+                "create_server", PROVISIONING_TIMEOUT, **kwargs
+            )
 
             server_id = _get_id(server)
             logger.info("VM created id=%s, waiting for ACTIVE state", server_id)
 
-            detail = await self._wait_for_active(server_id, timeout=PROVISIONING_TIMEOUT)
-            vm_create_duration.labels(status="success").observe(time.monotonic() - t0)
-            vm_active_count.inc()
+            detail = await self._wait_for_active(
+                server_id, timeout=PROVISIONING_TIMEOUT
+            )
+            vmw_vm_create_duration.labels(status="success").observe(
+                time.monotonic() - t0
+            )
+            vmw_vm_active_count.inc()
             logger.info("VM id=%s is ACTIVE (%.1fs)", server_id, time.monotonic() - t0)
+            await enqueue_audit_entry(
+                action="vm.create",
+                resource_type="vm",
+                resource_id=server_id,
+                status="success",
+                payload={"elapsed_seconds": round(time.monotonic() - t0, 1)},
+            )
             return detail
 
         except Exception as exc:
             elapsed = time.monotonic() - t0
             error_type = type(exc).__name__
-            vm_create_duration.labels(status="failed").observe(elapsed)
-            vm_create_failures.labels(error_type=error_type).inc()
+            vmw_vm_create_duration.labels(status="failed").observe(elapsed)
+            vmw_vm_create_failures.labels(error_type=error_type).inc()
             logger.error("VM creation failed after %.1fs: %s", elapsed, exc)
             if server is not None:
                 sid = _get_id(server)
                 await self._cleanup_failed_server(sid)
+            await enqueue_audit_entry(
+                action="vm.create",
+                resource_type="vm",
+                resource_id=_get_id(server) if server else None,
+                status="failed",
+                payload={
+                    "error_type": error_type,
+                    "elapsed_seconds": round(elapsed, 1),
+                },
+            )
             raise
 
     # ------------------------------------------------------------------
@@ -116,7 +154,9 @@ class VMProvisioningEngine:
             detail = await self.get_vm(server_id)
             _validate_state(detail.status, "delete")
 
-            await self._nova_call("delete_server", LIFECYCLE_TIMEOUT, server_id, ignore_missing=True)
+            await self._nova_call(
+                "delete_server", LIFECYCLE_TIMEOUT, server_id, ignore_missing=True
+            )
 
             try:
                 await self._wait_for_deleted(server_id, timeout=60.0)
@@ -124,15 +164,47 @@ class VMProvisioningEngine:
                 pass
 
             elapsed = time.monotonic() - t0
-            vm_lifecycle_operations.labels(operation="delete", status="success").inc()
-            vm_active_count.dec()
+            vmw_vm_lifecycle_operations.labels(
+                operation="delete", status="success"
+            ).inc()
+            _ = await self.get_active_count()
             logger.info("VM id=%s deleted (%.1fs)", server_id, elapsed)
-            return VMOperationResponse(server_id=server_id, operation="delete", status="success", elapsed_seconds=elapsed)
+            await enqueue_audit_entry(
+                action="vm.delete",
+                resource_type="vm",
+                resource_id=server_id,
+                status="success",
+                payload={"elapsed_seconds": round(elapsed, 1)},
+            )
+            return VMOperationResponse(
+                server_id=server_id,
+                operation="delete",
+                status="success",
+                elapsed_seconds=elapsed,
+            )
         except Exception as exc:
             elapsed = time.monotonic() - t0
-            vm_lifecycle_operations.labels(operation="delete", status="failed").inc()
+            vmw_vm_lifecycle_operations.labels(
+                operation="delete", status="failed"
+            ).inc()
             error_type = type(exc).__name__
-            logger.error("Delete VM id=%s failed after %.1fs: %s (%s)", server_id, elapsed, exc, error_type)
+            logger.error(
+                "Delete VM id=%s failed after %.1fs: %s (%s)",
+                server_id,
+                elapsed,
+                exc,
+                error_type,
+            )
+            await enqueue_audit_entry(
+                action="vm.delete",
+                resource_type="vm",
+                resource_id=server_id,
+                status="failed",
+                payload={
+                    "error_type": error_type,
+                    "elapsed_seconds": round(elapsed, 1),
+                },
+            )
             raise
 
     # ------------------------------------------------------------------
@@ -142,7 +214,11 @@ class VMProvisioningEngine:
     async def get_vm(self, server_id: str) -> VMDetail:
         server = await self._nova_call("get_server", LIFECYCLE_TIMEOUT, server_id)
         if not server:
-            raise AppException(message="Server not found", status_code=404, error_code="server_not_found")
+            raise AppException(
+                message="Server not found",
+                status_code=404,
+                error_code="server_not_found",
+            )
         return _serialize_vm(server)
 
     async def list_vms(self) -> list[VMDetail]:
@@ -152,14 +228,16 @@ class VMProvisioningEngine:
     async def get_active_count(self) -> int:
         servers = await self.list_vms()
         active = sum(1 for s in servers if s.status == "ACTIVE")
-        vm_active_count.set(active)
+        vmw_vm_active_count.set(active)
         return active
 
     # ------------------------------------------------------------------
     # Internals
     # ------------------------------------------------------------------
 
-    async def _lifecycle_operation(self, server_id: str, operation: str) -> VMOperationResponse:
+    async def _lifecycle_operation(
+        self, server_id: str, operation: str
+    ) -> VMOperationResponse:
         t0 = time.monotonic()
         logger.info("Operation %s on VM id=%s", operation, server_id)
         try:
@@ -169,35 +247,74 @@ class VMProvisioningEngine:
             sdk_method = _operation_to_sdk(operation)
 
             if operation == "reboot":
-                await self._nova_call(sdk_method, LIFECYCLE_TIMEOUT, server_id, reboot_type="SOFT")
+                await self._nova_call(
+                    sdk_method, LIFECYCLE_TIMEOUT, server_id, reboot_type="SOFT"
+                )
             else:
                 await self._nova_call(sdk_method, LIFECYCLE_TIMEOUT, server_id)
 
             if operation == "start":
                 await self._wait_for_active(server_id, LIFECYCLE_TIMEOUT)
+                vmw_vm_active_count.inc()
             elif operation == "stop":
                 await self._wait_for_stopped(server_id, LIFECYCLE_TIMEOUT)
+                _ = await self.get_active_count()
             elif operation == "reboot":
                 await self._wait_for_active(server_id, LIFECYCLE_TIMEOUT)
 
             elapsed = time.monotonic() - t0
-            vm_lifecycle_operations.labels(operation=operation, status="success").inc()
+            vmw_vm_lifecycle_operations.labels(
+                operation=operation, status="success"
+            ).inc()
             logger.info("VM id=%s %s succeeded (%.1fs)", server_id, operation, elapsed)
+            await enqueue_audit_entry(
+                action=f"vm.{operation}",
+                resource_type="vm",
+                resource_id=server_id,
+                status="success",
+                payload={"elapsed_seconds": round(elapsed, 1)},
+            )
             return VMOperationResponse(
-                server_id=server_id, operation=operation, status="success", elapsed_seconds=elapsed,
+                server_id=server_id,
+                operation=operation,
+                status="success",
+                elapsed_seconds=elapsed,
             )
         except Exception as exc:
             elapsed = time.monotonic() - t0
-            vm_lifecycle_operations.labels(operation=operation, status="failed").inc()
+            vmw_vm_lifecycle_operations.labels(
+                operation=operation, status="failed"
+            ).inc()
             error_type = type(exc).__name__
-            logger.error("VM id=%s %s failed after %.1fs: %s (%s)", server_id, operation, elapsed, exc, error_type)
+            logger.error(
+                "VM id=%s %s failed after %.1fs: %s (%s)",
+                server_id,
+                operation,
+                elapsed,
+                exc,
+                error_type,
+            )
+            await enqueue_audit_entry(
+                action=f"vm.{operation}",
+                resource_type="vm",
+                resource_id=server_id,
+                status="failed",
+                payload={
+                    "error_type": error_type,
+                    "elapsed_seconds": round(elapsed, 1),
+                },
+            )
             raise
 
-    async def _nova_call(self, method: str, timeout: float, *args: Any, **kwargs: Any) -> Any:
+    async def _nova_call(
+        self, method: str, timeout: float, *args: Any, **kwargs: Any
+    ) -> Any:
         conn = self.factory.create()
         sdk = getattr(conn, "compute", None)
         if sdk is None:
-            raise OpenStackIntegrationException("OpenStack compute service not available")
+            raise OpenStackIntegrationException(
+                "OpenStack compute service not available"
+            )
         fn = getattr(sdk, method, None)
         if fn is None:
             raise OpenStackIntegrationException(f"Unknown compute method: {method}")
@@ -228,7 +345,11 @@ class VMProvisioningEngine:
                     return
                 raise
             await _async_sleep(SERVER_POLL_INTERVAL)
-        logger.warning("VM id=%s did not disappear within %.1fs (may still be deleting)", server_id, timeout)
+        logger.warning(
+            "VM id=%s did not disappear within %.1fs (may still be deleting)",
+            server_id,
+            timeout,
+        )
 
     async def _wait_for_stopped(self, server_id: str, timeout: float) -> VMDetail:
         deadline = time.monotonic() + timeout
@@ -257,6 +378,7 @@ class VMProvisioningEngine:
 # Module-level helpers
 # ------------------------------------------------------------------
 
+
 def _validate_state(current_status: str, operation: str) -> None:
     allowed = VALID_STATE_TRANSITIONS.get(operation, [])
     if current_status not in allowed:
@@ -276,7 +398,11 @@ def _operation_to_sdk(operation: str) -> str:
     }
     sdk = mapping.get(operation)
     if sdk is None:
-        raise AppException(message=f"Unsupported operation: {operation}", status_code=400, error_code="invalid_operation")
+        raise AppException(
+            message=f"Unsupported operation: {operation}",
+            status_code=400,
+            error_code="invalid_operation",
+        )
     return sdk
 
 
@@ -314,10 +440,25 @@ def _get_id(server: object) -> str:
 
 
 def _serialize_vm(server: object) -> VMDetail:
-    data = serialize_resource(server, ["id", "name", "status", "created", "updated", "key_name",
-                                        "availability_zone", "progress"])
+    data = serialize_resource(
+        server,
+        [
+            "id",
+            "name",
+            "status",
+            "created",
+            "updated",
+            "key_name",
+            "availability_zone",
+            "progress",
+        ],
+    )
     metadata_raw = getattr(server, "metadata", None) or {}
-    metadata = {str(k): str(v) for k, v in metadata_raw.items()} if isinstance(metadata_raw, Mapping) else {}
+    metadata = (
+        {str(k): str(v) for k, v in metadata_raw.items()}
+        if isinstance(metadata_raw, Mapping)
+        else {}
+    )
 
     # Determine power state
     power_state = None
@@ -340,4 +481,5 @@ def _serialize_vm(server: object) -> VMDetail:
 
 async def _async_sleep(seconds: float) -> None:
     import asyncio
+
     await asyncio.sleep(seconds)

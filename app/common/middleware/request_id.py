@@ -1,9 +1,9 @@
 from collections.abc import Awaitable, Callable
 from uuid import uuid4
 
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
-from starlette.middleware.base import BaseHTTPMiddleware
 from typing_extensions import override
 
 

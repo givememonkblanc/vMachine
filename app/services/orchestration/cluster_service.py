@@ -29,7 +29,11 @@ class ClusterService:
         async with SessionLocal() as session:
             cluster = await session.get(ClusterDeployment, cluster_id)
             if not cluster:
-                raise AppException(message="Cluster not found", status_code=404, error_code="cluster_not_found")
+                raise AppException(
+                    message="Cluster not found",
+                    status_code=404,
+                    error_code="cluster_not_found",
+                )
             return self._serialize(cluster)
 
     async def create_cluster(self, payload: ClusterCreateRequest) -> ClusterSummary:
@@ -61,7 +65,11 @@ class ClusterService:
         async with SessionLocal() as session:
             cluster = await session.get(ClusterDeployment, cluster_id)
             if not cluster:
-                raise AppException(message="Cluster not found", status_code=404, error_code="cluster_not_found")
+                raise AppException(
+                    message="Cluster not found",
+                    status_code=404,
+                    error_code="cluster_not_found",
+                )
             await session.delete(cluster)
             await session.commit()
 
@@ -71,7 +79,11 @@ class ClusterService:
         async with SessionLocal() as session:
             cluster = await session.get(ClusterDeployment, cluster_id)
             if not cluster:
-                raise AppException(message="Cluster not found", status_code=404, error_code="cluster_not_found")
+                raise AppException(
+                    message="Cluster not found",
+                    status_code=404,
+                    error_code="cluster_not_found",
+                )
 
         created = 0
         for i in range(payload.instance_count):
@@ -79,16 +91,23 @@ class ClusterService:
                 server_name = f"{payload.template_name}-{i + 1}"
                 if self._compute:
                     self._compute.create_server(
-                        type("Req", (), {
-                            "name": server_name,
-                            "image_id": payload.image_id,
-                            "flavor_id": payload.flavor_id,
-                            "network_id": payload.network_id,
-                            "key_name": payload.key_name,
-                            "availability_zone": payload.availability_zone,
-                            "metadata": {"cluster_id": cluster_id, "template": payload.template_name},
-                            "wait": False,
-                        })()
+                        type(
+                            "Req",
+                            (),
+                            {
+                                "name": server_name,
+                                "image_id": payload.image_id,
+                                "flavor_id": payload.flavor_id,
+                                "network_id": payload.network_id,
+                                "key_name": payload.key_name,
+                                "availability_zone": payload.availability_zone,
+                                "metadata": {
+                                    "cluster_id": cluster_id,
+                                    "template": payload.template_name,
+                                },
+                                "wait": False,
+                            },
+                        )()
                     )
                     created += 1
             except Exception:

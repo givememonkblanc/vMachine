@@ -24,9 +24,8 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import sys
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -37,12 +36,11 @@ os.environ["APP_ENV"] = "validation"
 # Project imports
 # ---------------------------------------------------------------------------
 from app.core.config.settings import Settings
-from app.services.vmware.mapping_engine import VMwareMappingEngine
-
 
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ValidationResult:
@@ -52,12 +50,14 @@ class ValidationResult:
     detail: str = ""
     properties: dict[str, Any] = field(default_factory=dict)
 
+
 # ---------------------------------------------------------------------------
 # Utilities
 # ---------------------------------------------------------------------------
 
 try:
     from app.common.metrics.custom import vmw_openstack_api_duration
+
     _HAS_OS_METRICS = True
 except ImportError:
     _HAS_OS_METRICS = False
@@ -77,6 +77,7 @@ def _measure(label: str, fn: callable, *args, **kwargs) -> tuple[Any, float]:
 # ---------------------------------------------------------------------------
 # Mock / Standalone validation helpers (when no live OpenStack available)
 # ---------------------------------------------------------------------------
+
 
 class MockOpenStackValidator:
     """Validates mapping engine using known OpenStack catalogs."""
@@ -114,6 +115,7 @@ class MockOpenStackValidator:
         for label, cpu, ram, disk, expected in test_cases:
             try:
                 from app.schemas.vmware.inventory import VMHardware
+
                 hw = VMHardware(
                     cpu_count=cpu,
                     memory_mb=ram,
@@ -127,7 +129,9 @@ class MockOpenStackValidator:
                     cpu_dist = ((cpu - fcpus) / max(cpu, fcpus)) ** 2
                     ram_dist = ((ram - fram) / max(ram, fram)) ** 2
                     disk_dist = ((disk - fdisk) / max(disk, fdisk)) ** 2
-                    score = 1.0 - ((0.4 * cpu_dist + 0.4 * ram_dist + 0.2 * disk_dist) ** 0.5)
+                    score = 1.0 - (
+                        (0.4 * cpu_dist + 0.4 * ram_dist + 0.2 * disk_dist) ** 0.5
+                    )
                     if score > best_score:
                         best_score = score
                         best = fname
@@ -138,19 +142,28 @@ class MockOpenStackValidator:
                     vmw_openstack_api_duration.labels(
                         service="mock", operation="flavor_matching", status="success"
                     ).observe(0.001)
-                results.append(ValidationResult(
-                    f"flavor_match_{label.replace(' ', '_')}", matched, dur,
-                    f"VM({cpu}c/{ram}M/{disk}G) → Flavor: {best} (expected: {expected}, score: {best_score:.3f})",
-                    properties={
-                        "vm_cpus": cpu, "vm_ram_mb": ram, "vm_disk_gb": disk,
-                        "matched_flavor": best, "expected_flavor": expected,
-                        "similarity_score": round(best_score, 3),
-                    }
-                ))
+                results.append(
+                    ValidationResult(
+                        f"flavor_match_{label.replace(' ', '_')}",
+                        matched,
+                        dur,
+                        f"VM({cpu}c/{ram}M/{disk}G) → Flavor: {best} (expected: {expected}, score: {best_score:.3f})",
+                        properties={
+                            "vm_cpus": cpu,
+                            "vm_ram_mb": ram,
+                            "vm_disk_gb": disk,
+                            "matched_flavor": best,
+                            "expected_flavor": expected,
+                            "similarity_score": round(best_score, 3),
+                        },
+                    )
+                )
             except Exception as e:
-                results.append(ValidationResult(
-                    f"flavor_match_{label.replace(' ', '_')}", False, 0.0, str(e)
-                ))
+                results.append(
+                    ValidationResult(
+                        f"flavor_match_{label.replace(' ', '_')}", False, 0.0, str(e)
+                    )
+                )
 
         return results
 
@@ -174,17 +187,23 @@ class MockOpenStackValidator:
             success = (matched is not None) == should_match
             if _HAS_OS_METRICS:
                 vmw_openstack_api_duration.labels(
-                    service="mock", operation="network_matching", status="success" if success else "error"
+                    service="mock",
+                    operation="network_matching",
+                    status="success" if success else "error",
                 ).observe(0.001)
-            results.append(ValidationResult(
-                f"net_match_{vm_net}", success, 0.0,
-                f"VM network '{vm_net}' → '{matched}' (expected: {expected})",
-                properties={
-                    "vm_network": vm_net,
-                    "matched_network": matched,
-                    "expected_network": expected,
-                }
-            ))
+            results.append(
+                ValidationResult(
+                    f"net_match_{vm_net}",
+                    success,
+                    0.0,
+                    f"VM network '{vm_net}' → '{matched}' (expected: {expected})",
+                    properties={
+                        "vm_network": vm_net,
+                        "matched_network": matched,
+                        "expected_network": expected,
+                    },
+                )
+            )
 
         return results
 
@@ -193,29 +212,30 @@ class MockOpenStackValidator:
 # Report generation
 # ---------------------------------------------------------------------------
 
+
 def generate_report(results: list[ValidationResult]) -> str:
     now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
     passed = sum(1 for r in results if r.success)
     failed = len(results) - passed
 
     lines = [
-        f"# OpenStack Mapping Validation Report",
-        f"",
+        "# OpenStack Mapping Validation Report",
+        "",
         f"> Generated: {now}",
         f"> Result: **{passed}/{len(results)} checks passed**",
-        f"",
-        f"## Summary",
-        f"",
-        f"| Status | Count |",
-        f"|--------|:-----:|",
+        "",
+        "## Summary",
+        "",
+        "| Status | Count |",
+        "|--------|:-----:|",
         f"| Passed | {passed} |",
         f"| Failed | {failed} |",
         f"| Total  | {len(results)} |",
-        f"",
-        f"## Check Results",
-        f"",
-        f"| Check | Status | Duration | Detail |",
-        f"|-------|:------:|:--------:|--------|",
+        "",
+        "## Check Results",
+        "",
+        "| Check | Status | Duration | Detail |",
+        "|-------|:------:|:--------:|--------|",
     ]
 
     for r in results:
@@ -224,7 +244,7 @@ def generate_report(results: list[ValidationResult]) -> str:
         detail_escaped = r.detail.replace("|", "\\|")
         lines.append(f"| {r.operation} | {status} | {dur} | {detail_escaped} |")
 
-    lines.append(f"\n---\n*Report generated by validate_openstack_mapping.py*")
+    lines.append("\n---\n*Report generated by validate_openstack_mapping.py*")
     return "\n".join(lines)
 
 
@@ -251,11 +271,14 @@ def generate_json(results: list[ValidationResult]) -> dict:
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main():
     parser = argparse.ArgumentParser(description="Live OpenStack Mapping Validation")
     parser.add_argument("--json", action="store_true", help="Export JSON results")
     parser.add_argument("--quick", action="store_true", help="Quick validation only")
-    parser.add_argument("--vm-cpu", type=int, help="VM vCPU count for custom flavor test")
+    parser.add_argument(
+        "--vm-cpu", type=int, help="VM vCPU count for custom flavor test"
+    )
     parser.add_argument("--vm-ram", type=int, help="VM RAM MB for custom flavor test")
     parser.add_argument("--vm-disk", type=int, help="VM disk GB for custom flavor test")
     args = parser.parse_args()
@@ -290,7 +313,9 @@ def main():
             if score > best_score:
                 best_score = score
                 best = fname
-        print(f"  VM({args.vm_cpu}c/{args.vm_ram}M/{args.vm_disk}G) → {best} (score: {best_score:.3f})")
+        print(
+            f"  VM({args.vm_cpu}c/{args.vm_ram}M/{args.vm_disk}G) → {best} (score: {best_score:.3f})"
+        )
 
     # Summary
     print()
@@ -321,7 +346,9 @@ def main():
     try:
         settings = Settings()
         if settings.openstack_ready:
-            print("\n⚠ Live OpenStack detected. Full API validation not yet implemented.")
+            print(
+                "\n⚠ Live OpenStack detected. Full API validation not yet implemented."
+            )
             print("  The current validation uses mock catalogs.")
             print("  TODO: Extend with live Keystone/Nova/Neutron API calls.")
     except Exception:

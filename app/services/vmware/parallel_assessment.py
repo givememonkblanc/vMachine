@@ -1,12 +1,12 @@
 import asyncio
 import time
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from app.common.metrics.custom import (
     vmw_assessment_queue_depth,
-    vmw_assessment_timeouts_total,
     vmw_assessment_retries_total,
+    vmw_assessment_timeouts_total,
 )
 from app.schemas.vmware.assessment import (
     ParallelAssessmentProgress,
@@ -14,10 +14,10 @@ from app.schemas.vmware.assessment import (
     VMMappingResult,
 )
 from app.schemas.vmware.inventory import VMSummary
+from app.services.core.operation_task_service import OperationTaskService
 from app.services.vmware.compatibility import VMwareCompatibilityService
 from app.services.vmware.inventory_service import VMwareInventoryService
 from app.services.vmware.mapping_engine import VMwareMappingEngine
-from app.services.core.operation_task_service import OperationTaskService
 
 
 @dataclass
@@ -110,14 +110,18 @@ class ParallelAssessmentService:
                         duration_ms=timeout_seconds * 1000,
                     )
                 except Exception as exc:
-                    vmw_assessment_retries_total.labels(operation="evaluate_single").inc()
+                    vmw_assessment_retries_total.labels(
+                        operation="evaluate_single"
+                    ).inc()
                     try:
                         retry_start = time.perf_counter()
                         retry_result = await asyncio.wait_for(
                             self._evaluate_single(vm_id, include_mapping),
                             timeout=timeout_seconds,
                         )
-                        retry_result.duration_ms = round((time.perf_counter() - retry_start) * 1000, 2)
+                        retry_result.duration_ms = round(
+                            (time.perf_counter() - retry_start) * 1000, 2
+                        )
                         return retry_result
                     except asyncio.TimeoutError:
                         vmw_assessment_timeouts_total.inc()

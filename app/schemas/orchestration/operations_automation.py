@@ -4,7 +4,9 @@ from pydantic import BaseModel, Field
 class ScalingPolicySummary(BaseModel):
     id: str = Field(description="정책 ID")
     name: str = Field(description="정책 이름")
-    metric_name: str = Field(description="모니터링 메트릭 (예: cpu_usage, memory_usage)")
+    metric_name: str = Field(
+        description="모니터링 메트릭 (예: cpu_usage, memory_usage)"
+    )
     threshold: float = Field(description="임계값")
     comparison: str = Field(description="비교 방식 (gt: 초과, lt: 미만)")
     min_replicas: int = Field(description="최소 복제본 수")
@@ -25,7 +27,9 @@ class ScalingPolicyCreateRequest(BaseModel):
     min_replicas: int = Field(default=1, ge=1, le=100, description="최소 복제본 수")
     max_replicas: int = Field(default=10, ge=1, le=1000, description="최대 복제본 수")
     cooldown_seconds: int = Field(default=300, ge=60, description="대기 시간(초)")
-    target_resource_type: str = Field(default="deployment", description="대상 리소스 유형")
+    target_resource_type: str = Field(
+        default="deployment", description="대상 리소스 유형"
+    )
     target_resource_id: str | None = Field(default=None, description="대상 리소스 ID")
 
 
@@ -48,10 +52,14 @@ class ScheduledTaskSummary(BaseModel):
 class ScheduledTaskCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255, description="작업 이름")
     description: str | None = Field(default=None, description="작업 설명")
-    task_type: str = Field(..., description="작업 유형 (backup, health_check, cleanup, sync)")
+    task_type: str = Field(
+        ..., description="작업 유형 (backup, health_check, cleanup, sync)"
+    )
     cron_expression: str = Field(..., description="Cron 표현식 (예: 0 3 * * *)")
     target_action: str = Field(..., description="수행할 액션")
-    target_resource_type: str | None = Field(default=None, description="대상 리소스 유형")
+    target_resource_type: str | None = Field(
+        default=None, description="대상 리소스 유형"
+    )
     target_resource_id: str | None = Field(default=None, description="대상 리소스 ID")
 
 

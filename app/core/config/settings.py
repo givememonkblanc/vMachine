@@ -6,7 +6,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+    )
 
     app_name: str = "OKAstro Backend"
     app_env: str = "local"
@@ -57,6 +59,9 @@ class Settings(BaseSettings):
     cache_ttl_seconds: int = 300
 
     # Per-resource cache TTLs (seconds) for OpenStack API responses
+    # API security — if empty, lifecycle auth is disabled (development default)
+    api_key: str = ""
+
     cache_ttl_servers: int = 5
     cache_ttl_images: int = 30
     cache_ttl_networks: int = 30
@@ -74,7 +79,9 @@ class Settings(BaseSettings):
     def cors_origins(self) -> list[str]:
         if self.cors_origins_raw.strip() == "*":
             return ["*"]
-        return [item.strip() for item in self.cors_origins_raw.split(",") if item.strip()]
+        return [
+            item.strip() for item in self.cors_origins_raw.split(",") if item.strip()
+        ]
 
     @property
     def openstack_ready(self) -> bool:

@@ -20,7 +20,6 @@ from app.schemas.monitoring.monitoring import (
     ServiceHealthDetail,
 )
 
-
 # Batch metric queue — accumulates metric writes and flushes periodically
 # to avoid one DB INSERT per metric reading.
 _METRIC_QUEUE: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
@@ -41,7 +40,9 @@ async def metric_flush_worker() -> None:
     batch: list[dict[str, Any]] = []
     while True:
         try:
-            entry = await asyncio.wait_for(_METRIC_QUEUE.get(), timeout=_METRIC_FLUSH_INTERVAL)
+            entry = await asyncio.wait_for(
+                _METRIC_QUEUE.get(), timeout=_METRIC_FLUSH_INTERVAL
+            )
             if entry is None:
                 break
             batch.append(entry)
@@ -125,9 +126,7 @@ class MonitoringService:
         ]
         return MetricListResponse(items=items)
 
-    async def get_latest_metrics(
-        self, source: str | None = None
-    ) -> MetricListResponse:
+    async def get_latest_metrics(self, source: str | None = None) -> MetricListResponse:
         subquery = select(
             MetricRecord.metric_name,
             func.max(MetricRecord.recorded_at).label("max_ts"),
@@ -209,8 +208,12 @@ class MonitoringService:
                     hypervisor=source,
                     cpu_usage=cpu_r.value if cpu_r else 0.0,
                     memory_usage=mem_r.value if mem_r else 0.0,
-                    memory_total_mb=int(mem_r.labels.get("total_mb", 0)) if mem_r and mem_r.labels else 0,
-                    memory_used_mb=int(mem_r.labels.get("used_mb", 0)) if mem_r and mem_r.labels else 0,
+                    memory_total_mb=int(mem_r.labels.get("total_mb", 0))
+                    if mem_r and mem_r.labels
+                    else 0,
+                    memory_used_mb=int(mem_r.labels.get("used_mb", 0))
+                    if mem_r and mem_r.labels
+                    else 0,
                     disk_usage=disk_r.value if disk_r else 0.0,
                     running_vms=int(vm_r.value) if vm_r else 0,
                 )
@@ -293,7 +296,11 @@ class MonitoringService:
         async with SessionLocal() as session:
             record = await session.get(AlertRecord, alert_id)
             if not record:
-                raise AppException(message="Alert not found", status_code=404, error_code="alert_not_found")
+                raise AppException(
+                    message="Alert not found",
+                    status_code=404,
+                    error_code="alert_not_found",
+                )
             record.status = "resolved"
             record.resolved_at = datetime.now(timezone.utc)
             await session.commit()
@@ -340,7 +347,9 @@ class MonitoringService:
         try:
             async with SessionLocal() as session:
                 await session.execute(select(AlertRecord).limit(1))
-            services.append(ServiceHealthDetail(name="database", status="ok", latency_ms=1.2))
+            services.append(
+                ServiceHealthDetail(name="database", status="ok", latency_ms=1.2)
+            )
         except Exception:
             services.append(ServiceHealthDetail(name="database", status="down"))
 

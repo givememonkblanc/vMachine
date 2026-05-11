@@ -3,7 +3,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Response, status
 
 from app.api.deps.services import get_operation_task_service, get_tenant_service
-from app.schemas.identity.tenant import ProjectCreateRequest, ProjectListResponse, ProjectSummary
+from app.schemas.identity.tenant import (
+    ProjectCreateRequest,
+    ProjectListResponse,
+    ProjectSummary,
+)
 from app.services.core.operation_task_service import OperationTaskService
 from app.services.identity.tenant_service import TenantService
 
@@ -27,11 +31,15 @@ def get_project(
     return tenant_service.get_project(project_id)
 
 
-@router.post("/projects", response_model=ProjectSummary, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/projects", response_model=ProjectSummary, status_code=status.HTTP_201_CREATED
+)
 async def create_project(
     payload: ProjectCreateRequest,
     tenant_service: Annotated[TenantService, Depends(get_tenant_service)],
-    operation_task_service: Annotated[OperationTaskService, Depends(get_operation_task_service)],
+    operation_task_service: Annotated[
+        OperationTaskService, Depends(get_operation_task_service)
+    ],
 ) -> ProjectSummary:
     """새로운 프로젝트(테넌트) 생성"""
     task = await operation_task_service.create_task(
@@ -43,10 +51,14 @@ async def create_project(
 
     try:
         project = tenant_service.create_project(payload)
-        _ = await operation_task_service.update_task(task.id, state="succeeded", target_id=project.id)
+        _ = await operation_task_service.update_task(
+            task.id, state="succeeded", target_id=project.id
+        )
         return project.model_copy(update={"operation_task_id": task.id})
     except Exception as exc:
-        _ = await operation_task_service.update_task(task.id, state="failed", error_message=str(exc))
+        _ = await operation_task_service.update_task(
+            task.id, state="failed", error_message=str(exc)
+        )
         raise
 
 
@@ -54,7 +66,9 @@ async def create_project(
 async def delete_project(
     project_id: str,
     tenant_service: Annotated[TenantService, Depends(get_tenant_service)],
-    operation_task_service: Annotated[OperationTaskService, Depends(get_operation_task_service)],
+    operation_task_service: Annotated[
+        OperationTaskService, Depends(get_operation_task_service)
+    ],
 ) -> Response:
     """프로젝트(테넌트) 영구 삭제"""
     task = await operation_task_service.create_task(
@@ -66,9 +80,13 @@ async def delete_project(
 
     try:
         tenant_service.delete_project(project_id)
-        _ = await operation_task_service.update_task(task.id, state="succeeded", target_id=project_id)
+        _ = await operation_task_service.update_task(
+            task.id, state="succeeded", target_id=project_id
+        )
     except Exception as exc:
-        _ = await operation_task_service.update_task(task.id, state="failed", target_id=project_id, error_message=str(exc))
+        _ = await operation_task_service.update_task(
+            task.id, state="failed", target_id=project_id, error_message=str(exc)
+        )
         raise
 
     response = Response(status_code=status.HTTP_204_NO_CONTENT)

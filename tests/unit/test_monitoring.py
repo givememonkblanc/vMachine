@@ -23,14 +23,44 @@ def client() -> TestClient:
 
 @pytest.fixture
 def mock_svc() -> MagicMock:
-    svc = MagicMock(spec=["query_metrics", "get_latest_metrics", "get_hypervisor_usage", "get_project_usage", "list_alerts", "resolve_alert", "get_dashboard_summary", "record_metric"])
+    svc = MagicMock(
+        spec=[
+            "query_metrics",
+            "get_latest_metrics",
+            "get_hypervisor_usage",
+            "get_project_usage",
+            "list_alerts",
+            "resolve_alert",
+            "get_dashboard_summary",
+            "record_metric",
+        ]
+    )
     svc.query_metrics = AsyncMock(return_value=MetricListResponse(items=[]))
     svc.get_latest_metrics = AsyncMock(return_value=MetricListResponse(items=[]))
     svc.get_hypervisor_usage = AsyncMock(return_value=[])
     svc.get_project_usage = AsyncMock(return_value=[])
     svc.list_alerts = AsyncMock(return_value=AlertListResponse(items=[]))
-    svc.resolve_alert = AsyncMock(return_value=AlertRecordSummary(id="alert-1", severity="warning", title="Test Alert", source="test", status="resolved"))
-    svc.get_dashboard_summary = AsyncMock(return_value=DashboardSummary(total_instances=5, active_instances=3, total_hypervisors=2, total_networks=3, total_volumes=4, active_alerts=1, total_storage_gb=100, used_storage_gb=40))
+    svc.resolve_alert = AsyncMock(
+        return_value=AlertRecordSummary(
+            id="alert-1",
+            severity="warning",
+            title="Test Alert",
+            source="test",
+            status="resolved",
+        )
+    )
+    svc.get_dashboard_summary = AsyncMock(
+        return_value=DashboardSummary(
+            total_instances=5,
+            active_instances=3,
+            total_hypervisors=2,
+            total_networks=3,
+            total_volumes=4,
+            active_alerts=1,
+            total_storage_gb=100,
+            used_storage_gb=40,
+        )
+    )
     svc.record_metric = AsyncMock(return_value=None)
     return svc
 
@@ -57,7 +87,15 @@ def test_get_latest_metrics(client: TestClient, mock_svc: MagicMock) -> None:
 def test_get_hypervisor_usage(client: TestClient, mock_svc: MagicMock) -> None:
     mock_svc.get_hypervisor_usage = AsyncMock(
         return_value=[
-            HypervisorUsage(hypervisor="hv-1", cpu_usage=45.0, memory_usage=60.0, memory_total_mb=65536, memory_used_mb=39321, disk_usage=50.0, running_vms=3)
+            HypervisorUsage(
+                hypervisor="hv-1",
+                cpu_usage=45.0,
+                memory_usage=60.0,
+                memory_total_mb=65536,
+                memory_used_mb=39321,
+                disk_usage=50.0,
+                running_vms=3,
+            )
         ]
     )
     app.dependency_overrides[get_monitoring_service] = lambda: mock_svc
@@ -75,7 +113,13 @@ def test_get_hypervisor_usage(client: TestClient, mock_svc: MagicMock) -> None:
 def test_get_project_usage(client: TestClient, mock_svc: MagicMock) -> None:
     mock_svc.get_project_usage = AsyncMock(
         return_value=[
-            ProjectUsage(project_id="proj-1", instance_count=3, total_vcpus=6, total_ram_mb=8192, total_disk_gb=100)
+            ProjectUsage(
+                project_id="proj-1",
+                instance_count=3,
+                total_vcpus=6,
+                total_ram_mb=8192,
+                total_disk_gb=100,
+            )
         ]
     )
     app.dependency_overrides[get_monitoring_service] = lambda: mock_svc

@@ -1,10 +1,11 @@
-import io
-import pytest
 from unittest.mock import AsyncMock, MagicMock, mock_open, patch
-from app.modules.migration.manager import MigrationManager
-from app.clients.vmware.connection import VMwareClientFactory
+
+import pytest
+
 from app.clients.openstack.connection import OpenStackConnectionFactory
+from app.clients.vmware.connection import VMwareClientFactory
 from app.models.migration_task import MigrationTask
+from app.modules.migration.manager import MigrationManager
 
 
 @pytest.mark.asyncio
@@ -55,7 +56,7 @@ async def test_execute_vmware_migration():
             task_id="task-123",
             vm_name="test-vm",
             target_flavor="m1.small",
-            target_network="public"
+            target_network="public",
         )
 
     # Verify state changes
@@ -78,5 +79,5 @@ async def test_execute_vmware_migration():
         name="migrated-test-vm",
         image_id="image-123",
         flavor_id="flavor-123",
-        networks=[{"uuid": "net-123"}]
+        networks=[{"uuid": "net-123"}],
     )

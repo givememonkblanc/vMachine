@@ -27,14 +27,24 @@ class ServerCreateRequest(BaseModel):
     image_id: str = Field(..., description="사용할 이미지 UUID")
     flavor_id: str = Field(..., description="사용할 Flavor UUID 또는 이름")
     network_id: str = Field(..., description="연결할 네트워크 UUID")
-    key_name: str | None = Field(default=None, description="접속에 사용할 SSH Keypair 이름")
-    availability_zone: str | None = Field(default=None, description="배포할 가용 영역 (AZ)")
-    metadata: dict[str, str] = Field(default_factory=dict, description="서버에 부여할 메타데이터 (키-값 쌍)")
-    wait: bool = Field(default=False, description="서버가 Active 상태가 될 때까지 응답 대기 여부")
+    key_name: str | None = Field(
+        default=None, description="접속에 사용할 SSH Keypair 이름"
+    )
+    availability_zone: str | None = Field(
+        default=None, description="배포할 가용 영역 (AZ)"
+    )
+    metadata: dict[str, str] = Field(
+        default_factory=dict, description="서버에 부여할 메타데이터 (키-값 쌍)"
+    )
+    wait: bool = Field(
+        default=False, description="서버가 Active 상태가 될 때까지 응답 대기 여부"
+    )
 
 
 class ServerActionRequest(BaseModel):
-    action: Literal["start", "stop", "reboot"] = Field(..., description="수행할 액션 (start, stop, reboot 중 하나)")
+    action: Literal["start", "stop", "reboot"] = Field(
+        ..., description="수행할 액션 (start, stop, reboot 중 하나)"
+    )
 
 
 class VolumeAttachRequest(BaseModel):
@@ -46,7 +56,9 @@ class ServerResizeRequest(BaseModel):
 
 
 class ServerImageCreateRequest(BaseModel):
-    name: str = Field(..., min_length=1, max_length=255, description="생성할 스냅샷 이미지의 이름")
+    name: str = Field(
+        ..., min_length=1, max_length=255, description="생성할 스냅샷 이미지의 이름"
+    )
 
 
 class ServerImageCreateResponse(BaseModel):
@@ -64,7 +76,9 @@ class ServerActionResponse(BaseModel):
 
 
 class ServerResizeActionRequest(BaseModel):
-    action: Literal["confirm", "revert"] = Field(..., description="Resize 적용(confirm) 또는 취소(revert)")
+    action: Literal["confirm", "revert"] = Field(
+        ..., description="Resize 적용(confirm) 또는 취소(revert)"
+    )
 
 
 class ServerListResponse(BaseModel):

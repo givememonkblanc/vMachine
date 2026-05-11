@@ -27,10 +27,16 @@ class OperationsService:
         async with SessionLocal() as session:
             policy = await session.get(AutoScalingPolicy, policy_id)
             if not policy:
-                raise AppException(message="Scaling policy not found", status_code=404, error_code="scaling_policy_not_found")
+                raise AppException(
+                    message="Scaling policy not found",
+                    status_code=404,
+                    error_code="scaling_policy_not_found",
+                )
             return self._serialize_policy(policy)
 
-    async def create_scaling_policy(self, payload: ScalingPolicyCreateRequest) -> ScalingPolicySummary:
+    async def create_scaling_policy(
+        self, payload: ScalingPolicyCreateRequest
+    ) -> ScalingPolicySummary:
         async with SessionLocal() as session:
             policy = AutoScalingPolicy(
                 name=payload.name,
@@ -53,7 +59,11 @@ class OperationsService:
         async with SessionLocal() as session:
             policy = await session.get(AutoScalingPolicy, policy_id)
             if not policy:
-                raise AppException(message="Scaling policy not found", status_code=404, error_code="scaling_policy_not_found")
+                raise AppException(
+                    message="Scaling policy not found",
+                    status_code=404,
+                    error_code="scaling_policy_not_found",
+                )
             await session.delete(policy)
             await session.commit()
 
@@ -69,10 +79,16 @@ class OperationsService:
         async with SessionLocal() as session:
             task = await session.get(ScheduledTask, task_id)
             if not task:
-                raise AppException(message="Scheduled task not found", status_code=404, error_code="scheduled_task_not_found")
+                raise AppException(
+                    message="Scheduled task not found",
+                    status_code=404,
+                    error_code="scheduled_task_not_found",
+                )
             return self._serialize_task(task)
 
-    async def create_scheduled_task(self, payload: ScheduledTaskCreateRequest) -> ScheduledTaskSummary:
+    async def create_scheduled_task(
+        self, payload: ScheduledTaskCreateRequest
+    ) -> ScheduledTaskSummary:
         async with SessionLocal() as session:
             task = ScheduledTask(
                 name=payload.name,
@@ -92,7 +108,11 @@ class OperationsService:
         async with SessionLocal() as session:
             task = await session.get(ScheduledTask, task_id)
             if not task:
-                raise AppException(message="Scheduled task not found", status_code=404, error_code="scheduled_task_not_found")
+                raise AppException(
+                    message="Scheduled task not found",
+                    status_code=404,
+                    error_code="scheduled_task_not_found",
+                )
             await session.delete(task)
             await session.commit()
 

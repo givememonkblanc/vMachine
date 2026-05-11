@@ -14,8 +14,12 @@ class ClusterSummary(BaseModel):
 
 class ClusterCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255, description="클러스터 이름")
-    description: str | None = Field(default=None, max_length=2000, description="클러스터 설명")
-    cluster_type: str = Field(default="compute", description="클러스터 유형 (compute, storage, container)")
+    description: str | None = Field(
+        default=None, max_length=2000, description="클러스터 설명"
+    )
+    cluster_type: str = Field(
+        default="compute", description="클러스터 유형 (compute, storage, container)"
+    )
     node_count: int = Field(default=0, ge=0, description="초기 노드 수")
     metadata: dict[str, str] = Field(default_factory=dict, description="메타데이터")
 
@@ -25,7 +29,9 @@ class ClusterListResponse(BaseModel):
 
 
 class BatchDeployRequest(BaseModel):
-    template_name: str = Field(..., min_length=1, max_length=255, description="배포 템플릿 이름")
+    template_name: str = Field(
+        ..., min_length=1, max_length=255, description="배포 템플릿 이름"
+    )
     instance_count: int = Field(..., ge=1, le=100, description="배포할 인스턴스 수")
     image_id: str = Field(..., description="사용할 이미지 UUID")
     flavor_id: str = Field(..., description="사용할 Flavor UUID")
@@ -57,9 +63,13 @@ class MigrationTaskSummary(BaseModel):
 
 
 class MigrationCreateRequest(BaseModel):
-    migration_type: str = Field(..., description="마이그레이션 유형 (cold, live, vmware)")
+    migration_type: str = Field(
+        ..., description="마이그레이션 유형 (cold, live, vmware)"
+    )
     source_ref: str = Field(..., description="소스 서버/VM 참조")
-    destination_ref: str | None = Field(default=None, description="대상 호스트/클러스터 참조")
+    destination_ref: str | None = Field(
+        default=None, description="대상 호스트/클러스터 참조"
+    )
     resource_type: str = Field(default="server", description="리소스 유형")
     resource_id: str | None = Field(default=None, description="리소스 ID")
 

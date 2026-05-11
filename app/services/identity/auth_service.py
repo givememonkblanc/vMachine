@@ -28,7 +28,9 @@ class AuthService:
         try:
             authenticated = conn.authorize()
         except Exception as exc:
-            raise OpenStackIntegrationException(f"OpenStack authorization failed: {exc}") from exc
+            raise OpenStackIntegrationException(
+                f"OpenStack authorization failed: {exc}"
+            ) from exc
 
         if not authenticated:
             raise OpenStackIntegrationException("OpenStack authorization failed")
@@ -56,13 +58,27 @@ class AuthService:
             items = [
                 OpenStackServiceEndpoint(
                     service_type=service_type,
-                    url=self._get_endpoint_url(session, service_type, settings.openstack_interface, settings.openstack_region_name),
+                    url=self._get_endpoint_url(
+                        session,
+                        service_type,
+                        settings.openstack_interface,
+                        settings.openstack_region_name,
+                    ),
                 )
-                for service_type in ["identity", "image", "compute", "network", "volumev3", "placement"]
+                for service_type in [
+                    "identity",
+                    "image",
+                    "compute",
+                    "network",
+                    "volumev3",
+                    "placement",
+                ]
             ]
             return OpenStackServiceCatalogResponse(items=items)
         except Exception as exc:
-            raise OpenStackIntegrationException(f"Failed to load OpenStack service catalog: {exc}") from exc
+            raise OpenStackIntegrationException(
+                f"Failed to load OpenStack service catalog: {exc}"
+            ) from exc
 
     def _get_endpoint_url(
         self,

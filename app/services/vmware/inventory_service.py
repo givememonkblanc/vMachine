@@ -62,7 +62,9 @@ class VMwareInventoryService:
                 return vm
         return None
 
-    def sync_inventory(self, operation_task_id: str | None = None) -> InventorySyncResponse:
+    def sync_inventory(
+        self, operation_task_id: str | None = None
+    ) -> InventorySyncResponse:
         vms = self.factory.list_vms()
         datastores = self.factory.list_datastores()
         networks = self.factory.list_networks()
@@ -78,12 +80,16 @@ class VMwareInventoryService:
 
         for ds in datastores:
             detail = self.factory.get_datastore_detail(ds)
-            self._upsert_snapshot("vmware_datastore", ds.id, detail.get("name", ""), detail)
+            self._upsert_snapshot(
+                "vmware_datastore", ds.id, detail.get("name", ""), detail
+            )
             synced_ds += 1
 
         for net in networks:
             detail = self.factory.get_network_detail(net)
-            self._upsert_snapshot("vmware_network", net.id, detail.get("name", ""), detail)
+            self._upsert_snapshot(
+                "vmware_network", net.id, detail.get("name", ""), detail
+            )
             synced_net += 1
 
         # Invalidate in-memory caches so next read picks up fresh data
@@ -98,12 +104,19 @@ class VMwareInventoryService:
             operation_task_id=operation_task_id,
         )
 
-    def _upsert_snapshot(self, resource_type: str, external_id: str, resource_name: str, raw_data: dict[str, Any]) -> None:
+    def _upsert_snapshot(
+        self,
+        resource_type: str,
+        external_id: str,
+        resource_name: str,
+        raw_data: dict[str, Any],
+    ) -> None:
         import asyncio
 
         async def _do_upsert():
             async with SessionLocal() as session:
                 from sqlalchemy import select
+
                 stmt = select(ResourceSnapshot).where(
                     ResourceSnapshot.resource_type == resource_type,
                     ResourceSnapshot.external_id == external_id,
@@ -201,7 +214,9 @@ class VMwareInventoryService:
             "type": str(getattr(summary, "type", "")) if summary else "",
             "capacity_gb": round(capacity / (1024**3), 2) if capacity else 0.0,
             "free_gb": round(free / (1024**3), 2) if free else 0.0,
-            "accessible": bool(getattr(summary, "accessible", True)) if summary else True,
+            "accessible": bool(getattr(summary, "accessible", True))
+            if summary
+            else True,
             "maintenance_mode": str(getattr(ds, "overallStatus", "normal")),
         }
 

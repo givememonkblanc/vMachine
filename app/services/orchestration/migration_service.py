@@ -36,10 +36,16 @@ class MigrationService:
         async with SessionLocal() as session:
             task = await session.get(MigrationTask, migration_id)
             if not task:
-                raise AppException(message="Migration task not found", status_code=404, error_code="migration_not_found")
+                raise AppException(
+                    message="Migration task not found",
+                    status_code=404,
+                    error_code="migration_not_found",
+                )
             return self._serialize(task)
 
-    async def create_migration(self, payload: MigrationCreateRequest) -> MigrationTaskSummary:
+    async def create_migration(
+        self, payload: MigrationCreateRequest
+    ) -> MigrationTaskSummary:
         async with SessionLocal() as session:
             task = MigrationTask(
                 migration_type=payload.migration_type,
@@ -52,11 +58,12 @@ class MigrationService:
             session.add(task)
             await session.commit()
             await session.refresh(task)
-            
+
             if payload.migration_type == "vmware_to_openstack":
                 from app.worker import get_redis_pool
+
                 redis_pool = await get_redis_pool()
-                
+
                 target_flavor = "default_flavor"
                 target_network = "default_network"
                 await redis_pool.enqueue_job(
@@ -64,7 +71,7 @@ class MigrationService:
                     task.id,
                     payload.source_ref or "unknown",
                     target_flavor,
-                    target_network
+                    target_network,
                 )
             return self._serialize(task)
 
@@ -74,7 +81,11 @@ class MigrationService:
         async with SessionLocal() as session:
             task = await session.get(MigrationTask, migration_id)
             if not task:
-                raise AppException(message="Migration task not found", status_code=404, error_code="migration_not_found")
+                raise AppException(
+                    message="Migration task not found",
+                    status_code=404,
+                    error_code="migration_not_found",
+                )
             task.progress = progress
             if status:
                 task.status = status

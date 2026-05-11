@@ -23,10 +23,16 @@ class StorageService:
         async with SessionLocal() as session:
             pool = await session.get(StoragePool, pool_id)
             if not pool:
-                raise AppException(message="Storage pool not found", status_code=404, error_code="storage_pool_not_found")
+                raise AppException(
+                    message="Storage pool not found",
+                    status_code=404,
+                    error_code="storage_pool_not_found",
+                )
             return self._serialize(pool)
 
-    async def create_pool(self, payload: StoragePoolCreateRequest) -> StoragePoolSummary:
+    async def create_pool(
+        self, payload: StoragePoolCreateRequest
+    ) -> StoragePoolSummary:
         async with SessionLocal() as session:
             pool = StoragePool(
                 name=payload.name,
@@ -44,7 +50,11 @@ class StorageService:
         async with SessionLocal() as session:
             pool = await session.get(StoragePool, pool_id)
             if not pool:
-                raise AppException(message="Storage pool not found", status_code=404, error_code="storage_pool_not_found")
+                raise AppException(
+                    message="Storage pool not found",
+                    status_code=404,
+                    error_code="storage_pool_not_found",
+                )
             await session.delete(pool)
             await session.commit()
 

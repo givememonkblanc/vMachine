@@ -1,8 +1,10 @@
-import pytest
 from unittest.mock import MagicMock
-from app.services.openstack.network_service import NetworkService
-from app.schemas.openstack.network import NetworkCreateRequest
+
+import pytest
+
 from app.clients.openstack.connection import OpenStackConnectionFactory
+from app.schemas.openstack.network import NetworkCreateRequest
+from app.services.openstack.network_service import NetworkService
 
 
 @pytest.fixture
@@ -26,7 +28,7 @@ def test_list_networks(mock_openstack_factory):
     mock_net.admin_state_up = True
     mock_net.shared = False
     mock_net.is_router_external = True
-    
+
     conn.network.networks.return_value = [mock_net]
 
     result = network_service.list_networks()
@@ -53,11 +55,7 @@ def test_create_network(mock_openstack_factory):
     mock_subnet.id = "new-subnet-id"
     conn.network.create_subnet.return_value = mock_subnet
 
-    payload = NetworkCreateRequest(
-        name="my-net",
-        cidr="192.168.1.0/24",
-        ip_version=4
-    )
+    payload = NetworkCreateRequest(name="my-net", cidr="192.168.1.0/24", ip_version=4)
 
     result = network_service.create_network(payload)
 

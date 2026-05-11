@@ -118,6 +118,7 @@ _backend: CacheBackend | None = None
 
 def is_redis() -> bool:
     from app.common.utils.redis_cache import RedisCache
+
     return isinstance(_backend, RedisCache)
 
 
@@ -132,10 +133,14 @@ def configure_from_settings() -> None:
         ttl = getattr(settings, f"cache_ttl_{resource}", None)
         if ttl is not None:
             DEFAULT_TTLS[resource] = ttl
-    init_cache_backend(settings.cache_backend, settings.redis_url, settings.openstack_project_name)
+    init_cache_backend(
+        settings.cache_backend, settings.redis_url, settings.openstack_project_name
+    )
 
 
-def init_cache_backend(backend: str, redis_url: str = "", project_name: str = "admin") -> None:
+def init_cache_backend(
+    backend: str, redis_url: str = "", project_name: str = "admin"
+) -> None:
     """Create the cache backend singleton.
 
     Parameters
@@ -193,8 +198,13 @@ def collect_metrics() -> dict[str, Any]:
     if _backend is not None:
         return _backend.collect_metrics()
     return {
-        "hits": {}, "misses": {}, "invalidations": {},
-        "total_hits": 0, "total_misses": 0, "total_requests": 0, "hit_ratio": 0.0,
+        "hits": {},
+        "misses": {},
+        "invalidations": {},
+        "total_hits": 0,
+        "total_misses": 0,
+        "total_requests": 0,
+        "hit_ratio": 0.0,
     }
 
 

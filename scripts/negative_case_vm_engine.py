@@ -21,13 +21,14 @@ import argparse
 import json
 import logging
 import sys
-import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
 logger = logging.getLogger("negative_case_vm_engine")
 
 
@@ -58,19 +59,37 @@ class ValidationSuiteResult:
 
 def validate_state_transitions() -> list[TestCase]:
     """Test _validate_state with valid and invalid state transitions."""
-    from app.services.openstack.vm_provisioning_engine import _validate_state, VALID_STATE_TRANSITIONS
+    from app.services.openstack.vm_provisioning_engine import (
+        VALID_STATE_TRANSITIONS,
+        _validate_state,
+    )
 
     cases: list[TestCase] = []
     valid_pairs = [
-        ("SHUTOFF", "start"), ("STOPPED", "start"), ("SUSPENDED", "start"), ("ERROR", "start"),
-        ("ACTIVE", "stop"), ("PAUSED", "stop"),
+        ("SHUTOFF", "start"),
+        ("STOPPED", "start"),
+        ("SUSPENDED", "start"),
+        ("ERROR", "start"),
+        ("ACTIVE", "stop"),
+        ("PAUSED", "stop"),
         ("ACTIVE", "reboot"),
-        ("ACTIVE", "delete"), ("SHUTOFF", "delete"), ("STOPPED", "delete"), ("ERROR", "delete"), ("SUSPENDED", "delete"),
+        ("ACTIVE", "delete"),
+        ("SHUTOFF", "delete"),
+        ("STOPPED", "delete"),
+        ("ERROR", "delete"),
+        ("SUSPENDED", "delete"),
     ]
     invalid_pairs = [
-        ("ACTIVE", "start"), ("SHUTOFF", "stop"), ("SHUTOFF", "reboot"), ("STOPPED", "reboot"),
-        ("PAUSED", "start"), ("PAUSED", "reboot"),
-        ("BUILDING", "start"), ("BUILDING", "stop"), ("BUILDING", "reboot"), ("BUILDING", "delete"),
+        ("ACTIVE", "start"),
+        ("SHUTOFF", "stop"),
+        ("SHUTOFF", "reboot"),
+        ("STOPPED", "reboot"),
+        ("PAUSED", "start"),
+        ("PAUSED", "reboot"),
+        ("BUILDING", "start"),
+        ("BUILDING", "stop"),
+        ("BUILDING", "reboot"),
+        ("BUILDING", "delete"),
     ]
 
     for state, op in valid_pairs:
@@ -89,7 +108,11 @@ def validate_state_transitions() -> list[TestCase]:
             c.error = "Expected AppException(409) but passed"
         except Exception as e:
             error_str = str(e)
-            if "409" in error_str or "invalid_state_transition" in error_str or "Cannot" in error_str:
+            if (
+                "409" in error_str
+                or "invalid_state_transition" in error_str
+                or "Cannot" in error_str
+            ):
                 c.passed = True
                 c.detail["error_code"] = "invalid_state_transition"
             else:
@@ -113,7 +136,12 @@ def validate_operation_mapping() -> list[TestCase]:
     from app.services.openstack.vm_provisioning_engine import _operation_to_sdk
 
     cases: list[TestCase] = []
-    expected = {"start": "start_server", "stop": "stop_server", "reboot": "reboot_server", "delete": "delete_server"}
+    expected = {
+        "start": "start_server",
+        "stop": "stop_server",
+        "reboot": "reboot_server",
+        "delete": "delete_server",
+    }
 
     for op, expected_sdk in expected.items():
         c = TestCase(name=f"mapping_{op}")
@@ -143,7 +171,9 @@ def validate_operation_mapping() -> list[TestCase]:
 
 def validate_extraction_helpers() -> list[TestCase]:
     """Test _extract_reference_id and _get_id helpers."""
-    from app.services.openstack.vm_provisioning_engine import _extract_reference_id, _get_id
+    from app.services.openstack.vm_provisioning_engine import (
+        _extract_reference_id,
+    )
 
     cases: list[TestCase] = []
 
@@ -155,6 +185,7 @@ def validate_extraction_helpers() -> list[TestCase]:
 
     class FakeRef:
         id = "obj-456"
+
     c = TestCase(name="extract_id_from_object")
     result = _extract_reference_id(FakeRef())
     c.passed = result == "obj-456"
@@ -178,9 +209,12 @@ def validate_extraction_helpers() -> list[TestCase]:
 
 def validate_metrics() -> list[TestCase]:
     """Verify Phase 6 metrics are registered and functional."""
-    from prometheus_client import REGISTRY
+
     from app.common.metrics.custom import (
-        vm_create_duration, vm_create_failures, vm_lifecycle_operations, vm_active_count,
+        vm_active_count,
+        vm_create_duration,
+        vm_create_failures,
+        vm_lifecycle_operations,
     )
 
     cases: list[TestCase] = []
@@ -213,9 +247,13 @@ def validate_metrics() -> list[TestCase]:
 
     c = TestCase(name="metric_inc_lifecycle")
     try:
-        before = vm_lifecycle_operations.labels(operation="start", status="success")._value.get()
+        before = vm_lifecycle_operations.labels(
+            operation="start", status="success"
+        )._value.get()
         vm_lifecycle_operations.labels(operation="start", status="success").inc()
-        after = vm_lifecycle_operations.labels(operation="start", status="success")._value.get()
+        after = vm_lifecycle_operations.labels(
+            operation="start", status="success"
+        )._value.get()
         c.passed = after == before + 1
         c.detail = {"before": before, "after": after}
     except Exception as e:
@@ -260,7 +298,8 @@ def run_all() -> ValidationSuiteResult:
     result.finished_at = datetime.now(timezone.utc).isoformat()
     if result.suites:
         result.total_duration = (
-            datetime.fromisoformat(result.finished_at) - datetime.fromisoformat(result.started_at)
+            datetime.fromisoformat(result.finished_at)
+            - datetime.fromisoformat(result.started_at)
         ).total_seconds()
     return result
 
@@ -329,21 +368,32 @@ def main():
 
     if args.json:
         json_path = output_dir / "negative_cases.json"
-        json_path.write_text(json.dumps({
-            "started_at": result.started_at,
-            "finished_at": result.finished_at,
-            "total_duration": result.total_duration,
-            "all_passed": result.all_passed,
-            "passed_count": result.passed_count,
-            "total_count": result.total_count,
-            "suites": {
-                name: [
-                    {"name": c.name, "passed": c.passed, "detail": c.detail, "error": c.error}
-                    for c in cases
-                ]
-                for name, cases in result.suites.items()
-            },
-        }, indent=2, default=str))
+        json_path.write_text(
+            json.dumps(
+                {
+                    "started_at": result.started_at,
+                    "finished_at": result.finished_at,
+                    "total_duration": result.total_duration,
+                    "all_passed": result.all_passed,
+                    "passed_count": result.passed_count,
+                    "total_count": result.total_count,
+                    "suites": {
+                        name: [
+                            {
+                                "name": c.name,
+                                "passed": c.passed,
+                                "detail": c.detail,
+                                "error": c.error,
+                            }
+                            for c in cases
+                        ]
+                        for name, cases in result.suites.items()
+                    },
+                },
+                indent=2,
+                default=str,
+            )
+        )
         logger.info("JSON written to %s", json_path)
 
     if not result.all_passed:

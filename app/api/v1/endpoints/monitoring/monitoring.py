@@ -13,8 +13,8 @@ from app.schemas.monitoring.monitoring import (
     MetricQueryParams,
     ProjectUsage,
 )
-from app.services.openstack.compute_service import ComputeService
 from app.services.monitoring.monitoring_service import MonitoringService
+from app.services.openstack.compute_service import ComputeService
 
 router = APIRouter()
 
@@ -68,7 +68,9 @@ async def list_alerts(
     limit: int = 50,
 ) -> AlertListResponse:
     """시스템 알림(Alert) 목록을 조회합니다. 상태와 심각도로 필터링 가능"""
-    return await monitoring_service.list_alerts(status=status, severity=severity, limit=limit)
+    return await monitoring_service.list_alerts(
+        status=status, severity=severity, limit=limit
+    )
 
 
 @router.post("/alerts/{alert_id}/resolve", response_model=AlertRecordSummary)
@@ -95,4 +97,6 @@ async def get_dashboard(
     compute_service: Annotated[ComputeService, Depends(get_compute_service)],
 ) -> DashboardSummary:
     """대시보드용 통합 리소스 요약 정보를 반환합니다."""
-    return await monitoring_service.get_dashboard_summary(compute_service=compute_service)
+    return await monitoring_service.get_dashboard_summary(
+        compute_service=compute_service
+    )

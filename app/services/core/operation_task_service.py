@@ -39,7 +39,11 @@ class OperationTaskService:
         async with SessionLocal() as session:
             task = await session.get(OperationTask, task_id)
             if not task:
-                raise AppException(message="Operation task not found", status_code=404, error_code="task_not_found")
+                raise AppException(
+                    message="Operation task not found",
+                    status_code=404,
+                    error_code="task_not_found",
+                )
 
             task.state = state
             if target_id is not None:
@@ -57,7 +61,11 @@ class OperationTaskService:
         async with SessionLocal() as session:
             task = await session.get(OperationTask, task_id)
             if not task:
-                raise AppException(message="Operation task not found", status_code=404, error_code="task_not_found")
+                raise AppException(
+                    message="Operation task not found",
+                    status_code=404,
+                    error_code="task_not_found",
+                )
 
         return self._serialize_task(task)
 
@@ -67,7 +75,11 @@ class OperationTaskService:
         state: str | None = None,
         target_type: str | None = None,
     ) -> list[OperationTaskSummary]:
-        query: Select[tuple[OperationTask]] = select(OperationTask).order_by(OperationTask.submitted_at.desc()).limit(limit)
+        query: Select[tuple[OperationTask]] = (
+            select(OperationTask)
+            .order_by(OperationTask.submitted_at.desc())
+            .limit(limit)
+        )
 
         if state:
             query = query.where(OperationTask.state == state)

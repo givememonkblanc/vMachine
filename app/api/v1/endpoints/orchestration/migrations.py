@@ -8,8 +8,8 @@ from app.schemas.orchestration.deployment import (
     MigrationListResponse,
     MigrationTaskSummary,
 )
-from app.services.orchestration.migration_service import MigrationService
 from app.services.core.operation_task_service import OperationTaskService
+from app.services.orchestration.migration_service import MigrationService
 
 router = APIRouter()
 
@@ -36,11 +36,15 @@ async def get_migration(
     return await migration_service.get_migration(migration_id)
 
 
-@router.post("", response_model=MigrationTaskSummary, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "", response_model=MigrationTaskSummary, status_code=status.HTTP_201_CREATED
+)
 async def create_migration(
     payload: MigrationCreateRequest,
     migration_service: Annotated[MigrationService, Depends(get_migration_service)],
-    operation_task_service: Annotated[OperationTaskService, Depends(get_operation_task_service)],
+    operation_task_service: Annotated[
+        OperationTaskService, Depends(get_operation_task_service)
+    ],
 ) -> MigrationTaskSummary:
     """새로운 마이그레이션 작업을 생성합니다. cold/live/vmware 유형 지원"""
     task = await operation_task_service.create_task(
@@ -52,10 +56,14 @@ async def create_migration(
 
     try:
         migration = await migration_service.create_migration(payload)
-        _ = await operation_task_service.update_task(task.id, state="succeeded", target_id=migration.id)
+        _ = await operation_task_service.update_task(
+            task.id, state="succeeded", target_id=migration.id
+        )
         return migration.model_copy(update={"operation_task_id": task.id})
     except Exception as exc:
-        _ = await operation_task_service.update_task(task.id, state="failed", error_message=str(exc))
+        _ = await operation_task_service.update_task(
+            task.id, state="failed", error_message=str(exc)
+        )
         raise
 
 

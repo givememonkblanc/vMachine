@@ -1,14 +1,21 @@
 from typing import Any
+
 from arq import create_pool
 from arq.connections import RedisSettings
 
-from app.core.config.settings import get_settings
-from app.modules.migration.manager import MigrationManager
 from app.clients.openstack.connection import OpenStackConnectionFactory
 from app.clients.vmware.connection import VMwareClientFactory
+from app.core.config.settings import get_settings
+from app.modules.migration.manager import MigrationManager
 
 
-async def execute_vmware_migration_task(ctx: dict[str, Any], task_id: str, vm_name: str, target_flavor: str, target_network: str) -> None:
+async def execute_vmware_migration_task(
+    ctx: dict[str, Any],
+    task_id: str,
+    vm_name: str,
+    target_flavor: str,
+    target_network: str,
+) -> None:
     settings = get_settings()
     vmware_factory = VMwareClientFactory(settings)
     os_factory = OpenStackConnectionFactory(settings)
@@ -30,9 +37,11 @@ async def health_check_task(ctx: dict[str, Any]) -> dict[str, Any]:
 async def cleanup_stale_migrations_task(ctx: dict[str, Any]) -> None:
     """Mark migrations stuck in 'in_progress' for > 1 hour as failed."""
     from datetime import datetime, timedelta, timezone
+
+    from sqlalchemy import select
+
     from app.db.session.session import SessionLocal
     from app.models.migration_task import MigrationTask
-    from sqlalchemy import select
 
     cutoff = datetime.now(timezone.utc) - timedelta(hours=1)
     async with SessionLocal() as session:
@@ -62,13 +71,17 @@ redis_settings = RedisSettings.from_dsn(settings.redis_url)
 
 
 class WorkerSettings:
-    functions = [execute_vmware_migration_task, health_check_task, cleanup_stale_migrations_task]
+    functions = [
+        execute_vmware_migration_task,
+        health_check_task,
+        cleanup_stale_migrations_task,
+    ]
     redis_settings = redis_settings
     on_startup = startup
     on_shutdown = shutdown
-    keep_result = 300        # keep results for 5 minutes
+    keep_result = 300  # keep results for 5 minutes
     keep_result_failed = 600  # keep failed results for 10 minutes
-    max_burst_jobs = 10      # max concurrency
+    max_burst_jobs = 10  # max concurrency
 
 
 async def get_redis_pool() -> Any:

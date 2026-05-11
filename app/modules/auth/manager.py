@@ -10,7 +10,9 @@ class AuthManager:
     def __init__(self, auth_service: AuthService) -> None:
         self._auth_service = auth_service
 
-    def authenticate(self, username: str, password: str, domain: str = "Default") -> dict:
+    def authenticate(
+        self, username: str, password: str, domain: str = "Default"
+    ) -> dict:
         """사용자 인증 및 세션 생성을 한 번에 수행합니다."""
         token = self._auth_service.authenticate(username, password, domain)
         return token

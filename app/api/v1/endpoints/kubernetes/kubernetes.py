@@ -16,8 +16,8 @@ from app.schemas.kubernetes.kubernetes import (
     ServiceListResponse,
     ServiceSummary,
 )
-from app.services.kubernetes.kubernetes_service import KubernetesService
 from app.services.core.operation_task_service import OperationTaskService
+from app.services.kubernetes.kubernetes_service import KubernetesService
 
 router = APIRouter()
 
@@ -43,7 +43,9 @@ def get_pod(
 async def create_pod(
     payload: PodCreateRequest,
     kubernetes_service: Annotated[KubernetesService, Depends(get_kubernetes_service)],
-    operation_task_service: Annotated[OperationTaskService, Depends(get_operation_task_service)],
+    operation_task_service: Annotated[
+        OperationTaskService, Depends(get_operation_task_service)
+    ],
 ) -> PodSummary:
     """새로운 Pod를 생성하며, 비동기 작업(Operation Task)으로 상태를 추적할 수 있음"""
     task = await operation_task_service.create_task(
@@ -55,10 +57,14 @@ async def create_pod(
 
     try:
         pod = kubernetes_service.create_pod(payload)
-        _ = await operation_task_service.update_task(task.id, state="succeeded", target_id=pod.name)
+        _ = await operation_task_service.update_task(
+            task.id, state="succeeded", target_id=pod.name
+        )
         return pod.model_copy(update={"operation_task_id": task.id})
     except Exception as exc:
-        _ = await operation_task_service.update_task(task.id, state="failed", error_message=str(exc))
+        _ = await operation_task_service.update_task(
+            task.id, state="failed", error_message=str(exc)
+        )
         raise
 
 
@@ -66,7 +72,9 @@ async def create_pod(
 async def delete_pod(
     name: str,
     kubernetes_service: Annotated[KubernetesService, Depends(get_kubernetes_service)],
-    operation_task_service: Annotated[OperationTaskService, Depends(get_operation_task_service)],
+    operation_task_service: Annotated[
+        OperationTaskService, Depends(get_operation_task_service)
+    ],
 ) -> Response:
     """Pod를 영구 삭제합니다."""
     task = await operation_task_service.create_task(
@@ -78,9 +86,13 @@ async def delete_pod(
 
     try:
         kubernetes_service.delete_pod(name)
-        _ = await operation_task_service.update_task(task.id, state="succeeded", target_id=name)
+        _ = await operation_task_service.update_task(
+            task.id, state="succeeded", target_id=name
+        )
     except Exception as exc:
-        _ = await operation_task_service.update_task(task.id, state="failed", target_id=name, error_message=str(exc))
+        _ = await operation_task_service.update_task(
+            task.id, state="failed", target_id=name, error_message=str(exc)
+        )
         raise
 
     response = Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -105,11 +117,17 @@ def get_deployment(
     return kubernetes_service.get_deployment(name)
 
 
-@router.post("/deployments", response_model=DeploymentSummary, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/deployments",
+    response_model=DeploymentSummary,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_deployment(
     payload: DeploymentCreateRequest,
     kubernetes_service: Annotated[KubernetesService, Depends(get_kubernetes_service)],
-    operation_task_service: Annotated[OperationTaskService, Depends(get_operation_task_service)],
+    operation_task_service: Annotated[
+        OperationTaskService, Depends(get_operation_task_service)
+    ],
 ) -> DeploymentSummary:
     """새로운 Deployment를 생성하며, 비동기 작업(Operation Task)으로 상태를 추적할 수 있음"""
     task = await operation_task_service.create_task(
@@ -121,10 +139,14 @@ async def create_deployment(
 
     try:
         dep = kubernetes_service.create_deployment(payload)
-        _ = await operation_task_service.update_task(task.id, state="succeeded", target_id=dep.name)
+        _ = await operation_task_service.update_task(
+            task.id, state="succeeded", target_id=dep.name
+        )
         return dep.model_copy(update={"operation_task_id": task.id})
     except Exception as exc:
-        _ = await operation_task_service.update_task(task.id, state="failed", error_message=str(exc))
+        _ = await operation_task_service.update_task(
+            task.id, state="failed", error_message=str(exc)
+        )
         raise
 
 
@@ -132,7 +154,9 @@ async def create_deployment(
 async def delete_deployment(
     name: str,
     kubernetes_service: Annotated[KubernetesService, Depends(get_kubernetes_service)],
-    operation_task_service: Annotated[OperationTaskService, Depends(get_operation_task_service)],
+    operation_task_service: Annotated[
+        OperationTaskService, Depends(get_operation_task_service)
+    ],
 ) -> Response:
     """Deployment를 영구 삭제합니다."""
     task = await operation_task_service.create_task(
@@ -144,9 +168,13 @@ async def delete_deployment(
 
     try:
         kubernetes_service.delete_deployment(name)
-        _ = await operation_task_service.update_task(task.id, state="succeeded", target_id=name)
+        _ = await operation_task_service.update_task(
+            task.id, state="succeeded", target_id=name
+        )
     except Exception as exc:
-        _ = await operation_task_service.update_task(task.id, state="failed", target_id=name, error_message=str(exc))
+        _ = await operation_task_service.update_task(
+            task.id, state="failed", target_id=name, error_message=str(exc)
+        )
         raise
 
     response = Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -159,7 +187,9 @@ async def scale_deployment(
     name: str,
     payload: DeploymentScaleRequest,
     kubernetes_service: Annotated[KubernetesService, Depends(get_kubernetes_service)],
-    operation_task_service: Annotated[OperationTaskService, Depends(get_operation_task_service)],
+    operation_task_service: Annotated[
+        OperationTaskService, Depends(get_operation_task_service)
+    ],
 ) -> DeploymentSummary:
     """Deployment의 복제본 수를 스케일 조정합니다."""
     task = await operation_task_service.create_task(
@@ -171,10 +201,14 @@ async def scale_deployment(
 
     try:
         dep = kubernetes_service.scale_deployment(name, payload)
-        _ = await operation_task_service.update_task(task.id, state="succeeded", target_id=dep.name)
+        _ = await operation_task_service.update_task(
+            task.id, state="succeeded", target_id=dep.name
+        )
         return dep.model_copy(update={"operation_task_id": task.id})
     except Exception as exc:
-        _ = await operation_task_service.update_task(task.id, state="failed", target_id=name, error_message=str(exc))
+        _ = await operation_task_service.update_task(
+            task.id, state="failed", target_id=name, error_message=str(exc)
+        )
         raise
 
 
@@ -195,11 +229,15 @@ def get_service(
     return kubernetes_service.get_service(name)
 
 
-@router.post("/services", response_model=ServiceSummary, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/services", response_model=ServiceSummary, status_code=status.HTTP_201_CREATED
+)
 async def create_service(
     payload: ServiceCreateRequest,
     kubernetes_service: Annotated[KubernetesService, Depends(get_kubernetes_service)],
-    operation_task_service: Annotated[OperationTaskService, Depends(get_operation_task_service)],
+    operation_task_service: Annotated[
+        OperationTaskService, Depends(get_operation_task_service)
+    ],
 ) -> ServiceSummary:
     """새로운 Service를 생성하며, 비동기 작업(Operation Task)으로 상태를 추적할 수 있음"""
     task = await operation_task_service.create_task(
@@ -211,10 +249,14 @@ async def create_service(
 
     try:
         svc = kubernetes_service.create_service(payload)
-        _ = await operation_task_service.update_task(task.id, state="succeeded", target_id=svc.name)
+        _ = await operation_task_service.update_task(
+            task.id, state="succeeded", target_id=svc.name
+        )
         return svc.model_copy(update={"operation_task_id": task.id})
     except Exception as exc:
-        _ = await operation_task_service.update_task(task.id, state="failed", error_message=str(exc))
+        _ = await operation_task_service.update_task(
+            task.id, state="failed", error_message=str(exc)
+        )
         raise
 
 
@@ -222,7 +264,9 @@ async def create_service(
 async def delete_service(
     name: str,
     kubernetes_service: Annotated[KubernetesService, Depends(get_kubernetes_service)],
-    operation_task_service: Annotated[OperationTaskService, Depends(get_operation_task_service)],
+    operation_task_service: Annotated[
+        OperationTaskService, Depends(get_operation_task_service)
+    ],
 ) -> Response:
     """Service를 영구 삭제합니다."""
     task = await operation_task_service.create_task(
@@ -234,9 +278,13 @@ async def delete_service(
 
     try:
         kubernetes_service.delete_service(name)
-        _ = await operation_task_service.update_task(task.id, state="succeeded", target_id=name)
+        _ = await operation_task_service.update_task(
+            task.id, state="succeeded", target_id=name
+        )
     except Exception as exc:
-        _ = await operation_task_service.update_task(task.id, state="failed", target_id=name, error_message=str(exc))
+        _ = await operation_task_service.update_task(
+            task.id, state="failed", target_id=name, error_message=str(exc)
+        )
         raise
 
     response = Response(status_code=status.HTTP_204_NO_CONTENT)

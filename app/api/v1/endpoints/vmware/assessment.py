@@ -34,13 +34,21 @@ from app.services.vmware.plan_service import VMwarePlanService
 router = APIRouter()
 
 
-@router.post("/assess", response_model=AssessmentResponse, status_code=status.HTTP_200_OK)
+@router.post(
+    "/assess", response_model=AssessmentResponse, status_code=status.HTTP_200_OK
+)
 async def assess_vms(
     vm_ids: list[str],
-    inventory_service: Annotated[VMwareInventoryService, Depends(get_vmware_inventory_service)],
-    compatibility_service: Annotated[VMwareCompatibilityService, Depends(get_vmware_compatibility_service)],
+    inventory_service: Annotated[
+        VMwareInventoryService, Depends(get_vmware_inventory_service)
+    ],
+    compatibility_service: Annotated[
+        VMwareCompatibilityService, Depends(get_vmware_compatibility_service)
+    ],
     mapping_engine: Annotated[VMwareMappingEngine, Depends(get_vmware_mapping_engine)],
-    operation_task_service: Annotated[OperationTaskService, Depends(get_operation_task_service)],
+    operation_task_service: Annotated[
+        OperationTaskService, Depends(get_operation_task_service)
+    ],
 ) -> AssessmentResponse:
     from app.schemas.vmware.assessment import AssessmentRequest
 
@@ -97,8 +105,12 @@ async def assess_vms(
 @router.post("/assess/{vm_id}/compatibility", response_model=ScoredCompatibilityResult)
 def assess_single_compatibility(
     vm_id: str,
-    inventory_service: Annotated[VMwareInventoryService, Depends(get_vmware_inventory_service)],
-    compatibility_service: Annotated[VMwareCompatibilityService, Depends(get_vmware_compatibility_service)],
+    inventory_service: Annotated[
+        VMwareInventoryService, Depends(get_vmware_inventory_service)
+    ],
+    compatibility_service: Annotated[
+        VMwareCompatibilityService, Depends(get_vmware_compatibility_service)
+    ],
 ) -> ScoredCompatibilityResult:
     vm = inventory_service.get_vm(vm_id)
     if not vm:
@@ -111,7 +123,9 @@ def assess_single_compatibility(
 @router.post("/assess/{vm_id}/mapping", response_model=VMMappingResult)
 def map_single_vm(
     vm_id: str,
-    inventory_service: Annotated[VMwareInventoryService, Depends(get_vmware_inventory_service)],
+    inventory_service: Annotated[
+        VMwareInventoryService, Depends(get_vmware_inventory_service)
+    ],
     mapping_engine: Annotated[VMwareMappingEngine, Depends(get_vmware_mapping_engine)],
 ) -> VMMappingResult:
     vm = inventory_service.get_vm(vm_id)
@@ -122,14 +136,22 @@ def map_single_vm(
     return mapping_engine.map_vm(vm)
 
 
-@router.post("/plan", response_model=MigrationPlanResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/plan", response_model=MigrationPlanResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_migration_plan(
     vm_ids: list[str],
-    inventory_service: Annotated[VMwareInventoryService, Depends(get_vmware_inventory_service)],
-    compatibility_service: Annotated[VMwareCompatibilityService, Depends(get_vmware_compatibility_service)],
+    inventory_service: Annotated[
+        VMwareInventoryService, Depends(get_vmware_inventory_service)
+    ],
+    compatibility_service: Annotated[
+        VMwareCompatibilityService, Depends(get_vmware_compatibility_service)
+    ],
     mapping_engine: Annotated[VMwareMappingEngine, Depends(get_vmware_mapping_engine)],
     plan_service: Annotated[VMwarePlanService, Depends(get_vmware_plan_service)],
-    operation_task_service: Annotated[OperationTaskService, Depends(get_operation_task_service)],
+    operation_task_service: Annotated[
+        OperationTaskService, Depends(get_operation_task_service)
+    ],
 ) -> MigrationPlanResponse:
     from app.schemas.vmware.assessment import MigrationPlanRequest
 
@@ -167,7 +189,9 @@ async def list_persisted_assessments(
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     compatible_only: bool | None = None,
-    persistence: Annotated[AssessmentPersistenceService, Depends(get_assessment_persistence_service)] = None,  # type: ignore[assignment]
+    persistence: Annotated[
+        AssessmentPersistenceService, Depends(get_assessment_persistence_service)
+    ] = None,  # type: ignore[assignment]
 ) -> list[PersistedAssessmentSummary]:
     return await persistence.list_assessments(
         limit=limit, offset=offset, compatible_only=compatible_only
@@ -177,11 +201,15 @@ async def list_persisted_assessments(
 @router.get("/assessment/{assessment_id}", response_model=PersistedAssessmentDetail)
 async def get_persisted_assessment(
     assessment_id: str,
-    persistence: Annotated[AssessmentPersistenceService, Depends(get_assessment_persistence_service)] = None,  # type: ignore[assignment]
+    persistence: Annotated[
+        AssessmentPersistenceService, Depends(get_assessment_persistence_service)
+    ] = None,  # type: ignore[assignment]
 ) -> PersistedAssessmentDetail:
     result = await persistence.get_assessment(assessment_id)
     if not result:
-        raise HTTPException(status_code=404, detail=f"Assessment '{assessment_id}' not found")
+        raise HTTPException(
+            status_code=404, detail=f"Assessment '{assessment_id}' not found"
+        )
     return result
 
 
@@ -190,7 +218,9 @@ async def list_persisted_plans(
     assessment_id: str | None = None,
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
-    persistence: Annotated[AssessmentPersistenceService, Depends(get_assessment_persistence_service)] = None,  # type: ignore[assignment]
+    persistence: Annotated[
+        AssessmentPersistenceService, Depends(get_assessment_persistence_service)
+    ] = None,  # type: ignore[assignment]
 ) -> list[PersistedPlanSummary]:
     return await persistence.list_plans(
         assessment_id=assessment_id, limit=limit, offset=offset
@@ -200,7 +230,9 @@ async def list_persisted_plans(
 @router.get("/plan/{plan_id}", response_model=PersistedPlanDetail)
 async def get_persisted_plan(
     plan_id: str,
-    persistence: Annotated[AssessmentPersistenceService, Depends(get_assessment_persistence_service)] = None,  # type: ignore[assignment]
+    persistence: Annotated[
+        AssessmentPersistenceService, Depends(get_assessment_persistence_service)
+    ] = None,  # type: ignore[assignment]
 ) -> PersistedPlanDetail:
     result = await persistence.get_plan(plan_id)
     if not result:
@@ -214,7 +246,9 @@ async def assess_vms_parallel(
     include_mapping: bool = Query(default=True),
     max_concurrency: int = Query(default=10, ge=1, le=50),
     timeout_seconds: int = Query(default=300, ge=10, le=3600),
-    parallel_service: Annotated[ParallelAssessmentService, Depends(get_parallel_assessment_service)] = None,  # type: ignore[assignment]
+    parallel_service: Annotated[
+        ParallelAssessmentService, Depends(get_parallel_assessment_service)
+    ] = None,  # type: ignore[assignment]
 ) -> ParallelAssessmentProgress:
     return await parallel_service.assess_parallel(
         vm_ids=vm_ids,
@@ -227,9 +261,13 @@ async def assess_vms_parallel(
 @router.get("/assess/parallel/{task_id}", response_model=ParallelAssessmentProgress)
 async def get_parallel_progress(
     task_id: str,
-    parallel_service: Annotated[ParallelAssessmentService, Depends(get_parallel_assessment_service)] = None,  # type: ignore[assignment]
+    parallel_service: Annotated[
+        ParallelAssessmentService, Depends(get_parallel_assessment_service)
+    ] = None,  # type: ignore[assignment]
 ) -> ParallelAssessmentProgress:
     progress = parallel_service.get_progress(task_id)
     if not progress:
-        raise HTTPException(status_code=404, detail=f"Parallel task '{task_id}' not found")
+        raise HTTPException(
+            status_code=404, detail=f"Parallel task '{task_id}' not found"
+        )
     return progress

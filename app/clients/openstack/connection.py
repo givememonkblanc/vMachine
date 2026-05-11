@@ -10,7 +10,6 @@ Key optimizations over vanilla openstacksdk:
 import asyncio
 import time
 from collections.abc import Callable
-from functools import wraps
 from importlib import import_module
 from typing import Any, Protocol, cast
 
@@ -167,9 +166,9 @@ class OpenStackConnectionFactory:
                 f"{service}.{operation} failed: {exc}"
             ) from exc
         else:
-            openstack_api_duration.labels(
-                service=service, operation=operation
-            ).observe(time.monotonic() - t0)
+            openstack_api_duration.labels(service=service, operation=operation).observe(
+                time.monotonic() - t0
+            )
         return result
 
     def invalidate(self) -> None:

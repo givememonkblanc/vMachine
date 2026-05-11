@@ -13,7 +13,9 @@ _LOG_DIR.mkdir(parents=True, exist_ok=True)
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         log_entry: dict[str, Any] = {
-            "timestamp": datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat(),
+            "timestamp": datetime.fromtimestamp(
+                record.created, tz=timezone.utc
+            ).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
@@ -33,7 +35,9 @@ def configure_logging(level: str = "INFO") -> None:
 
     console_handler = logging.StreamHandler(sys.stdout)
     console_format = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
-    console_handler.setFormatter(logging.Formatter(console_format, datefmt="%Y-%m-%d %H:%M:%S"))
+    console_handler.setFormatter(
+        logging.Formatter(console_format, datefmt="%Y-%m-%d %H:%M:%S")
+    )
     console_handler.setLevel(getattr(logging, level.upper(), logging.INFO))
     root_logger.addHandler(console_handler)
 

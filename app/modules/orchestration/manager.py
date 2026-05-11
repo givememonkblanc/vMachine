@@ -31,7 +31,9 @@ class OrchestrationManager:
             result["server"] = "created"
         return result
 
-    def teardown_full_stack(self, server_id: str | None = None, volume_ids: list[str] | None = None) -> None:
+    def teardown_full_stack(
+        self, server_id: str | None = None, volume_ids: list[str] | None = None
+    ) -> None:
         """지정된 리소스를 역순으로 정리합니다."""
         if self._compute and server_id:
             self._compute.delete_server(server_id)

@@ -20,11 +20,10 @@ from __future__ import annotations
 
 import asyncio
 import json
-import math
 import os
 import statistics
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -46,10 +45,6 @@ except ImportError:
 os.environ["APP_ENV"] = "benchmark"  # prevent side-effects
 
 from app.schemas.vmware.assessment import (
-    CompatibilityIssueDetail,
-    FlavorMatchResult,
-    NetworkMappingResult,
-    DiskMappingResult,
     ScoredCompatibilityResult,
     VMMappingResult,
 )
@@ -121,7 +116,11 @@ OS_TEMPLATES: list[dict[str, Any]] = [
     {"guest_os": "Fedora 38", "firmware": "bios"},
     {"guest_os": "Solaris 11.4", "firmware": "bios"},
     {"guest_os": "Ubuntu 20.04.6 LTS", "firmware": "efi", "secure_boot": True},
-    {"guest_os": "Windows Server 2016 Standard", "firmware": "efi", "secure_boot": True},
+    {
+        "guest_os": "Windows Server 2016 Standard",
+        "firmware": "efi",
+        "secure_boot": True,
+    },
     {"guest_os": "CentOS Stream 9", "firmware": "efi"},
     {"guest_os": "macOS 14 Sonoma", "firmware": "efi"},
     {"guest_os": None, "firmware": "bios"},
@@ -164,7 +163,9 @@ def _generate_mock_vms(count: int) -> list[VMSummary]:
                 capacity_gb=[20, 40, 80, 100, 200, 500, 1000, 2000][(i + d) % 8],
                 thin_provisioned=(i + d) % 3 != 0,
                 datastore_name=f"datastore-{(i + d) % 4 + 1}",
-                controller_type=controller_set[d % len(controller_set)] if controller_set else None,
+                controller_type=controller_set[d % len(controller_set)]
+                if controller_set
+                else None,
             )
             for d in range(n_disks)
         ]
@@ -213,8 +214,10 @@ def _generate_mock_vms(count: int) -> list[VMSummary]:
 #  Mock OpenStack factory for the mapping engine
 # ===================================================================
 
+
 class _MockOSObj:
     """Mimics the SDK objects returned by OpenStackConnectionFactory.call()."""
+
     def __init__(self, **kw: Any) -> None:
         for k, v in kw.items():
             setattr(self, k, v)
@@ -230,10 +233,7 @@ class MockOpenStackFactory:
                 for i, (name, vcpu, ram, disk) in enumerate(MOCK_FLAVORS)
             ]
         if service == "network" and resource == "networks":
-            return [
-                _MockOSObj(id=nid, name=name)
-                for name, nid in MOCK_NETWORKS
-            ]
+            return [_MockOSObj(id=nid, name=name) for name, nid in MOCK_NETWORKS]
         return []
         return []
 
@@ -241,6 +241,7 @@ class MockOpenStackFactory:
 # ===================================================================
 #  Measurement helpers
 # ===================================================================
+
 
 @dataclass
 class LatencySample:
@@ -341,9 +342,8 @@ async def _measure_async_batch(
 #  Individual benchmarks
 # ===================================================================
 
-def benchmark_compatibility(
-    vms: list[VMSummary], repeat: int = 5
-) -> LatencySample:
+
+def benchmark_compatibility(vms: list[VMSummary], repeat: int = 5) -> LatencySample:
     svc = VMwareCompatibilityService()
     sample = LatencySample("Compatibility Check")
     for _ in range(repeat):
@@ -354,11 +354,10 @@ def benchmark_compatibility(
     return sample
 
 
-def benchmark_mapping(
-    vms: list[VMSummary], repeat: int = 5
-) -> LatencySample:
+def benchmark_mapping(vms: list[VMSummary], repeat: int = 5) -> LatencySample:
     factory = MockOpenStackFactory()
     from app.services.vmware.mapping_engine import VMwareMappingEngine
+
     engine = VMwareMappingEngine(factory)
     engine._flavor_cache = None  # force cache-miss on first call
     engine._network_cache = None
@@ -372,11 +371,10 @@ def benchmark_mapping(
     return sample
 
 
-def benchmark_mapping_warm(
-    vms: list[VMSummary], repeat: int = 5
-) -> LatencySample:
+def benchmark_mapping_warm(vms: list[VMSummary], repeat: int = 5) -> LatencySample:
     factory = MockOpenStackFactory()
     from app.services.vmware.mapping_engine import VMwareMappingEngine
+
     engine = VMwareMappingEngine(factory)
     engine._flavor_cache = None
     engine._network_cache = None
@@ -391,11 +389,10 @@ def benchmark_mapping_warm(
     return sample
 
 
-def benchmark_plan_generation(
-    vms: list[VMSummary], repeat: int = 5
-) -> LatencySample:
+def benchmark_plan_generation(vms: list[VMSummary], repeat: int = 5) -> LatencySample:
     factory = MockOpenStackFactory()
     from app.services.vmware.mapping_engine import VMwareMappingEngine
+
     compat_svc = VMwareCompatibilityService()
     engine = VMwareMappingEngine(factory)
     plan_svc = VMwarePlanService()
@@ -424,6 +421,7 @@ async def benchmark_parallel_assessment(
     compat_svc = VMwareCompatibilityService()
     factory = MockOpenStackFactory()
     from app.services.vmware.mapping_engine import VMwareMappingEngine
+
     engine = VMwareMappingEngine(factory)
 
     # Build a mock inventory service that returns our pre-built VMs
@@ -435,9 +433,11 @@ async def benchmark_parallel_assessment(
 
         def list_vms(self, use_cache: bool = True) -> Any:
             from app.schemas.vmware.inventory import VMListResponse
+
             return VMListResponse(items=vms)
 
     from app.services.vmware.parallel_assessment import ParallelAssessmentService
+
     parallel_svc = ParallelAssessmentService(
         inventory_service=_MockInventory(),  # type: ignore[arg-type]
         compatibility_service=compat_svc,
@@ -566,7 +566,9 @@ def _generate_report(runs: list[BenchmarkRun]) -> str:
         n = run.vm_count
         compat = run.results.get("Compatibility Check", LatencySample(""))
         mapping_cold = run.results.get("Resource Mapping", LatencySample(""))
-        mapping_warm = run.results.get("Resource Mapping (warm cache)", LatencySample(""))
+        mapping_warm = run.results.get(
+            "Resource Mapping (warm cache)", LatencySample("")
+        )
         plan = run.results.get("Plan Generation", LatencySample(""))
         parallel = run.results.get("Parallel (concurrency=10)", LatencySample(""))
         lines.append(
@@ -632,6 +634,7 @@ def _generate_json(runs: list[BenchmarkRun]) -> dict[str, Any]:
 #  Main
 # ===================================================================
 
+
 async def main() -> None:
     import argparse
 
@@ -667,22 +670,28 @@ async def main() -> None:
         print(f"  Benchmarking compatibility ({vm_count} VMs)...")
         sample = benchmark_compatibility(vms, repeat=WARM_CACHE_ITERATIONS)
         run.results[sample.name] = sample
-        print(f"    Avg: {sample.avg_ms:.2f} ms  p50: {sample.p50_ms:.2f} ms  "
-              f"p95: {sample.p95_ms:.2f} ms  Throughput: {sample.throughput(vm_count):.1f} VM/s")
+        print(
+            f"    Avg: {sample.avg_ms:.2f} ms  p50: {sample.p50_ms:.2f} ms  "
+            f"p95: {sample.p95_ms:.2f} ms  Throughput: {sample.throughput(vm_count):.1f} VM/s"
+        )
 
         # --- Mapping (cold) ---
         print(f"  Benchmarking mapping — cold cache ({vm_count} VMs)...")
         sample = benchmark_mapping(vms, repeat=WARM_CACHE_ITERATIONS)
         run.results[sample.name] = sample
-        print(f"    Avg: {sample.avg_ms:.2f} ms  p50: {sample.p50_ms:.2f} ms  "
-              f"p95: {sample.p95_ms:.2f} ms")
+        print(
+            f"    Avg: {sample.avg_ms:.2f} ms  p50: {sample.p50_ms:.2f} ms  "
+            f"p95: {sample.p95_ms:.2f} ms"
+        )
 
         # --- Mapping (warm) ---
         print(f"  Benchmarking mapping — warm cache ({vm_count} VMs)...")
         sample = benchmark_mapping_warm(vms, repeat=WARM_CACHE_ITERATIONS)
         run.results[sample.name] = sample
-        print(f"    Avg: {sample.avg_ms:.2f} ms  p50: {sample.p50_ms:.2f} ms  "
-              f"p95: {sample.p95_ms:.2f} ms")
+        print(
+            f"    Avg: {sample.avg_ms:.2f} ms  p50: {sample.p50_ms:.2f} ms  "
+            f"p95: {sample.p95_ms:.2f} ms"
+        )
 
         # --- Plan generation ---
         print(f"  Benchmarking plan generation ({vm_count} VMs)...")
@@ -694,7 +703,9 @@ async def main() -> None:
         print(f"  Benchmarking parallel assessment ({vm_count} VMs, concurrency=10)...")
         sample = await benchmark_parallel_assessment(vms, max_concurrency=10, repeat=3)
         run.results[sample.name] = sample
-        print(f"    Avg: {sample.avg_ms:.2f} ms  Throughput: {sample.throughput(vm_count):.1f} VM/s")
+        print(
+            f"    Avg: {sample.avg_ms:.2f} ms  Throughput: {sample.throughput(vm_count):.1f} VM/s"
+        )
 
         # Memory after
         run.mem_after_mb = _get_rss_mb()

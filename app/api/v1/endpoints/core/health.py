@@ -16,7 +16,9 @@ router = APIRouter()
 def health() -> HealthResponse:
     """백엔드 서버 상태 및 구동 환경 확인"""
     settings = get_settings()
-    return HealthResponse(status="ok", service=settings.app_name, environment=settings.app_env)
+    return HealthResponse(
+        status="ok", service=settings.app_name, environment=settings.app_env
+    )
 
 
 @router.get("/health/openstack", response_model=OpenStackHealthResponse)

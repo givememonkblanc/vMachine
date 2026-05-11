@@ -146,13 +146,18 @@ class VMwareConnectionPool:
 
     def _create_new(self) -> PooledConnection:
         if not self.settings.vmware_ready:
-            raise AppException(message="VMware settings are incomplete.", status_code=500, error_code="vmware_integration_error")
+            raise AppException(
+                message="VMware settings are incomplete.",
+                status_code=500,
+                error_code="vmware_integration_error",
+            )
 
         try:
             t0 = time.time()
             context = None
             if self.settings.vmware_no_verify_ssl:
                 import ssl
+
                 context = ssl._create_unverified_context()
             si = SmartConnect(
                 host=self.settings.vmware_host,
@@ -177,7 +182,11 @@ class VMwareConnectionPool:
             return pc
         except Exception as exc:
             self.conn_failed += 1
-            raise AppException(message=f"Failed to connect to VMware: {exc}", status_code=500, error_code="vmware_integration_error") from exc
+            raise AppException(
+                message=f"Failed to connect to VMware: {exc}",
+                status_code=500,
+                error_code="vmware_integration_error",
+            ) from exc
 
     def _eject(self, pc: PooledConnection) -> None:
         with self._lock:

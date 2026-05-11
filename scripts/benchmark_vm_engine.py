@@ -27,7 +27,7 @@ import json
 import logging
 import sys
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -35,7 +35,9 @@ from typing import Any
 from app.clients.openstack.connection import OpenStackConnectionFactory
 from app.core.config.settings import get_settings
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
 logger = logging.getLogger("benchmark_vm_engine")
 
 
@@ -79,11 +81,15 @@ async def run_benchmark(args: argparse.Namespace) -> BenchmarkResult:
         logger.error("OpenStack not configured — skipping live benchmarks")
         result.all_passed = False
         result.finished_at = datetime.now(timezone.utc).isoformat()
-        result.cases.append(BenchmarkCase(
-            name="all_cases_skipped",
-            passed=False,
-            errors=["OpenStack not configured — set OPENSTACK_AUTH_URL/USERNAME/PASSWORD/etc."],
-        ))
+        result.cases.append(
+            BenchmarkCase(
+                name="all_cases_skipped",
+                passed=False,
+                errors=[
+                    "OpenStack not configured — set OPENSTACK_AUTH_URL/USERNAME/PASSWORD/etc."
+                ],
+            )
+        )
         return result
 
     from app.schemas.openstack.vm_lifecycle import VMCreateRequest
@@ -100,11 +106,13 @@ async def run_benchmark(args: argparse.Namespace) -> BenchmarkResult:
         logger.error("Cannot connect to OpenStack: %s", exc)
         result.all_passed = False
         result.finished_at = datetime.now(timezone.utc).isoformat()
-        result.cases.append(BenchmarkCase(
-            name="resource_discovery",
-            passed=False,
-            errors=[f"OpenStack connection failed: {exc}"],
-        ))
+        result.cases.append(
+            BenchmarkCase(
+                name="resource_discovery",
+                passed=False,
+                errors=[f"OpenStack connection failed: {exc}"],
+            )
+        )
         return result
 
     flavor_id = args.flavor or (flavors[0].id if flavors else None)
@@ -115,11 +123,13 @@ async def run_benchmark(args: argparse.Namespace) -> BenchmarkResult:
         logger.error("Cannot discover required OpenStack resources")
         result.all_passed = False
         result.finished_at = datetime.now(timezone.utc).isoformat()
-        result.cases.append(BenchmarkCase(
-            name="resource_discovery",
-            passed=False,
-            errors=["Failed to discover flavor/image/network"],
-        ))
+        result.cases.append(
+            BenchmarkCase(
+                name="resource_discovery",
+                passed=False,
+                errors=["Failed to discover flavor/image/network"],
+            )
+        )
         return result
 
     logger.info("Using flavor=%s image=%s network=%s", flavor_id, image_id, network_id)
@@ -140,7 +150,9 @@ async def run_benchmark(args: argparse.Namespace) -> BenchmarkResult:
         delete_times = []
         all_clean = True
         for i in range(3):
-            sub = await _benchmark_single_vm(engine, flavor_id, image_id, network_id, args, idx=i + 1)
+            sub = await _benchmark_single_vm(
+                engine, flavor_id, image_id, network_id, args, idx=i + 1
+            )
             create_times.append(sub.create_duration)
             delete_times.append(sub.delete_duration)
             if not sub.cleanup_ok:
@@ -156,8 +168,11 @@ async def run_benchmark(args: argparse.Namespace) -> BenchmarkResult:
         }
         case2.cleanup_ok = all_clean
         case2.passed = True
-        logger.info("Case 2: 3 sequential VMs — create avg=%.2fs delete avg=%.2fs",
-                     sum(create_times) / len(create_times), sum(delete_times) / len(delete_times))
+        logger.info(
+            "Case 2: 3 sequential VMs — create avg=%.2fs delete avg=%.2fs",
+            sum(create_times) / len(create_times),
+            sum(delete_times) / len(delete_times),
+        )
     except Exception as exc:
         case2.errors.append(str(exc))
         case2.passed = False
@@ -231,14 +246,19 @@ async def run_benchmark(args: argparse.Namespace) -> BenchmarkResult:
     result.finished_at = datetime.now(timezone.utc).isoformat()
     if result.cases:
         result.total_duration = (
-            datetime.fromisoformat(result.finished_at) - datetime.fromisoformat(result.started_at)
+            datetime.fromisoformat(result.finished_at)
+            - datetime.fromisoformat(result.started_at)
         ).total_seconds()
     return result
 
 
 async def _benchmark_single_vm(
-    engine, flavor_id: str, image_id: str, network_id: str,
-    args: argparse.Namespace, idx: int = 0,
+    engine,
+    flavor_id: str,
+    image_id: str,
+    network_id: str,
+    args: argparse.Namespace,
+    idx: int = 0,
 ) -> BenchmarkCase:
     case = BenchmarkCase(name=f"single_create_delete_{idx}")
     t0 = time.monotonic()
@@ -341,9 +361,24 @@ def _generate_report(result: BenchmarkResult) -> str:
 
 def main():
     parser = argparse.ArgumentParser(description="VM Engine Benchmark Harness")
-    parser.add_argument("--flavor", type=str, default=None, help="Flavor ID/name (default: first available)")
-    parser.add_argument("--image", type=str, default=None, help="Image ID/name (default: first available)")
-    parser.add_argument("--network", type=str, default=None, help="Network ID (default: first available)")
+    parser.add_argument(
+        "--flavor",
+        type=str,
+        default=None,
+        help="Flavor ID/name (default: first available)",
+    )
+    parser.add_argument(
+        "--image",
+        type=str,
+        default=None,
+        help="Image ID/name (default: first available)",
+    )
+    parser.add_argument(
+        "--network",
+        type=str,
+        default=None,
+        help="Network ID (default: first available)",
+    )
     parser.add_argument("--json", action="store_true", help="Export JSON results")
     args = parser.parse_args()
 
@@ -374,27 +409,34 @@ def main():
 
     if args.json:
         json_path = output_dir / "benchmark.json"
-        json_path.write_text(json.dumps({
-            "started_at": result.started_at,
-            "finished_at": result.finished_at,
-            "total_duration": result.total_duration,
-            "all_passed": result.all_passed,
-            "passed_count": result.passed_count,
-            "total_count": result.total_count,
-            "cases": [
+        json_path.write_text(
+            json.dumps(
                 {
-                    "name": c.name, "passed": c.passed,
-                    "duration_seconds": c.duration_seconds,
-                    "create_duration": c.create_duration,
-                    "delete_duration": c.delete_duration,
-                    "operation_durations": c.operation_durations,
-                    "errors": c.errors,
-                    "cleanup_ok": c.cleanup_ok,
-                    "detail": c.detail,
-                }
-                for c in result.cases
-            ],
-        }, indent=2, default=str))
+                    "started_at": result.started_at,
+                    "finished_at": result.finished_at,
+                    "total_duration": result.total_duration,
+                    "all_passed": result.all_passed,
+                    "passed_count": result.passed_count,
+                    "total_count": result.total_count,
+                    "cases": [
+                        {
+                            "name": c.name,
+                            "passed": c.passed,
+                            "duration_seconds": c.duration_seconds,
+                            "create_duration": c.create_duration,
+                            "delete_duration": c.delete_duration,
+                            "operation_durations": c.operation_durations,
+                            "errors": c.errors,
+                            "cleanup_ok": c.cleanup_ok,
+                            "detail": c.detail,
+                        }
+                        for c in result.cases
+                    ],
+                },
+                indent=2,
+                default=str,
+            )
+        )
         logger.info("JSON written to %s", json_path)
 
     if not result.all_passed:

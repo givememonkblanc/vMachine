@@ -14,33 +14,56 @@ class SecurityGroupService:
 
     def list_security_groups(self) -> list[SecurityGroupSummary]:
         return [
-            SecurityGroupSummary(id=sg.id, name=sg.name, description=getattr(sg, "description", ""))
+            SecurityGroupSummary(
+                id=sg.id, name=sg.name, description=getattr(sg, "description", "")
+            )
             for sg in self.factory.call("network", "security_groups")
         ]
 
     def get_security_group(self, security_group_id: str) -> SecurityGroupSummary:
         sg = self.factory.call("network", "get_security_group", security_group_id)
         if not sg:
-            raise AppException(message="Security group not found", status_code=404, error_code="security_group_not_found")
-        return SecurityGroupSummary(id=sg.id, name=sg.name, description=getattr(sg, "description", ""))
+            raise AppException(
+                message="Security group not found",
+                status_code=404,
+                error_code="security_group_not_found",
+            )
+        return SecurityGroupSummary(
+            id=sg.id, name=sg.name, description=getattr(sg, "description", "")
+        )
 
-    def create_security_group(self, payload: SecurityGroupCreateRequest) -> SecurityGroupSummary:
+    def create_security_group(
+        self, payload: SecurityGroupCreateRequest
+    ) -> SecurityGroupSummary:
         sg = self.factory.call(
-            "network", "create_security_group",
+            "network",
+            "create_security_group",
             name=payload.name,
             description=payload.description,
         )
-        return SecurityGroupSummary(id=sg.id, name=sg.name, description=getattr(sg, "description", ""))
+        return SecurityGroupSummary(
+            id=sg.id, name=sg.name, description=getattr(sg, "description", "")
+        )
 
     def delete_security_group(self, security_group_id: str) -> None:
-        deleted = self.factory.call("network", "delete_security_group", security_group_id, ignore_missing=True)
+        deleted = self.factory.call(
+            "network", "delete_security_group", security_group_id, ignore_missing=True
+        )
         if deleted is False:
-            raise AppException(message="Security group not found", status_code=404, error_code="security_group_not_found")
+            raise AppException(
+                message="Security group not found",
+                status_code=404,
+                error_code="security_group_not_found",
+            )
 
     def list_rules(self, security_group_id: str) -> list[SecurityGroupRuleSummary]:
         sg = self.factory.call("network", "get_security_group", security_group_id)
         if not sg:
-            raise AppException(message="Security group not found", status_code=404, error_code="security_group_not_found")
+            raise AppException(
+                message="Security group not found",
+                status_code=404,
+                error_code="security_group_not_found",
+            )
         return [
             SecurityGroupRuleSummary(
                 id=rule.id,
@@ -54,7 +77,9 @@ class SecurityGroupService:
             for rule in getattr(sg, "security_group_rules", [])
         ]
 
-    def create_rule(self, payload: SecurityGroupRuleCreateRequest) -> SecurityGroupRuleSummary:
+    def create_rule(
+        self, payload: SecurityGroupRuleCreateRequest
+    ) -> SecurityGroupRuleSummary:
         kwargs: dict[str, object] = {
             "direction": payload.direction,
             "protocol": payload.protocol,
@@ -79,6 +104,12 @@ class SecurityGroupService:
         )
 
     def delete_rule(self, rule_id: str) -> None:
-        deleted = self.factory.call("network", "delete_security_group_rule", rule_id, ignore_missing=True)
+        deleted = self.factory.call(
+            "network", "delete_security_group_rule", rule_id, ignore_missing=True
+        )
         if deleted is False:
-            raise AppException(message="Security group rule not found", status_code=404, error_code="rule_not_found")
+            raise AppException(
+                message="Security group rule not found",
+                status_code=404,
+                error_code="rule_not_found",
+            )

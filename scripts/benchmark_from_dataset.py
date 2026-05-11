@@ -32,13 +32,14 @@ from typing import Any
 os.environ["APP_ENV"] = "benchmark"
 
 # Project imports
-from app.schemas.vmware.assessment import ScoredCompatibilityResult, VMMappingResult
+from app.schemas.vmware.assessment import ScoredCompatibilityResult
 from app.schemas.vmware.inventory import VMDisk, VMHardware, VMNic, VMSummary
 from app.services.vmware.compatibility import VMwareCompatibilityService
 from app.services.vmware.plan_service import VMwarePlanService
 
 try:
     import psutil
+
     HAS_PSUTIL = True
 except ImportError:
     HAS_PSUTIL = False
@@ -47,6 +48,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class DatasetBenchmarkRun:
@@ -84,6 +86,7 @@ class DatasetBenchmarkRun:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _rss_mb() -> float:
     if HAS_PSUTIL:
         return psutil.Process(os.getpid()).memory_info().rss / (1024 * 1024)
@@ -95,22 +98,26 @@ def _vm_summary_from_dict(vm_dict: dict[str, Any]) -> VMSummary:
 
     disks = []
     for d in hw.get("disks", []):
-        disks.append(VMDisk(
-            label=d.get("label", ""),
-            capacity_gb=d.get("capacity_gb", 0),
-            datastore_name=d.get("datastore"),
-            controller_type=d.get("controller_type"),
-            thin_provisioned=d.get("disk_type", "thick") != "thick",
-        ))
+        disks.append(
+            VMDisk(
+                label=d.get("label", ""),
+                capacity_gb=d.get("capacity_gb", 0),
+                datastore_name=d.get("datastore"),
+                controller_type=d.get("controller_type"),
+                thin_provisioned=d.get("disk_type", "thick") != "thick",
+            )
+        )
 
     nics = []
     for n in hw.get("nics", []):
-        nics.append(VMNic(
-            label=n.get("label", ""),
-            network_name=n.get("network"),
-            mac_address=n.get("mac"),
-            nic_type=n.get("nic_type"),
-        ))
+        nics.append(
+            VMNic(
+                label=n.get("label", ""),
+                network_name=n.get("network"),
+                mac_address=n.get("mac"),
+                nic_type=n.get("nic_type"),
+            )
+        )
 
     hardware = VMHardware(
         cpu_count=hw.get("cpu_count", 0),
@@ -153,13 +160,14 @@ def _validate_dataset(inventory: dict[str, Any]) -> list[str]:
 # Benchmark functions
 # ---------------------------------------------------------------------------
 
-def benchmark_compatibility(vm_dicts: list[dict[str, Any]],
-                            repeat: int = 3) -> DatasetBenchmarkRun:
+
+def benchmark_compatibility(
+    vm_dicts: list[dict[str, Any]], repeat: int = 3
+) -> DatasetBenchmarkRun:
     svc = VMwareCompatibilityService()
     vms = [_vm_summary_from_dict(v) for v in vm_dicts]
     run = DatasetBenchmarkRun(
-        name="Compatibility Check", vm_count=len(vm_dicts),
-        source_file="dataset"
+        name="Compatibility Check", vm_count=len(vm_dicts), source_file="dataset"
     )
 
     for _ in range(repeat):
@@ -180,21 +188,23 @@ def benchmark_compatibility(vm_dicts: list[dict[str, Any]],
         for issue in result.issues:
             if not issue.compatible:
                 reason = f"{issue.severity}: {issue.category} — {issue.message[:60]}"
-                run.top_incompatibility_reasons[reason] = \
+                run.top_incompatibility_reasons[reason] = (
                     run.top_incompatibility_reasons.get(reason, 0) + 1
-        run.warning_count += len([i for i in result.issues if i.severity in ("low", "medium", "high")])
+                )
+        run.warning_count += len(
+            [i for i in result.issues if i.severity in ("low", "medium", "high")]
+        )
 
     # Sort top incompatibility reasons
     run.top_incompatibility_reasons = dict(
-        sorted(run.top_incompatibility_reasons.items(),
-               key=lambda x: -x[1])[:10]
+        sorted(run.top_incompatibility_reasons.items(), key=lambda x: -x[1])[:10]
     )
     return run
 
 
-def benchmark_mapping(vm_dicts: list[dict[str, Any]],
-                      catalog: dict[str, Any],
-                      repeat: int = 3) -> DatasetBenchmarkRun:
+def benchmark_mapping(
+    vm_dicts: list[dict[str, Any]], catalog: dict[str, Any], repeat: int = 3
+) -> DatasetBenchmarkRun:
     """Simulate mapping by computing flavor match for each VM."""
     from app.services.vmware.mapping_engine import VMwareMappingEngine
     from scripts.benchmark_vmware_assessment import MockOpenStackFactory
@@ -203,8 +213,7 @@ def benchmark_mapping(vm_dicts: list[dict[str, Any]],
     engine = VMwareMappingEngine(factory)
     vms = [_vm_summary_from_dict(v) for v in vm_dicts]
     run = DatasetBenchmarkRun(
-        name="Resource Mapping", vm_count=len(vm_dicts),
-        source_file="dataset"
+        name="Resource Mapping", vm_count=len(vm_dicts), source_file="dataset"
     )
 
     for _ in range(repeat):
@@ -226,14 +235,14 @@ def benchmark_mapping(vm_dicts: list[dict[str, Any]],
     return run
 
 
-def benchmark_plan_generation(vm_dicts: list[dict[str, Any]],
-                              repeat: int = 2) -> DatasetBenchmarkRun:
+def benchmark_plan_generation(
+    vm_dicts: list[dict[str, Any]], repeat: int = 2
+) -> DatasetBenchmarkRun:
     svc = VMwareCompatibilityService()
     plan_svc = VMwarePlanService()
     vms = [_vm_summary_from_dict(v) for v in vm_dicts]
     run = DatasetBenchmarkRun(
-        name="Plan Generation", vm_count=len(vm_dicts),
-        source_file="dataset"
+        name="Plan Generation", vm_count=len(vm_dicts), source_file="dataset"
     )
 
     for _ in range(repeat):
@@ -245,14 +254,15 @@ def benchmark_plan_generation(vm_dicts: list[dict[str, Any]],
     return run
 
 
-async def benchmark_parallel(vm_dicts: list[dict[str, Any]],
-                             concurrency: int = 10,
-                             repeat: int = 2) -> DatasetBenchmarkRun:
+async def benchmark_parallel(
+    vm_dicts: list[dict[str, Any]], concurrency: int = 10, repeat: int = 2
+) -> DatasetBenchmarkRun:
     svc = VMwareCompatibilityService()
     vms = [_vm_summary_from_dict(v) for v in vm_dicts]
     run = DatasetBenchmarkRun(
         name=f"Parallel Assessment (concurrency={concurrency})",
-        vm_count=len(vm_dicts), source_file="dataset"
+        vm_count=len(vm_dicts),
+        source_file="dataset",
     )
 
     async def _eval_one(vm: VMSummary) -> None:
@@ -276,37 +286,46 @@ async def benchmark_parallel(vm_dicts: list[dict[str, Any]],
 # Report generation
 # ---------------------------------------------------------------------------
 
-def generate_report(all_runs: list[DatasetBenchmarkRun], catalog: dict[str, Any],
-                    dataset_path: str, warnings: list[str]) -> str:
+
+def generate_report(
+    all_runs: list[DatasetBenchmarkRun],
+    catalog: dict[str, Any],
+    dataset_path: str,
+    warnings: list[str],
+) -> str:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     lines = [
-        f"# Dataset Benchmark Report",
-        f"",
+        "# Dataset Benchmark Report",
+        "",
         f"> Generated: {now}",
         f"> Dataset: {dataset_path}",
         f"> OpenStack catalog: {catalog.get('catalog', {}).get('name', 'unknown')}",
         f"> Memory: {_rss_mb():.0f} MB RSS",
-        f"",
-        f"## Validation Warnings",
+        "",
+        "## Validation Warnings",
     ]
     if warnings:
         for w in warnings:
             lines.append(f"- ⚠️ {w}")
     else:
-        lines.append(f"- ✅ No validation warnings")
+        lines.append("- ✅ No validation warnings")
 
-    lines.extend([
-        f"",
-        f"## Summary",
-        f"",
-        f"| Operation | VMs | Avg (ms) | p50 (ms) | p95 (ms) | p99 (ms) | Compatible | Incompatible | Mapping Rate |",
-        f"|-----------|:---:|:--------:|:--------:|:--------:|:--------:|:----------:|:------------:|:------------:|",
-    ])
+    lines.extend(
+        [
+            "",
+            "## Summary",
+            "",
+            "| Operation | VMs | Avg (ms) | p50 (ms) | p95 (ms) | p99 (ms) | Compatible | Incompatible | Mapping Rate |",
+            "|-----------|:---:|:--------:|:--------:|:--------:|:--------:|:----------:|:------------:|:------------:|",
+        ]
+    )
 
     for run in all_runs:
         compat_str = str(run.compatible) if run.compatible > 0 else "-"
         incompat_str = str(run.incompatible) if run.incompatible > 0 else "-"
-        map_str = f"{run.mapping_success_rate:.0f}%" if run.mapping_success_rate else "-"
+        map_str = (
+            f"{run.mapping_success_rate:.0f}%" if run.mapping_success_rate else "-"
+        )
         lines.append(
             f"| {run.name} | {run.vm_count} | {run.avg_ms:.2f} | {run.p50_ms:.2f} | "
             f"{run.p95_ms:.2f} | {run.p99_ms:.2f} | {compat_str} | {incompat_str} | {map_str} |"
@@ -315,28 +334,32 @@ def generate_report(all_runs: list[DatasetBenchmarkRun], catalog: dict[str, Any]
     # Top incompatibility reasons
     compat_runs = [r for r in all_runs if r.top_incompatibility_reasons]
     if compat_runs:
-        lines.extend([
-            f"",
-            f"## Top Incompatibility Reasons",
-            f"",
-            f"| Reason | Count |",
-            f"|--------|:-----:|",
-        ])
+        lines.extend(
+            [
+                "",
+                "## Top Incompatibility Reasons",
+                "",
+                "| Reason | Count |",
+                "|--------|:-----:|",
+            ]
+        )
         for run in compat_runs:
             for reason, count in list(run.top_incompatibility_reasons.items())[:5]:
                 lines.append(f"| {reason} | {count} |")
 
-    lines.extend([
-        f"",
-        f"## Notes",
-        f"",
-        f"- Dataset-based benchmarks include Pydantic deserialization overhead (JSON → VMSummary)",
-        f"- Mapping uses in-process Euclidean distance — no live OpenStack API calls",
-        f"- For live vCenter/OpenStack validation, use scripts/validate_vcenter.py and validate_openstack_mapping.py",
-        f"",
-        f"---",
-        f"*Report generated by benchmark_from_dataset.py*",
-    ])
+    lines.extend(
+        [
+            "",
+            "## Notes",
+            "",
+            "- Dataset-based benchmarks include Pydantic deserialization overhead (JSON → VMSummary)",
+            "- Mapping uses in-process Euclidean distance — no live OpenStack API calls",
+            "- For live vCenter/OpenStack validation, use scripts/validate_vcenter.py and validate_openstack_mapping.py",
+            "",
+            "---",
+            "*Report generated by benchmark_from_dataset.py*",
+        ]
+    )
     return "\n".join(lines)
 
 
@@ -366,15 +389,31 @@ def generate_json(all_runs: list[DatasetBenchmarkRun]) -> dict:
 # Main
 # ---------------------------------------------------------------------------
 
+
 async def main():
     parser = argparse.ArgumentParser(description="Dataset-based benchmark runner")
-    parser.add_argument("--inventory", type=str, default=None, help="Path to inventory JSON")
-    parser.add_argument("--catalog", type=str, default="benchmark_data/openstack_catalog.json",
-                        help="Path to OpenStack catalog JSON")
+    parser.add_argument(
+        "--inventory", type=str, default=None, help="Path to inventory JSON"
+    )
+    parser.add_argument(
+        "--catalog",
+        type=str,
+        default="benchmark_data/openstack_catalog.json",
+        help="Path to OpenStack catalog JSON",
+    )
     parser.add_argument("--json", action="store_true", help="Export JSON results")
     parser.add_argument("--quick", action="store_true", help="Run 10 and 100 only")
-    parser.add_argument("--all", action="store_true", help="Run all standard sizes (10,100,500,1000,5000)")
-    parser.add_argument("--concurrency", type=int, default=10, help="Concurrency level for parallel assessment (default: 10)")
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Run all standard sizes (10,100,500,1000,5000)",
+    )
+    parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=10,
+        help="Concurrency level for parallel assessment (default: 10)",
+    )
     args = parser.parse_args()
 
     # Load catalog
@@ -383,9 +422,11 @@ async def main():
         print(f"ERROR: Catalog not found: {catalog_path}")
         sys.exit(1)
     catalog = json.loads(catalog_path.read_text())
-    print(f"OpenStack catalog: {catalog['catalog']['name']} "
-          f"({catalog['summary']['flavor_count']} flavors, "
-          f"{catalog['summary']['network_count']} networks)")
+    print(
+        f"OpenStack catalog: {catalog['catalog']['name']} "
+        f"({catalog['summary']['flavor_count']} flavors, "
+        f"{catalog['summary']['network_count']} networks)"
+    )
 
     # Determine which datasets to run
     datasets: list[Path] = []
@@ -421,9 +462,11 @@ async def main():
         inventory = json.loads(ds_path.read_text())
         vms = inventory.get("vms", [])
         summary = inventory.get("summary", {})
-        print(f"  VMs: {len(vms)} (Linux: {summary.get('linux_vms', '?')}, "
-              f"Windows: {summary.get('windows_vms', '?')}, "
-              f"Unsupported OS: {summary.get('unsupported_os_vms', '?')})")
+        print(
+            f"  VMs: {len(vms)} (Linux: {summary.get('linux_vms', '?')}, "
+            f"Windows: {summary.get('windows_vms', '?')}, "
+            f"Unsupported OS: {summary.get('unsupported_os_vms', '?')})"
+        )
 
         # Validate
         warnings = _validate_dataset(inventory)
@@ -431,25 +474,29 @@ async def main():
             print(f"  ⚠️  {w}")
 
         # Compatibility
-        print(f"  → Compatibility...", end=" ", flush=True)
+        print("  → Compatibility...", end=" ", flush=True)
         run = benchmark_compatibility(vms, repeat=3)
         all_runs.append(run)
         print(f"avg={run.avg_ms:.1f}ms compatible={run.compatible}/{run.vm_count}")
 
         # Mapping
-        print(f"  → Mapping...", end=" ", flush=True)
+        print("  → Mapping...", end=" ", flush=True)
         run = benchmark_mapping(vms, catalog, repeat=3)
         all_runs.append(run)
         print(f"avg={run.avg_ms:.1f}ms success_rate={run.mapping_success_rate:.0f}%")
 
         # Plan generation
-        print(f"  → Plan generation...", end=" ", flush=True)
+        print("  → Plan generation...", end=" ", flush=True)
         run = benchmark_plan_generation(vms, repeat=2)
         all_runs.append(run)
         print(f"avg={run.avg_ms:.1f}ms")
 
         # Parallel assessment
-        print(f"  → Parallel assessment (concurrency={args.concurrency})...", end=" ", flush=True)
+        print(
+            f"  → Parallel assessment (concurrency={args.concurrency})...",
+            end=" ",
+            flush=True,
+        )
         run = await benchmark_parallel(vms, concurrency=args.concurrency, repeat=2)
         all_runs.append(run)
         print(f"avg={run.avg_ms:.1f}ms")
@@ -458,11 +505,14 @@ async def main():
     output_dir = Path("docs")
     output_dir.mkdir(exist_ok=True)
     report_path = output_dir / "dataset_benchmark_report.md"
-    report_path.write_text(generate_report(
-        all_runs, catalog,
-        ", ".join(str(d) for d in datasets),
-        warnings if datasets else []
-    ))
+    report_path.write_text(
+        generate_report(
+            all_runs,
+            catalog,
+            ", ".join(str(d) for d in datasets),
+            warnings if datasets else [],
+        )
+    )
     print(f"\nReport: {report_path}")
 
     if args.json:

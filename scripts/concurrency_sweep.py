@@ -15,7 +15,6 @@ import asyncio
 import json
 import os
 import statistics
-import sys
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -29,6 +28,7 @@ from app.services.vmware.compatibility import VMwareCompatibilityService
 
 try:
     import psutil
+
     HAS_PSUTIL = True
 except ImportError:
     HAS_PSUTIL = False
@@ -110,7 +110,12 @@ def _vm_summary_from_dict(vm_dict: dict[str, Any]) -> VMSummary:
         )
         for n in hw.get("nics", [])
     ]
-    hardware = VMHardware(cpu_count=hw.get("cpu_count", 0), memory_mb=hw.get("memory_mb", 0), disks=disks, nics=nics)
+    hardware = VMHardware(
+        cpu_count=hw.get("cpu_count", 0),
+        memory_mb=hw.get("memory_mb", 0),
+        disks=disks,
+        nics=nics,
+    )
     return VMSummary(
         id=vm_dict.get("id", ""),
         name=vm_dict.get("name", ""),
@@ -165,8 +170,12 @@ async def main():
 
     parser = argparse.ArgumentParser(description="Concurrency Sweep Benchmark")
     parser.add_argument("--json", action="store_true", help="Export JSON results")
-    parser.add_argument("--data-dir", type=str, default="benchmark_data",
-                        help="Directory containing inventory datasets")
+    parser.add_argument(
+        "--data-dir",
+        type=str,
+        default="benchmark_data",
+        help="Directory containing inventory datasets",
+    )
     args = parser.parse_args()
 
     datasets = [1000, 5000]
@@ -193,7 +202,9 @@ async def main():
 
         for concurrency in concurrency_levels:
             print(f"\n  → Concurrency={concurrency}...", end=" ", flush=True)
-            sample = await benchmark_parallel(vms, concurrency=concurrency, repeat=repeat)
+            sample = await benchmark_parallel(
+                vms, concurrency=concurrency, repeat=repeat
+            )
             mem_delta = sample.mem_after_mb - sample.mem_before_mb
             print(
                 f"avg={sample.avg_ms:.1f}ms "
@@ -204,22 +215,24 @@ async def main():
                 f"mem_delta={mem_delta:+.1f}MB"
             )
 
-            all_results.append({
-                "vm_count": size,
-                "concurrency": concurrency,
-                "avg_ms": round(sample.avg_ms, 2),
-                "p50_ms": round(sample.p50_ms, 2),
-                "p95_ms": round(sample.p95_ms, 2),
-                "p99_ms": round(sample.p99_ms, 2),
-                "min_ms": round(sample.min_ms, 2),
-                "max_ms": round(sample.max_ms, 2),
-                "throughput_vm_per_s": round(sample.throughput_vms, 0),
-                "mem_before_mb": round(sample.mem_before_mb, 1),
-                "mem_after_mb": round(sample.mem_after_mb, 1),
-                "mem_delta_mb": round(mem_delta, 1),
-                "cpu_percent": round(sample.cpu_percent, 1),
-                "durations_ms": [round(d, 2) for d in sample.durations_ms],
-            })
+            all_results.append(
+                {
+                    "vm_count": size,
+                    "concurrency": concurrency,
+                    "avg_ms": round(sample.avg_ms, 2),
+                    "p50_ms": round(sample.p50_ms, 2),
+                    "p95_ms": round(sample.p95_ms, 2),
+                    "p99_ms": round(sample.p99_ms, 2),
+                    "min_ms": round(sample.min_ms, 2),
+                    "max_ms": round(sample.max_ms, 2),
+                    "throughput_vm_per_s": round(sample.throughput_vms, 0),
+                    "mem_before_mb": round(sample.mem_before_mb, 1),
+                    "mem_after_mb": round(sample.mem_after_mb, 1),
+                    "mem_delta_mb": round(mem_delta, 1),
+                    "cpu_percent": round(sample.cpu_percent, 1),
+                    "durations_ms": [round(d, 2) for d in sample.durations_ms],
+                }
+            )
 
     output = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -235,7 +248,9 @@ async def main():
     print(f"\n{'=' * 72}")
     print("  Summary Table")
     print(f"{'=' * 72}")
-    print(f"{'VMs':>6} | {'Concurrency':>11} | {'Avg (ms)':>9} | {'p50 (ms)':>9} | {'p95 (ms)':>9} | {'p99 (ms)':>9} | {'VM/s':>6} | {'Mem Δ':>6}")
+    print(
+        f"{'VMs':>6} | {'Concurrency':>11} | {'Avg (ms)':>9} | {'p50 (ms)':>9} | {'p95 (ms)':>9} | {'p99 (ms)':>9} | {'VM/s':>6} | {'Mem Δ':>6}"
+    )
     print("-" * 72)
     for r in all_results:
         print(

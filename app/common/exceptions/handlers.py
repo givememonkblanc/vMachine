@@ -11,7 +11,12 @@ async def handle_app_exception(_: Request, exc: Exception) -> JSONResponse:
     app_exception = cast(AppException, exc)
     return JSONResponse(
         status_code=app_exception.status_code,
-        content={"error": {"code": app_exception.error_code, "message": app_exception.message}},
+        content={
+            "error": {
+                "code": app_exception.error_code,
+                "message": app_exception.message,
+            }
+        },
     )
 
 
@@ -23,5 +28,9 @@ async def handle_unexpected_exception(_: Request, exc: Exception) -> JSONRespons
 
 
 def register_exception_handlers(app: FastAPI) -> None:
-    app.add_exception_handler(AppException, cast(ExceptionHandler, handle_app_exception))
-    app.add_exception_handler(Exception, cast(ExceptionHandler, handle_unexpected_exception))
+    app.add_exception_handler(
+        AppException, cast(ExceptionHandler, handle_app_exception)
+    )
+    app.add_exception_handler(
+        Exception, cast(ExceptionHandler, handle_unexpected_exception)
+    )

@@ -2,12 +2,27 @@ from fastapi import APIRouter
 
 from app.api.v1.endpoints.core import audit, health
 from app.api.v1.endpoints.identity import auth, tenants
-from app.api.v1.endpoints.openstack import compute, flavors, images, keypairs, networks, routers, security_groups, storage, volumes
-from app.api.v1.endpoints.orchestration import clusters, migrations, operations
 from app.api.v1.endpoints.kubernetes import kubernetes
 from app.api.v1.endpoints.monitoring import monitoring
-from app.api.v1.endpoints.vmware import inventory as vmware_inventory, assessment as vmware_assessment
-from app.api.v1.endpoints.openstack import vm_lifecycle
+from app.api.v1.endpoints.openstack import (
+    compute,
+    flavors,
+    images,
+    keypairs,
+    networks,
+    routers,
+    security_groups,
+    storage,
+    vm_lifecycle,
+    volumes,
+)
+from app.api.v1.endpoints.orchestration import clusters, migrations, operations
+from app.api.v1.endpoints.vmware import (
+    assessment as vmware_assessment,
+)
+from app.api.v1.endpoints.vmware import (
+    inventory as vmware_inventory,
+)
 
 api_router = APIRouter()
 
@@ -26,7 +41,9 @@ api_router.include_router(images.router, prefix="/images", tags=["images"])
 api_router.include_router(keypairs.router, prefix="/keypairs", tags=["keypairs"])
 api_router.include_router(networks.router, prefix="/networks", tags=["networks"])
 api_router.include_router(routers.router, prefix="/routers", tags=["routers"])
-api_router.include_router(security_groups.router, prefix="/security-groups", tags=["security_groups"])
+api_router.include_router(
+    security_groups.router, prefix="/security-groups", tags=["security_groups"]
+)
 api_router.include_router(storage.router, prefix="/storage", tags=["storage"])
 api_router.include_router(volumes.router, prefix="/volumes", tags=["volumes"])
 
@@ -46,4 +63,6 @@ api_router.include_router(vmware_inventory.router, prefix="/vmware", tags=["vmwa
 api_router.include_router(vmware_assessment.router, prefix="/vmware", tags=["vmware"])
 
 # VM Lifecycle (Phase 6)
-api_router.include_router(vm_lifecycle.router, prefix="/openstack", tags=["openstack-vm"])
+api_router.include_router(
+    vm_lifecycle.router, prefix="/openstack", tags=["openstack-vm"]
+)

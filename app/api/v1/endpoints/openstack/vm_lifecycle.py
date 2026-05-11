@@ -1,12 +1,20 @@
+import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, status
 
 from app.api.deps.services import get_vm_provisioning_engine
-from app.schemas.openstack.vm_lifecycle import VMCreateRequest, VMDetail, VMOperationResponse
+from app.core.auth import verify_api_key
+from app.schemas.openstack.vm_lifecycle import (
+    VMCreateRequest,
+    VMDetail,
+    VMOperationResponse,
+)
 from app.services.openstack.vm_provisioning_engine import VMProvisioningEngine
 
-router = APIRouter()
+logger = logging.getLogger("vm_lifecycle")
+
+router = APIRouter(dependencies=[Depends(verify_api_key)])
 
 
 @router.post("/servers", response_model=VMDetail, status_code=status.HTTP_201_CREATED)

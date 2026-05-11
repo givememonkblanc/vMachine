@@ -1,7 +1,12 @@
 # Live Validation Report
 
+> **⚠️ SUPERSEDED** — VM lifecycle live validation has been completed.
+> See [`docs/live_vm_lifecycle_analysis.md`](live_vm_lifecycle_analysis.md) for the current live validation report against real Kolla OpenStack 2025.2.
+>
+> This document is retained for historical reference of the original validation methodology and environment specifications.
+>
 > Phase 5 — vMachine → AI Datacenter Control Plane
-> **Status**: Pending — validation against live vCenter/OpenStack not yet executed
+> **Status**: Superseded by live VM lifecycle analysis
 > **Scope**: Assessment engine only — no VM disk conversion or live migration execution
 
 ## 1. Purpose

@@ -3,9 +3,14 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Response, status
 
 from app.api.deps.services import get_network_service, get_operation_task_service
-from app.schemas.openstack.network import NetworkCreateRequest, NetworkCreateResponse, NetworkDetail, NetworkListResponse
-from app.services.openstack.network_service import NetworkService
+from app.schemas.openstack.network import (
+    NetworkCreateRequest,
+    NetworkCreateResponse,
+    NetworkDetail,
+    NetworkListResponse,
+)
 from app.services.core.operation_task_service import OperationTaskService
+from app.services.openstack.network_service import NetworkService
 
 router = APIRouter()
 
@@ -27,11 +32,15 @@ def get_network(
     return network_service.get_network(network_id)
 
 
-@router.post("", response_model=NetworkCreateResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "", response_model=NetworkCreateResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_network(
     payload: NetworkCreateRequest,
     network_service: Annotated[NetworkService, Depends(get_network_service)],
-    operation_task_service: Annotated[OperationTaskService, Depends(get_operation_task_service)],
+    operation_task_service: Annotated[
+        OperationTaskService, Depends(get_operation_task_service)
+    ],
 ) -> NetworkCreateResponse:
     """새로운 네트워크와 해당 네트워크 내 서브넷을 일괄 생성"""
     task = await operation_task_service.create_task(
@@ -43,10 +52,14 @@ async def create_network(
 
     try:
         response = network_service.create_network(payload)
-        _ = await operation_task_service.update_task(task.id, state="succeeded", target_id=response.network_id)
+        _ = await operation_task_service.update_task(
+            task.id, state="succeeded", target_id=response.network_id
+        )
         return response.model_copy(update={"operation_task_id": task.id})
     except Exception as exc:
-        _ = await operation_task_service.update_task(task.id, state="failed", error_message=str(exc))
+        _ = await operation_task_service.update_task(
+            task.id, state="failed", error_message=str(exc)
+        )
         raise
 
 
@@ -54,7 +67,9 @@ async def create_network(
 async def delete_network(
     network_id: str,
     network_service: Annotated[NetworkService, Depends(get_network_service)],
-    operation_task_service: Annotated[OperationTaskService, Depends(get_operation_task_service)],
+    operation_task_service: Annotated[
+        OperationTaskService, Depends(get_operation_task_service)
+    ],
 ) -> Response:
     """가상 네트워크 및 소속 서브넷 영구 삭제"""
     task = await operation_task_service.create_task(
@@ -66,9 +81,13 @@ async def delete_network(
 
     try:
         network_service.delete_network(network_id)
-        _ = await operation_task_service.update_task(task.id, state="succeeded", target_id=network_id)
+        _ = await operation_task_service.update_task(
+            task.id, state="succeeded", target_id=network_id
+        )
     except Exception as exc:
-        _ = await operation_task_service.update_task(task.id, state="failed", target_id=network_id, error_message=str(exc))
+        _ = await operation_task_service.update_task(
+            task.id, state="failed", target_id=network_id, error_message=str(exc)
+        )
         raise
 
     response = Response(status_code=status.HTTP_204_NO_CONTENT)

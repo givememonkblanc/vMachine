@@ -11,16 +11,27 @@ class FlavorManager:
     def __init__(self, flavor_service: FlavorService) -> None:
         self._flavor = flavor_service
 
-    def find_suitable_flavor(self, vcpus: int, ram_mb: int, disk_gb: int) -> dict | None:
+    def find_suitable_flavor(
+        self, vcpus: int, ram_mb: int, disk_gb: int
+    ) -> dict | None:
         """요구 스펙을 충족하는 플레이버를 검색합니다."""
         flavors = self._flavor.list_flavors()
         for flavor in flavors:
             if (
-                flavor.vcpus is not None and flavor.vcpus >= vcpus
-                and flavor.ram is not None and flavor.ram >= ram_mb
-                and flavor.disk is not None and flavor.disk >= disk_gb
+                flavor.vcpus is not None
+                and flavor.vcpus >= vcpus
+                and flavor.ram is not None
+                and flavor.ram >= ram_mb
+                and flavor.disk is not None
+                and flavor.disk >= disk_gb
             ):
-                return {"id": flavor.id, "name": flavor.name, "vcpus": flavor.vcpus, "ram": flavor.ram, "disk": flavor.disk}
+                return {
+                    "id": flavor.id,
+                    "name": flavor.name,
+                    "vcpus": flavor.vcpus,
+                    "ram": flavor.ram,
+                    "disk": flavor.disk,
+                }
         return None
 
     def get_flavor(self, flavor_id: str) -> dict:

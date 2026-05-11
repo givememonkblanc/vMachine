@@ -15,12 +15,10 @@ Usage
 from __future__ import annotations
 
 import json
-import math
 import os
 import statistics
-import sys
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -38,18 +36,9 @@ except ImportError:
     HAS_PSUTIL = False
 
 # Project imports
-from app.schemas.vmware.assessment import (
-    CompatibilityIssueDetail,
-    FlavorMatchResult,
-    NetworkMappingResult,
-    DiskMappingResult,
-    ScoredCompatibilityResult,
-    VMMappingResult,
-)
 from app.schemas.vmware.inventory import VMDisk, VMHardware, VMNic, VMSummary
 from app.services.vmware.compatibility import VMwareCompatibilityService
 from app.services.vmware.plan_service import VMwarePlanService
-
 
 STRESS_SIZES = [100, 500, 1000]
 WARM_CACHE_ITERATIONS = 3
@@ -68,25 +57,38 @@ MOCK_FLAVORS: list[tuple[str, int, int, int]] = [
 ]
 
 MOCK_OS_TEMPLATES: list[str] = [
-    "CentOS 7", "CentOS 8", "CentOS 9",
-    "Ubuntu 20.04", "Ubuntu 22.04", "Ubuntu 24.04",
-    "Debian 11", "Debian 12",
-    "Red Hat Enterprise Linux 8", "Red Hat Enterprise Linux 9",
+    "CentOS 7",
+    "CentOS 8",
+    "CentOS 9",
+    "Ubuntu 20.04",
+    "Ubuntu 22.04",
+    "Ubuntu 24.04",
+    "Debian 11",
+    "Debian 12",
+    "Red Hat Enterprise Linux 8",
+    "Red Hat Enterprise Linux 9",
     "SUSE Linux Enterprise Server 15",
-    "Windows Server 2019", "Windows Server 2022",
-    "Windows 10", "Windows 11",
-    "FreeBSD 13", "FreeBSD 14",
+    "Windows Server 2019",
+    "Windows Server 2022",
+    "Windows 10",
+    "Windows 11",
+    "FreeBSD 13",
+    "FreeBSD 14",
     "Solaris 11",  # unsupported
     "macOS Ventura",  # unsupported
     "HP-UX 11i",  # unsupported
 ]
 
 MOCK_POWER_STATES: list[str] = [
-    "poweredOn", "poweredOff", "suspended",
+    "poweredOn",
+    "poweredOff",
+    "suspended",
 ] * 3  # bias toward poweredOn
 
 MOCK_TOOLS_STATUSES: list[str] = [
-    "toolsOk", "toolsOk", "toolsOk",  # bias toward OK
+    "toolsOk",
+    "toolsOk",
+    "toolsOk",  # bias toward OK
     "toolsNotRunning",
     "toolsNotInstalled",
     None,
@@ -104,8 +106,13 @@ MOCK_DISK_CONTROLLER_SETS: list[list[str]] = [
 ]
 
 MOCK_NIC_TYPES: list[str] = [
-    "vmxnet3", "vmxnet3", "vmxnet3",  # bias toward modern
-    "e1000", "vmxnet2", "sriov", "unknown",
+    "vmxnet3",
+    "vmxnet3",
+    "vmxnet3",  # bias toward modern
+    "e1000",
+    "vmxnet2",
+    "sriov",
+    "unknown",
 ]
 
 
@@ -153,7 +160,9 @@ def _generate_mock_vms(count: int) -> list[VMSummary]:
                 label=f"disk{j}",
                 capacity_gb=((i * j + 10) % 500) + 10,
                 datastore=f"datastore{j % 3 + 1}",
-                controller_type=controllers[j % len(controllers)] if controllers else "scsi",
+                controller_type=controllers[j % len(controllers)]
+                if controllers
+                else "scsi",
             )
             for j in range(disk_count)
         ]
@@ -194,6 +203,7 @@ def _generate_mock_vms(count: int) -> list[VMSummary]:
 # ---------------------------------------------------------------------------
 # Benchmark data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class BenchmarkSample:
@@ -247,6 +257,7 @@ class StressRun:
 # ---------------------------------------------------------------------------
 # Benchmark functions
 # ---------------------------------------------------------------------------
+
 
 def benchmark_compatibility(vms: list[VMSummary], repeat: int = 1) -> BenchmarkSample:
     svc = VMwareCompatibilityService()
@@ -303,6 +314,7 @@ async def benchmark_parallel_assessment(
 # Stress-specific measurements
 # ---------------------------------------------------------------------------
 
+
 def measure_memory_stability(vms: list[VMSummary], repeat: int = 5) -> dict[str, Any]:
     """Measure memory growth across repeated evaluation cycles."""
     svc = VMwareCompatibilityService()
@@ -320,7 +332,9 @@ def measure_memory_stability(vms: list[VMSummary], repeat: int = 5) -> dict[str,
     }
 
 
-def measure_timeout_behavior(vms: list[VMSummary], timeout_s: float = 0.001) -> dict[str, Any]:
+def measure_timeout_behavior(
+    vms: list[VMSummary], timeout_s: float = 0.001
+) -> dict[str, Any]:
     """Simulate per-VM timeout and count how many VMs exceed it."""
     svc = VMwareCompatibilityService()
     timed_out = 0
@@ -344,20 +358,24 @@ def measure_timeout_behavior(vms: list[VMSummary], timeout_s: float = 0.001) -> 
 # Report generation
 # ---------------------------------------------------------------------------
 
-def _generate_report(all_runs: list[StressRun], memory_stability: dict[str, Any],
-                     timeout_results: dict[str, Any]) -> str:
+
+def _generate_report(
+    all_runs: list[StressRun],
+    memory_stability: dict[str, Any],
+    timeout_results: dict[str, Any],
+) -> str:
     now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
     lines = [
-        f"# Stress Validation Report",
-        f"",
+        "# Stress Validation Report",
+        "",
         f"> Generated: {now}",
         f"> Environment: {os.uname().sysname} {os.uname().release}",
         f"> Memory: {_get_rss_mb():.0f} MB total (current process)",
-        f"",
-        f"## Summary",
-        f"",
-        f"| VM Count | Compatibility | Plan Generation | Parallel (concurrency=10) | Mem Delta |",
-        f"|:--------:|:-------------:|:---------------:|:-------------------------:|:---------:|",
+        "",
+        "## Summary",
+        "",
+        "| VM Count | Compatibility | Plan Generation | Parallel (concurrency=10) | Mem Delta |",
+        "|:--------:|:-------------:|:---------------:|:-------------------------:|:---------:|",
     ]
 
     for run in all_runs:
@@ -368,17 +386,18 @@ def _generate_report(all_runs: list[StressRun], memory_stability: dict[str, Any]
         pd = f"{plan.avg_ms:.2f} ms" if plan else "-"
         pard = f"{parallel.avg_ms:.2f} ms" if parallel else "-"
         lines.append(
-            f"| {run.vm_count} | {cd} | {pd} | {pard} | "
-            f"{run.mem_delta_mb:+.1f} MB |"
+            f"| {run.vm_count} | {cd} | {pd} | {pard} | {run.mem_delta_mb:+.1f} MB |"
         )
 
-    lines.extend([
-        f"",
-        f"## Latency Details",
-        f"",
-        f"| VM Count | Operation | Avg (ms) | p50 (ms) | p95 (ms) | p99 (ms) | Throughput (VM/s) |",
-        f"|:--------:|-----------|:--------:|:--------:|:--------:|:--------:|:-----------------:|",
-    ])
+    lines.extend(
+        [
+            "",
+            "## Latency Details",
+            "",
+            "| VM Count | Operation | Avg (ms) | p50 (ms) | p95 (ms) | p99 (ms) | Throughput (VM/s) |",
+            "|:--------:|-----------|:--------:|:--------:|:--------:|:--------:|:-----------------:|",
+        ]
+    )
 
     for run in all_runs:
         for name, sample in run.results.items():
@@ -389,51 +408,56 @@ def _generate_report(all_runs: list[StressRun], memory_stability: dict[str, Any]
                 f"{sample.throughput(run.vm_count):.0f} |"
             )
 
-    lines.extend([
-        f"",
-        f"## Memory Stability",
-        f"",
-        f"| Metric | Value |",
-        f"|--------|:-----:|",
-        f"| Min RSS | {memory_stability['min_mb']} MB |",
-        f"| Max RSS | {memory_stability['max_mb']} MB |",
-        f"| Delta | {memory_stability['delta_mb']} MB |",
-        f"| Readings | {memory_stability['readings']} |",
-        f"| Leak suspected | {'⚠️ YES' if memory_stability['leak_detected'] else '✅ No'} |",
-        f"",
-        f"## Timeout Analysis",
-        f"",
-        f"| Metric | Value |",
-        f"|--------|:-----:|",
-        f"| Threshold | {timeout_results['timeout_threshold_s']}s |",
-        f"| VMs exceeding threshold | {timeout_results['timed_out']}/{timeout_results['completed']} "
-        f"({timeout_results['timeout_pct']}%) |",
-        f"",
-        f"## Pool Behavior Notes",
-        f"",
-        f"- Connection pool: synthetic mock (no real vCenter)",
-        f"- Pool reuse: N/A (synthetic)",
-        f"- Reconnect count: N/A (synthetic)",
-        f"- For live pool testing, run `scripts/validate_vcenter.py` against real vCenter",
-        f"",
-        f"---",
-        f"",
-        f"## Known Limitations",
-        f"",
-        f"1. Synthetic stress uses generated VMSummary objects — no pyVmomi serialization overhead",
-        f"2. Connection pool behavior not tested (no real vCenter)",
-        f"3. Redis cache efficiency not tested (in-memory cache only)",
-        f"4. DB persistence under load not tested (in-process evaluation only)",
-        f"5. Real-world timeout behavior depends on vCenter/OpenStack API latency",
-        f"",
-        f"---",
-        f"*Report generated by stress_benchmark_assessment.py*",
-    ])
+    lines.extend(
+        [
+            "",
+            "## Memory Stability",
+            "",
+            "| Metric | Value |",
+            "|--------|:-----:|",
+            f"| Min RSS | {memory_stability['min_mb']} MB |",
+            f"| Max RSS | {memory_stability['max_mb']} MB |",
+            f"| Delta | {memory_stability['delta_mb']} MB |",
+            f"| Readings | {memory_stability['readings']} |",
+            f"| Leak suspected | {'⚠️ YES' if memory_stability['leak_detected'] else '✅ No'} |",
+            "",
+            "## Timeout Analysis",
+            "",
+            "| Metric | Value |",
+            "|--------|:-----:|",
+            f"| Threshold | {timeout_results['timeout_threshold_s']}s |",
+            f"| VMs exceeding threshold | {timeout_results['timed_out']}/{timeout_results['completed']} "
+            f"({timeout_results['timeout_pct']}%) |",
+            "",
+            "## Pool Behavior Notes",
+            "",
+            "- Connection pool: synthetic mock (no real vCenter)",
+            "- Pool reuse: N/A (synthetic)",
+            "- Reconnect count: N/A (synthetic)",
+            "- For live pool testing, run `scripts/validate_vcenter.py` against real vCenter",
+            "",
+            "---",
+            "",
+            "## Known Limitations",
+            "",
+            "1. Synthetic stress uses generated VMSummary objects — no pyVmomi serialization overhead",
+            "2. Connection pool behavior not tested (no real vCenter)",
+            "3. Redis cache efficiency not tested (in-memory cache only)",
+            "4. DB persistence under load not tested (in-process evaluation only)",
+            "5. Real-world timeout behavior depends on vCenter/OpenStack API latency",
+            "",
+            "---",
+            "*Report generated by stress_benchmark_assessment.py*",
+        ]
+    )
     return "\n".join(lines)
 
 
-def _generate_json(all_runs: list[StressRun], memory_stability: dict[str, Any],
-                   timeout_results: dict[str, Any]) -> dict:
+def _generate_json(
+    all_runs: list[StressRun],
+    memory_stability: dict[str, Any],
+    timeout_results: dict[str, Any],
+) -> dict:
     return {
         "generated_at": datetime.utcnow().isoformat(),
         "runs": [
@@ -468,11 +492,13 @@ def _generate_json(all_runs: list[StressRun], memory_stability: dict[str, Any],
 # Main
 # ---------------------------------------------------------------------------
 
+
 async def main():
     import argparse
-    import asyncio
 
-    parser = argparse.ArgumentParser(description="Stress Benchmark for Assessment Engine")
+    parser = argparse.ArgumentParser(
+        description="Stress Benchmark for Assessment Engine"
+    )
     parser.add_argument("--json", action="store_true", help="Export JSON results")
     parser.add_argument("--quick", action="store_true", help="Run 100 and 1000 only")
     args = parser.parse_args()
@@ -502,7 +528,9 @@ async def main():
         print(f"  Benchmarking compatibility ({vm_count} VMs)...")
         sample = benchmark_compatibility(vms, repeat=WARM_CACHE_ITERATIONS)
         run.results[sample.name] = sample
-        print(f"    Avg: {sample.avg_ms:.2f} ms  Throughput: {sample.throughput(vm_count):.0f} VM/s")
+        print(
+            f"    Avg: {sample.avg_ms:.2f} ms  Throughput: {sample.throughput(vm_count):.0f} VM/s"
+        )
 
         # Plan generation
         print(f"  Benchmarking plan generation ({vm_count} VMs)...")
@@ -514,7 +542,9 @@ async def main():
         print(f"  Benchmarking parallel assessment ({vm_count} VMs, concurrency=10)...")
         sample = await benchmark_parallel_assessment(vms, max_concurrency=10, repeat=3)
         run.results[sample.name] = sample
-        print(f"    Avg: {sample.avg_ms:.2f} ms  Throughput: {sample.throughput(vm_count):.0f} VM/s")
+        print(
+            f"    Avg: {sample.avg_ms:.2f} ms  Throughput: {sample.throughput(vm_count):.0f} VM/s"
+        )
 
         run.mem_after_mb = _get_rss_mb()
         run.mem_delta_mb = run.mem_after_mb - run.mem_before_mb
@@ -525,17 +555,21 @@ async def main():
             first_run = False
             print(f"\n  Measuring memory stability ({vm_count} VMs, 5 cycles)...")
             mem_stability = measure_memory_stability(vms, repeat=5)
-            print(f"    Min: {mem_stability['min_mb']:.1f} MB  Max: {mem_stability['max_mb']:.1f} MB  "
-                  f"Delta: {mem_stability['delta_mb']:.1f} MB")
-            if mem_stability['leak_detected']:
-                print(f"    ⚠️  Possible memory leak detected (delta > 10 MB)")
+            print(
+                f"    Min: {mem_stability['min_mb']:.1f} MB  Max: {mem_stability['max_mb']:.1f} MB  "
+                f"Delta: {mem_stability['delta_mb']:.1f} MB"
+            )
+            if mem_stability["leak_detected"]:
+                print("    ⚠️  Possible memory leak detected (delta > 10 MB)")
 
     # Timeout analysis — run on all VMs combined
-    print(f"\n  Analyzing timeout behavior...")
+    print("\n  Analyzing timeout behavior...")
     combined_vms = _generate_mock_vms(sum(sizes))
     timeout_results = measure_timeout_behavior(combined_vms, timeout_s=0.001)
-    print(f"    VMs exceeding 1ms threshold: {timeout_results['timed_out']}/{timeout_results['completed']} "
-          f"({timeout_results['timeout_pct']}%)")
+    print(
+        f"    VMs exceeding 1ms threshold: {timeout_results['timed_out']}/{timeout_results['completed']} "
+        f"({timeout_results['timeout_pct']}%)"
+    )
 
     # Generate report
     report = _generate_report(all_runs, mem_stability, timeout_results)
@@ -552,7 +586,11 @@ async def main():
         json_dir.mkdir(parents=True, exist_ok=True)
         json_path = json_dir / "stress_assessment.json"
         json_path.write_text(
-            json.dumps(_generate_json(all_runs, mem_stability, timeout_results), indent=2, default=str)
+            json.dumps(
+                _generate_json(all_runs, mem_stability, timeout_results),
+                indent=2,
+                default=str,
+            )
         )
         print(f"  JSON written to {json_path}")
 
@@ -563,4 +601,5 @@ async def main():
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())

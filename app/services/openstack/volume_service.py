@@ -16,8 +16,14 @@ class VolumeService:
         if cached is not None:
             return cached
         result = [
-            VolumeSummary(**serialize_resource(volume, ["id", "name", "status", "size", "bootable"]))
-            for volume in self.factory.call("block_storage", "volumes", limit=self._list_limit)
+            VolumeSummary(
+                **serialize_resource(
+                    volume, ["id", "name", "status", "size", "bootable"]
+                )
+            )
+            for volume in self.factory.call(
+                "block_storage", "volumes", limit=self._list_limit
+            )
         ]
         cache_set("volumes", result)
         return result
@@ -25,13 +31,25 @@ class VolumeService:
     def get_volume(self, volume_id: str) -> VolumeSummary:
         volume = self.factory.call("block_storage", "get_volume", volume_id)
         if not volume:
-            raise AppException(message="Volume not found", status_code=404, error_code="volume_not_found")
-        return VolumeSummary(**serialize_resource(volume, ["id", "name", "status", "size", "bootable"]))
+            raise AppException(
+                message="Volume not found",
+                status_code=404,
+                error_code="volume_not_found",
+            )
+        return VolumeSummary(
+            **serialize_resource(volume, ["id", "name", "status", "size", "bootable"])
+        )
 
     def delete_volume(self, volume_id: str) -> None:
-        deleted = self.factory.call("block_storage", "delete_volume", volume_id, ignore_missing=True)
+        deleted = self.factory.call(
+            "block_storage", "delete_volume", volume_id, ignore_missing=True
+        )
         if deleted is False:
-            raise AppException(message="Volume not found", status_code=404, error_code="volume_not_found")
+            raise AppException(
+                message="Volume not found",
+                status_code=404,
+                error_code="volume_not_found",
+            )
         cache_invalidate("volumes")
 
     def create_volume(self, payload: VolumeCreateRequest) -> VolumeSummary:
@@ -46,4 +64,6 @@ class VolumeService:
 
         volume = self.factory.call("block_storage", "create_volume", **volume_args)
         cache_invalidate("volumes")
-        return VolumeSummary(**serialize_resource(volume, ["id", "name", "status", "size", "bootable"]))
+        return VolumeSummary(
+            **serialize_resource(volume, ["id", "name", "status", "size", "bootable"])
+        )

@@ -3,9 +3,13 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Response, status
 
 from app.api.deps.services import get_image_service, get_operation_task_service
-from app.schemas.openstack.image import ImageCreateRequest, ImageListResponse, ImageSummary
-from app.services.openstack.image_service import ImageService
+from app.schemas.openstack.image import (
+    ImageCreateRequest,
+    ImageListResponse,
+    ImageSummary,
+)
 from app.services.core.operation_task_service import OperationTaskService
+from app.services.openstack.image_service import ImageService
 
 router = APIRouter()
 
@@ -31,7 +35,9 @@ def get_image(
 async def create_image(
     payload: ImageCreateRequest,
     image_service: Annotated[ImageService, Depends(get_image_service)],
-    operation_task_service: Annotated[OperationTaskService, Depends(get_operation_task_service)],
+    operation_task_service: Annotated[
+        OperationTaskService, Depends(get_operation_task_service)
+    ],
 ) -> ImageSummary:
     """새로운 이미지 등록 (디스크 포맷, 컨테이너 포맷 등을 지정)"""
     task = await operation_task_service.create_task(
@@ -43,10 +49,14 @@ async def create_image(
 
     try:
         image = image_service.create_image(payload)
-        _ = await operation_task_service.update_task(task.id, state="succeeded", target_id=image.id)
+        _ = await operation_task_service.update_task(
+            task.id, state="succeeded", target_id=image.id
+        )
         return image.model_copy(update={"operation_task_id": task.id})
     except Exception as exc:
-        _ = await operation_task_service.update_task(task.id, state="failed", error_message=str(exc))
+        _ = await operation_task_service.update_task(
+            task.id, state="failed", error_message=str(exc)
+        )
         raise
 
 
@@ -54,7 +64,9 @@ async def create_image(
 async def delete_image(
     image_id: str,
     image_service: Annotated[ImageService, Depends(get_image_service)],
-    operation_task_service: Annotated[OperationTaskService, Depends(get_operation_task_service)],
+    operation_task_service: Annotated[
+        OperationTaskService, Depends(get_operation_task_service)
+    ],
 ) -> Response:
     """이미지 영구 삭제"""
     task = await operation_task_service.create_task(
@@ -66,9 +78,13 @@ async def delete_image(
 
     try:
         image_service.delete_image(image_id)
-        _ = await operation_task_service.update_task(task.id, state="succeeded", target_id=image_id)
+        _ = await operation_task_service.update_task(
+            task.id, state="succeeded", target_id=image_id
+        )
     except Exception as exc:
-        _ = await operation_task_service.update_task(task.id, state="failed", target_id=image_id, error_message=str(exc))
+        _ = await operation_task_service.update_task(
+            task.id, state="failed", target_id=image_id, error_message=str(exc)
+        )
         raise
 
     response = Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -1,8 +1,10 @@
-import pytest
 from unittest.mock import MagicMock
-from app.services.openstack.compute_service import ComputeService
-from app.schemas.openstack.compute import ServerCreateRequest
+
+import pytest
+
 from app.clients.openstack.connection import OpenStackConnectionFactory
+from app.schemas.openstack.compute import ServerCreateRequest
+from app.services.openstack.compute_service import ComputeService
 
 
 @pytest.fixture
@@ -29,7 +31,7 @@ def test_list_servers(mock_openstack_factory):
     mock_server.flavor = {"id": "flavor-1"}
     mock_server.image = {"id": "image-1"}
     mock_server.addresses = {"public": [{"addr": "1.2.3.4"}]}
-    
+
     conn.compute.servers.return_value = [mock_server]
 
     # Execute
@@ -72,7 +74,7 @@ def test_create_server(mock_openstack_factory):
         image_id="image-1",
         flavor_id="flavor-1",
         network_id="net-1",
-        key_name="test-key"
+        key_name="test-key",
     )
 
     result = compute_service.create_server(payload)

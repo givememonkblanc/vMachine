@@ -1,6 +1,9 @@
-from app.schemas.orchestration.deployment import BatchDeployRequest, ClusterCreateRequest
-from app.services.orchestration.cluster_service import ClusterService
+from app.schemas.orchestration.deployment import (
+    BatchDeployRequest,
+    ClusterCreateRequest,
+)
 from app.services.openstack.compute_service import ComputeService
+from app.services.orchestration.cluster_service import ClusterService
 
 
 class ClusterManager:
@@ -15,14 +18,21 @@ class ClusterManager:
         self._compute = compute_service
 
     async def provision_cluster_with_instances(
-        self, name: str, instance_count: int, image_id: str, flavor_id: str, network_id: str
+        self,
+        name: str,
+        instance_count: int,
+        image_id: str,
+        flavor_id: str,
+        network_id: str,
     ) -> dict:
         """클러스터를 생성하고 지정된 수만큼 인스턴스를 배포합니다."""
         if not self._cluster:
             return {"error": "Cluster service not available"}
 
         cluster = await self._cluster.create_cluster(
-            ClusterCreateRequest(name=name, cluster_type="compute", node_count=instance_count)
+            ClusterCreateRequest(
+                name=name, cluster_type="compute", node_count=instance_count
+            )
         )
 
         deploy_result = await self._cluster.batch_deploy(
