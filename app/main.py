@@ -25,6 +25,8 @@ from app.common.middleware.audit import AuditMiddleware
 from app.common.middleware.request_id import RequestIDMiddleware
 from app.common.utils.openstack_cache import configure_from_settings, collect_metrics, is_redis
 from app.core.config.settings import get_settings
+from app.core.telemetry import init_tracer, register_instrumentations
+from app.db.session import init_db_engine
 from app.events import on_shutdown, on_startup
 from app.services.core.audit_service import audit_flush_worker, drain_audit_queue, enqueue_shutdown_signal
 from app.services.monitoring.monitoring_service import enqueue_metric_shutdown, metric_flush_worker
@@ -32,8 +34,17 @@ from app.services.monitoring.monitoring_service import enqueue_metric_shutdown, 
 
 @asynccontextmanager
 async def lifespan(app_: FastAPI):
+    # Initialize per-worker tracer (must be in lifespan, after Gunicorn fork,
+    # so each worker has its own TracerProvider / BatchSpanProcessor).
+    settings = get_settings()
+    init_tracer()
+
     audit_flush = asyncio.create_task(audit_flush_worker())
     metric_flush = asyncio.create_task(metric_flush_worker())
+
+    # Initialise database engine (must be in lifespan, not at module level,
+    # to avoid asyncpg event-loop conflicts with preload_app=True)
+    init_db_engine(settings.database_url)
 
     # Initialise cache backend (memory or Redis) from settings
     configure_from_settings()
@@ -163,3 +174,8 @@ def create_application() -> FastAPI:
 
 
 app = create_application()
+
+# Register auto-instrumentations after app creation (module level, before
+# Gunicorn fork — the monkey-patches are inherited by all workers, while
+# the per-worker TracerProvider is initialized in lifespan).
+register_instrumentations(app)

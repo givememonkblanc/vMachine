@@ -6,6 +6,7 @@ from app.api.v1.endpoints.openstack import compute, flavors, images, keypairs, n
 from app.api.v1.endpoints.orchestration import clusters, migrations, operations
 from app.api.v1.endpoints.kubernetes import kubernetes
 from app.api.v1.endpoints.monitoring import monitoring
+from app.api.v1.endpoints.vmware import inventory as vmware_inventory, assessment as vmware_assessment
 
 api_router = APIRouter()
 
@@ -38,3 +39,7 @@ api_router.include_router(kubernetes.router, prefix="/k8s", tags=["kubernetes"])
 
 # Monitoring
 api_router.include_router(monitoring.router, prefix="/monitoring", tags=["monitoring"])
+
+# VMware
+api_router.include_router(vmware_inventory.router, prefix="/vmware", tags=["vmware"])
+api_router.include_router(vmware_assessment.router, prefix="/vmware", tags=["vmware"])

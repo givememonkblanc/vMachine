@@ -55,3 +55,7 @@ locust_*.csv
 
 # Test keys
 test-key.pem
+
+# Local artifacts
+vmt/
+inventory
