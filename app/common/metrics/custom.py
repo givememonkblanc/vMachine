@@ -173,3 +173,43 @@ vmw_inventory_stale_count = Gauge(
     documentation="Stale (uncached) VMware inventory items.",
     labelnames=("resource_type",),
 )
+
+# ---------------------------------------------------------------------------
+# Phase 5 — Observability expansion metrics
+# ---------------------------------------------------------------------------
+
+vmw_vcenter_api_duration = Histogram(
+    name="vmware_vcenter_api_duration_seconds",
+    documentation="vCenter API call latency by operation.",
+    labelnames=("operation",),
+    buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0),
+)
+
+vmw_openstack_api_duration = Histogram(
+    name="vmware_openstack_api_duration_seconds",
+    documentation="OpenStack API call latency during mapping validation.",
+    labelnames=("service", "operation"),
+    buckets=(0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 10.0, 30.0),
+)
+
+vmw_assessment_queue_depth = Gauge(
+    name="vmware_assessment_queue_depth",
+    documentation="Current number of queued parallel assessment tasks.",
+)
+
+vmw_assessment_timeouts_total = Counter(
+    name="vmware_assessment_timeouts_total",
+    documentation="Total parallel assessment per-VM timeouts.",
+)
+
+vmw_assessment_retries_total = Counter(
+    name="vmware_assessment_retries_total",
+    documentation="Total assessment operation retries.",
+    labelnames=("operation",),
+)
+
+vmw_unsupported_hardware_total = Counter(
+    name="vmware_unsupported_hardware_total",
+    documentation="Total unsupported VM hardware configurations detected.",
+    labelnames=("category",),
+)
