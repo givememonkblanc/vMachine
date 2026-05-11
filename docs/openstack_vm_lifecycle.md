@@ -1,6 +1,7 @@
 # OpenStack VM Lifecycle — Engine Architecture
 
-> Phase 6 — VM Lifecycle & Readiness Engine
+> Phase 6 — VM Lifecycle & Readiness Engine  
+> **Validation Status: Dry-Run Validated** (see `docs/vm_engine_validation.md`)
 
 ## Positioning
 

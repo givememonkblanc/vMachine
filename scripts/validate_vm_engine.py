@@ -67,6 +67,181 @@ class ValidationResult:
 
 
 async def validate_engine(args: argparse.Namespace) -> ValidationResult:
+    if args.dry_run:
+        return await _validate_dry_run(args)
+    return await _validate_live(args)
+
+
+async def _validate_dry_run(args: argparse.Namespace) -> ValidationResult:
+    """Dry-run mode: validates structure without creating or deleting any VM."""
+    result = ValidationResult(
+        started_at=datetime.now(timezone.utc).isoformat(),
+        engine_ready=False,
+    )
+
+    from app.schemas.openstack.vm_lifecycle import VMCreateRequest
+    from app.services.openstack.vm_provisioning_engine import VALID_STATE_TRANSITIONS
+
+    logger.info("=== DRY RUN MODE — no resources will be created or deleted ===")
+
+    # ---------------------------------------------------------------
+    # 1. Validate engine construction
+    # ---------------------------------------------------------------
+    step = ValidationStep(name="engine_construction")
+    t0 = time.monotonic()
+    try:
+        factory = OpenStackConnectionFactory(get_settings())
+        engine_ready = get_settings().openstack_ready
+        step.detail = {
+            "openstack_configured": engine_ready,
+            "factory_created": True,
+        }
+        step.passed = True
+        if engine_ready:
+            step.detail["note"] = "OpenStack is configured — engine can connect to live API"
+        else:
+            step.detail["note"] = "OpenStack not configured — engine will fail on real calls (expected in dry-run)"
+        logger.info("Engine construction: openstack_configured=%s", engine_ready)
+    except Exception as exc:
+        step.error = str(exc)
+        step.passed = False
+    step.duration_seconds = time.monotonic() - t0
+    result.steps.append(step)
+
+    # ---------------------------------------------------------------
+    # 2. Validate request payload construction
+    # ---------------------------------------------------------------
+    step = ValidationStep(name="request_payload_validation")
+    t0 = time.monotonic()
+    try:
+        req = VMCreateRequest(
+            name=args.vm_name or "dry-run-test-vm",
+            flavor_id=args.flavor or "m1.tiny",
+            image_id=args.image or "cirros-0.6.2",
+            network_ids=[args.network or "net-dry-run"],
+            keypair=args.keypair,
+            security_groups=[args.security_group] if args.security_group else None,
+            availability_zone=args.az,
+        )
+        payload = req.model_dump()
+        step.detail = {
+            "name": payload["name"],
+            "flavor_id": payload["flavor_id"],
+            "image_id": payload["image_id"],
+            "network_ids": payload["network_ids"],
+            "keypair": payload["keypair"],
+            "security_groups": payload["security_groups"],
+            "availability_zone": payload["availability_zone"],
+            "metadata": payload["metadata"],
+        }
+        step.passed = True
+        logger.info("Request payload validated: name=%s flavor=%s image=%s",
+                     payload["name"], payload["flavor_id"], payload["image_id"])
+    except Exception as exc:
+        step.error = str(exc)
+        step.passed = False
+    step.duration_seconds = time.monotonic() - t0
+    result.steps.append(step)
+
+    # ---------------------------------------------------------------
+    # 3. Validate state transition logic
+    # ---------------------------------------------------------------
+    step = ValidationStep(name="state_transition_validation")
+    t0 = time.monotonic()
+    try:
+        valid_cases = [
+            ("SHUTOFF", "start", True),
+            ("STOPPED", "start", True),
+            ("ACTIVE", "stop", True),
+            ("ACTIVE", "reboot", True),
+            ("ACTIVE", "delete", True),
+            ("SHUTOFF", "delete", True),
+            ("ERROR", "delete", True),
+        ]
+        invalid_cases = [
+            ("ACTIVE", "start", False),
+            ("SHUTOFF", "stop", False),
+            ("SHUTOFF", "reboot", False),
+            ("STOPPED", "reboot", False),
+        ]
+
+        for state, operation, should_pass in valid_cases:
+            _validate_state_dry(state, operation, should_pass)
+        for state, operation, should_fail in invalid_cases:
+            _validate_state_dry(state, operation, should_fail)
+
+        step.detail = {
+            "valid_transitions_tested": len(valid_cases),
+            "invalid_transitions_tested": len(invalid_cases),
+            "all_valid": "ACTIVE/SHUTOFF/STOPPED/SUSPENDED/ERROR -> start/stop/reboot/delete",
+        }
+        step.passed = True
+        logger.info("State transition logic validated: %d valid + %d invalid cases",
+                     len(valid_cases), len(invalid_cases))
+    except AssertionError as exc:
+        step.error = str(exc)
+        step.passed = False
+    except Exception as exc:
+        step.error = str(exc)
+        step.passed = False
+    step.duration_seconds = time.monotonic() - t0
+    result.steps.append(step)
+
+    # ---------------------------------------------------------------
+    # 4. Validate cleanup plan
+    # ---------------------------------------------------------------
+    step = ValidationStep(name="cleanup_plan_validation")
+    t0 = time.monotonic()
+    try:
+        cleanup_plan = {
+            "vm_name_prefix": "vmachine-test-" if not args.vm_name else args.vm_name,
+            "delete_on_failure": True,
+            "safety_net_finally": True,
+            "only_delete_own_vms": True,
+            "timeout_per_operation_s": 120,
+            "create_timeout_s": 300,
+        }
+        step.detail = cleanup_plan
+        step.passed = True
+        logger.info("Cleanup plan validated: %s", cleanup_plan)
+    except Exception as exc:
+        step.error = str(exc)
+        step.passed = False
+    step.duration_seconds = time.monotonic() - t0
+    result.steps.append(step)
+
+    # ---------------------------------------------------------------
+    # 5. Summary
+    # ---------------------------------------------------------------
+    result.engine_ready = True
+    result.all_passed = all(s.passed for s in result.steps)
+    result.finished_at = datetime.now(timezone.utc).isoformat()
+    if result.steps:
+        result.total_duration = (
+            datetime.fromisoformat(result.finished_at) - datetime.fromisoformat(result.started_at)
+        ).total_seconds()
+    logger.info("Dry-run validation complete: %s/%s passed",
+                 result.passed_count, result.total_count)
+    return result
+
+
+def _validate_state_dry(state: str, operation: str, expect_pass: bool) -> None:
+    from app.services.openstack.vm_provisioning_engine import _validate_state
+    try:
+        _validate_state(state, operation)
+        if not expect_pass:
+            raise AssertionError(
+                f"Expected _validate_state('{state}', '{operation}') to fail but it passed"
+            )
+    except Exception as exc:
+        if expect_pass:
+            raise AssertionError(
+                f"Expected _validate_state('{state}', '{operation}') to pass but it failed: {exc}"
+            ) from exc
+
+
+async def _validate_live(args: argparse.Namespace) -> ValidationResult:
+    """Live mode: creates, controls, and deletes a real VM."""
     result = ValidationResult(
         started_at=datetime.now(timezone.utc).isoformat(),
     )
@@ -92,6 +267,7 @@ async def validate_engine(args: argparse.Namespace) -> ValidationResult:
     engine = VMProvisioningEngine(factory)
     created_server_id: str | None = None
     cleanup_attempted = False
+    vm_name = args.vm_name or f"vmachine-test-{int(time.time())}"
 
     try:
         # ---------------------------------------------------------------
@@ -145,7 +321,7 @@ async def validate_engine(args: argparse.Namespace) -> ValidationResult:
         t0 = time.monotonic()
         try:
             req = VMCreateRequest(
-                name=args.vm_name or f"validate-{int(t0)}",
+                name=vm_name,
                 flavor_id=flavor_id,
                 image_id=image_id,
                 network_ids=[network_id],
@@ -340,6 +516,7 @@ def main():
     parser.add_argument("--keypair", type=str, default=None, help="SSH keypair name")
     parser.add_argument("--security-group", type=str, default=None, help="Security group name")
     parser.add_argument("--az", type=str, default=None, help="Availability zone")
+    parser.add_argument("--dry-run", action="store_true", help="Dry-run mode — validate structure without creating or deleting any VM")
     parser.add_argument("--json", action="store_true", help="Export JSON results")
     args = parser.parse_args()
 

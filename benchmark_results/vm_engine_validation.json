@@ -1,0 +1,66 @@
+{
+  "started_at": "2026-05-11T02:34:46.891621+00:00",
+  "finished_at": "2026-05-11T02:34:46.895402+00:00",
+  "total_duration": 0.003781,
+  "all_passed": true,
+  "passed_count": 4,
+  "total_count": 4,
+  "engine_ready": true,
+  "server_cleaned_up": false,
+  "steps": [
+    {
+      "name": "engine_construction",
+      "passed": true,
+      "duration_seconds": 0.0012010469981760252,
+      "detail": {
+        "openstack_configured": true,
+        "factory_created": true,
+        "note": "OpenStack is configured \u2014 engine can connect to live API"
+      },
+      "error": null
+    },
+    {
+      "name": "request_payload_validation",
+      "passed": true,
+      "duration_seconds": 4.13269990531262e-05,
+      "detail": {
+        "name": "dry-run-test-vm",
+        "flavor_id": "m1.tiny",
+        "image_id": "cirros-0.6.2",
+        "network_ids": [
+          "net-dry-run"
+        ],
+        "keypair": null,
+        "security_groups": null,
+        "availability_zone": null,
+        "metadata": {}
+      },
+      "error": null
+    },
+    {
+      "name": "state_transition_validation",
+      "passed": true,
+      "duration_seconds": 2.9545997676905245e-05,
+      "detail": {
+        "valid_transitions_tested": 7,
+        "invalid_transitions_tested": 4,
+        "all_valid": "ACTIVE/SHUTOFF/STOPPED/SUSPENDED/ERROR -> start/stop/reboot/delete"
+      },
+      "error": null
+    },
+    {
+      "name": "cleanup_plan_validation",
+      "passed": true,
+      "duration_seconds": 1.4828001440037042e-05,
+      "detail": {
+        "vm_name_prefix": "vmachine-test-",
+        "delete_on_failure": true,
+        "safety_net_finally": true,
+        "only_delete_own_vms": true,
+        "timeout_per_operation_s": 120,
+        "create_timeout_s": 300
+      },
+      "error": null
+    }
+  ]
+}

@@ -1,0 +1,361 @@
+{
+  "started_at": "2026-05-11T02:38:38.343555+00:00",
+  "finished_at": "2026-05-11T02:38:38.438278+00:00",
+  "total_duration": 0.094723,
+  "all_passed": true,
+  "passed_count": 43,
+  "total_count": 43,
+  "suites": {
+    "state_transitions": [
+      {
+        "name": "valid_start_SHUTOFF",
+        "passed": true,
+        "detail": {},
+        "error": null
+      },
+      {
+        "name": "valid_start_STOPPED",
+        "passed": true,
+        "detail": {},
+        "error": null
+      },
+      {
+        "name": "valid_start_SUSPENDED",
+        "passed": true,
+        "detail": {},
+        "error": null
+      },
+      {
+        "name": "valid_start_ERROR",
+        "passed": true,
+        "detail": {},
+        "error": null
+      },
+      {
+        "name": "valid_stop_ACTIVE",
+        "passed": true,
+        "detail": {},
+        "error": null
+      },
+      {
+        "name": "valid_stop_PAUSED",
+        "passed": true,
+        "detail": {},
+        "error": null
+      },
+      {
+        "name": "valid_reboot_ACTIVE",
+        "passed": true,
+        "detail": {},
+        "error": null
+      },
+      {
+        "name": "valid_delete_ACTIVE",
+        "passed": true,
+        "detail": {},
+        "error": null
+      },
+      {
+        "name": "valid_delete_SHUTOFF",
+        "passed": true,
+        "detail": {},
+        "error": null
+      },
+      {
+        "name": "valid_delete_STOPPED",
+        "passed": true,
+        "detail": {},
+        "error": null
+      },
+      {
+        "name": "valid_delete_ERROR",
+        "passed": true,
+        "detail": {},
+        "error": null
+      },
+      {
+        "name": "valid_delete_SUSPENDED",
+        "passed": true,
+        "detail": {},
+        "error": null
+      },
+      {
+        "name": "invalid_start_ACTIVE",
+        "passed": true,
+        "detail": {
+          "error_code": "invalid_state_transition"
+        },
+        "error": null
+      },
+      {
+        "name": "invalid_stop_SHUTOFF",
+        "passed": true,
+        "detail": {
+          "error_code": "invalid_state_transition"
+        },
+        "error": null
+      },
+      {
+        "name": "invalid_reboot_SHUTOFF",
+        "passed": true,
+        "detail": {
+          "error_code": "invalid_state_transition"
+        },
+        "error": null
+      },
+      {
+        "name": "invalid_reboot_STOPPED",
+        "passed": true,
+        "detail": {
+          "error_code": "invalid_state_transition"
+        },
+        "error": null
+      },
+      {
+        "name": "invalid_start_PAUSED",
+        "passed": true,
+        "detail": {
+          "error_code": "invalid_state_transition"
+        },
+        "error": null
+      },
+      {
+        "name": "invalid_reboot_PAUSED",
+        "passed": true,
+        "detail": {
+          "error_code": "invalid_state_transition"
+        },
+        "error": null
+      },
+      {
+        "name": "invalid_start_BUILDING",
+        "passed": true,
+        "detail": {
+          "error_code": "invalid_state_transition"
+        },
+        "error": null
+      },
+      {
+        "name": "invalid_stop_BUILDING",
+        "passed": true,
+        "detail": {
+          "error_code": "invalid_state_transition"
+        },
+        "error": null
+      },
+      {
+        "name": "invalid_reboot_BUILDING",
+        "passed": true,
+        "detail": {
+          "error_code": "invalid_state_transition"
+        },
+        "error": null
+      },
+      {
+        "name": "invalid_delete_BUILDING",
+        "passed": true,
+        "detail": {
+          "error_code": "invalid_state_transition"
+        },
+        "error": null
+      },
+      {
+        "name": "transition_dict_start",
+        "passed": true,
+        "detail": {
+          "allowed": [
+            "SHUTOFF",
+            "STOPPED",
+            "SUSPENDED",
+            "ERROR"
+          ]
+        },
+        "error": null
+      },
+      {
+        "name": "transition_dict_stop",
+        "passed": true,
+        "detail": {
+          "allowed": [
+            "ACTIVE",
+            "PAUSED"
+          ]
+        },
+        "error": null
+      },
+      {
+        "name": "transition_dict_reboot",
+        "passed": true,
+        "detail": {
+          "allowed": [
+            "ACTIVE"
+          ]
+        },
+        "error": null
+      },
+      {
+        "name": "transition_dict_delete",
+        "passed": true,
+        "detail": {
+          "allowed": [
+            "ACTIVE",
+            "SHUTOFF",
+            "STOPPED",
+            "ERROR",
+            "SUSPENDED"
+          ]
+        },
+        "error": null
+      }
+    ],
+    "operation_mapping": [
+      {
+        "name": "mapping_start",
+        "passed": true,
+        "detail": {
+          "expected": "start_server",
+          "got": "start_server"
+        },
+        "error": null
+      },
+      {
+        "name": "mapping_stop",
+        "passed": true,
+        "detail": {
+          "expected": "stop_server",
+          "got": "stop_server"
+        },
+        "error": null
+      },
+      {
+        "name": "mapping_reboot",
+        "passed": true,
+        "detail": {
+          "expected": "reboot_server",
+          "got": "reboot_server"
+        },
+        "error": null
+      },
+      {
+        "name": "mapping_delete",
+        "passed": true,
+        "detail": {
+          "expected": "delete_server",
+          "got": "delete_server"
+        },
+        "error": null
+      },
+      {
+        "name": "mapping_invalid_op",
+        "passed": true,
+        "detail": {
+          "error": "Unsupported operation: nonexistent"
+        },
+        "error": null
+      }
+    ],
+    "extraction_helpers": [
+      {
+        "name": "extract_id_from_dict",
+        "passed": true,
+        "detail": {
+          "input": "{\"id\": \"abc-123\"}",
+          "got": "abc-123"
+        },
+        "error": null
+      },
+      {
+        "name": "extract_id_from_object",
+        "passed": true,
+        "detail": {
+          "input": "FakeRef(id='obj-456')",
+          "got": "obj-456"
+        },
+        "error": null
+      },
+      {
+        "name": "extract_id_from_none",
+        "passed": true,
+        "detail": {
+          "got": null
+        },
+        "error": null
+      },
+      {
+        "name": "extract_id_from_empty",
+        "passed": true,
+        "detail": {
+          "got": null
+        },
+        "error": null
+      }
+    ],
+    "metrics": [
+      {
+        "name": "metric_registered_vmware_vm_create_duration_seconds",
+        "passed": true,
+        "detail": {
+          "registered": true
+        },
+        "error": null
+      },
+      {
+        "name": "metric_registered_vmware_vm_create_failures_total",
+        "passed": true,
+        "detail": {
+          "registered": true
+        },
+        "error": null
+      },
+      {
+        "name": "metric_registered_vmware_vm_lifecycle_operations_total",
+        "passed": true,
+        "detail": {
+          "registered": true
+        },
+        "error": null
+      },
+      {
+        "name": "metric_registered_vmware_vm_active_count",
+        "passed": true,
+        "detail": {
+          "registered": true
+        },
+        "error": null
+      },
+      {
+        "name": "metric_inc_failures",
+        "passed": true,
+        "detail": {
+          "before": 0.0,
+          "after": 1.0
+        },
+        "error": null
+      },
+      {
+        "name": "metric_inc_lifecycle",
+        "passed": true,
+        "detail": {
+          "before": 0.0,
+          "after": 1.0
+        },
+        "error": null
+      },
+      {
+        "name": "metric_observe_duration",
+        "passed": true,
+        "detail": {},
+        "error": null
+      },
+      {
+        "name": "metric_gauge_active",
+        "passed": true,
+        "detail": {
+          "set(10)": 10.0,
+          "after_dec": 9.0
+        },
+        "error": null
+      }
+    ]
+  }
+}

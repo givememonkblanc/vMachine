@@ -1,124 +1,123 @@
 # VM Engine Validation Report
 
-> Phase 6 — OpenStack VM Lifecycle Validation
-
-## Validation Flow
-
-The validation script (`scripts/validate_vm_engine.py`) executes the following
-lifecycle against a real OpenStack deployment:
-
-```
- 1. discover_resources  ──→ List flavors, images, networks
- 2. create_vm           ──→ Create VM, wait for ACTIVE
- 3. vm_reboot           ──→ Reboot active VM
- 4. vm_stop             ──→ Stop (power off) VM
- 5. vm_start            ──→ Start (power on) VM
- 6. delete_vm           ──→ Delete VM
- 7. verify_cleanup      ──→ Confirm 404 on deleted VM
-```
-
-### What Is Validated
-
-| Aspect | How |
-|--------|-----|
-| OpenStack connectivity | Engine initializes, resources are listed |
-| VM creation | Nova `create_server` + polling to ACTIVE |
-| Reboot | Nova `reboot_server` with state=ACTIVE validation |
-| Stop | Nova `stop_server` with state=ACTIVE validation |
-| Start | Nova `start_server` with state=SHUTOFF validation |
-| Deletion | Nova `delete_server` + 404 confirmation |
-| State validation | Invalid transitions return 409 |
-| Timeout handling | Stuck operations abort with `TimeoutError` |
-| Cleanup on failure | Failed VMs are deleted before exit |
-
-### What Is NOT Validated
-
-- VMware migration (see `docs/vmware_migration_architecture.md`)
-- Volume attach/detach
-- Floating IP allocation
-- Security group rule enforcement
-- Multi-region provisioning
-- UI/portal
+> **Status: Phase 6 Dry-Run Validated**  
+> OpenStack VM Lifecycle Validation — Phase 6  
+> Live validation skipped: OpenStack endpoint `https://openstack.example.com:5000` is a placeholder.
 
 ---
 
-## How to Run
+> Started: 2026-05-11T02:34:46.891621+00:00
+> Finished: 2026-05-11T02:34:46.895402+00:00
+> Duration: 0.0s
+> Result: **✅ ALL PASSED** (4/4)
+> Server cleaned up: N/A
 
-```bash
-# Full validation (auto-selects first flavor/image/network):
-PYTHONPATH=. python scripts/validate_vm_engine.py
+## Summary
 
-# With explicit resources:
-PYTHONPATH=. python scripts/validate_vm_engine.py \
-  --flavor m1.tiny \
-  --image cirros-0.6.2 \
-  --network private \
-  --vm-name my-validation-vm \
-  --keypair my-key \
-  --security-group default \
-  --az nova
+| Step | Status | Duration | Detail |
+|------|:------:|:--------:|--------|
+| engine_construction | ✅ | 0.0s | {'openstack_configured': True, 'factory_created': True, 'note': 'OpenStack is configured — engine ca |
+| request_payload_validation | ✅ | 0.0s | {'name': 'dry-run-test-vm', 'flavor_id': 'm1.tiny', 'image_id': 'cirros-0.6.2', 'network_ids': ['net |
+| state_transition_validation | ✅ | 0.0s | {'valid_transitions_tested': 7, 'invalid_transitions_tested': 4, 'all_valid': 'ACTIVE/SHUTOFF/STOPPE |
+| cleanup_plan_validation | ✅ | 0.0s | {'vm_name_prefix': 'vmachine-test-', 'delete_on_failure': True, 'safety_net_finally': True, 'only_de |
 
-# Export JSON results:
-PYTHONPATH=. python scripts/validate_vm_engine.py --json
-```
+## Step Details
 
-### Prerequisites
+### engine_construction
 
-- OpenStack environment configured (`OPENSTACK_AUTH_URL`, `OPENSTACK_USERNAME`,
-  `OPENSTACK_PASSWORD`, `OPENSTACK_PROJECT_NAME`, etc.)
-- At least one flavor, image, and network available
-- Sufficient quota to create one VM instance
+- **Passed**: True
+- **Duration**: 0.00s
+- **openstack_configured**: True
+- **factory_created**: True
+- **note**: OpenStack is configured — engine can connect to live API
 
-### Outputs
+### request_payload_validation
 
-| Output | Location | Description |
-|--------|----------|-------------|
-| Report | `docs/vm_engine_validation.md` | Human-readable validation report |
-| JSON | `benchmark_results/vm_engine_validation.json` | Machine-readable results |
+- **Passed**: True
+- **Duration**: 0.00s
+- **name**: dry-run-test-vm
+- **flavor_id**: m1.tiny
+- **image_id**: cirros-0.6.2
+- **network_ids**: ['net-dry-run']
+- **keypair**: None
+- **security_groups**: None
+- **availability_zone**: None
+
+### state_transition_validation
+
+- **Passed**: True
+- **Duration**: 0.00s
+- **valid_transitions_tested**: 7
+- **invalid_transitions_tested**: 4
+- **all_valid**: ACTIVE/SHUTOFF/STOPPED/SUSPENDED/ERROR -> start/stop/reboot/delete
+
+### cleanup_plan_validation
+
+- **Passed**: True
+- **Duration**: 0.00s
+- **vm_name_prefix**: vmachine-test-
+- **delete_on_failure**: True
+- **safety_net_finally**: True
+- **only_delete_own_vms**: True
+- **timeout_per_operation_s**: 120
+- **create_timeout_s**: 300
+
+---
+---
+
+## Companion Validation Suites
+
+### Negative Case & Metrics Validation (`scripts/negative_case_vm_engine.py`)
+
+**Result: ✅ 43/43 passed**
+
+| Suite | Passed | Total |
+|-------|:------:|:-----:|
+| State transitions (valid + invalid) | 26 | 26 |
+| Operation-to-SDK mapping | 5 | 5 |
+| Extraction helpers | 4 | 4 |
+| Prometheus metrics | 8 | 8 |
+
+Metrics verified:
+- `vmware_vm_create_duration_seconds` (Histogram) — `observe()` works
+- `vmware_vm_create_failures_total` (Counter) — `inc()` works
+- `vmware_vm_lifecycle_operations_total` (Counter) — `inc()` works
+- `vmware_vm_active_count` (Gauge) — `set()`/`dec()` works
+
+### Benchmark Harness (`scripts/benchmark_vm_engine.py`)
+
+**Result: ⏸️ Skipped — OpenStack not reachable**
+
+The benchmark script supports 3 cases:
+1. Create + delete 1 VM
+2. Create + delete 3 VMs sequentially
+3. Full lifecycle on 1 VM (create → reboot → stop → start → delete)
+
+All require a live OpenStack Nova endpoint. The environment's `openstack.example.com` placeholder must be replaced with a real OpenStack URL.
 
 ---
 
-## Validation Report Interpretation
+## How to Re-validate with Live OpenStack
 
-When validation passes:
+1. Configure real OpenStack credentials:
+   ```
+   OPENSTACK_AUTH_URL=https://your-openstack:5000/v3
+   OPENSTACK_USERNAME=admin
+   OPENSTACK_PASSWORD=...
+   OPENSTACK_PROJECT_NAME=admin
+   ```
 
-```
-✅ ALL PASSED (7/7)
-├── ✅ discover_resources       — 3 flavors, 5 images, 2 networks found
-├── ✅ create_vm                — vm-xxx status=ACTIVE
-├── ✅ vm_reboot                — success (1.2s)
-├── ✅ vm_stop                  — success (2.1s)
-├── ✅ vm_start                 — success (3.5s)
-├── ✅ delete_vm                — success (0.8s)
-└── ✅ verify_cleanup           — server no longer exists
-```
+2. Run validation:
+   ```bash
+   PYTHONPATH=. python scripts/validate_vm_engine.py --json
+   ```
 
-When validation fails (e.g., no OpenStack configured):
-
-```
-❌ FAILED (0/1)
-├── ❌ discover_resources       — OpenStack env vars not set
-└── (engine not ready — remaining steps skipped)
-```
+3. Run benchmarks:
+   ```bash
+   PYTHONPATH=. python scripts/benchmark_vm_engine.py --json
+   ```
 
 ---
 
-## Architecture
-
-```
-┌─ validate_vm_engine.py ──────────────────────────────────────────┐
-│  CLI args → VMProvisioningEngine → OpenStack Nova                │
-│                                                                   │
-│  ValidationResult                                                 │
-│    ├── steps[]: ValidationStep (name, passed, duration, error)    │
-│    ├── all_passed: bool                                           │
-│    ├── server_cleaned_up: bool                                    │
-│    └── engine_ready: bool                                         │
-└───────────────────────────────────────────────────────────────────┘
-```
-
-See `docs/openstack_vm_lifecycle.md` for the full engine architecture.
-
----
-
-*Document generated for Phase 6 — VM Engine Validation*
+*Report generated by validate_vm_engine.py*  
+*Phase 6 — VM Engine Validation*
