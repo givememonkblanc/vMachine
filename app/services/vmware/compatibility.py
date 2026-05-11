@@ -1,3 +1,4 @@
+from app.common.metrics.custom import vmw_unsupported_hardware_total
 from app.schemas.vmware.assessment import CompatibilityIssueDetail, ScoredCompatibilityResult
 from app.schemas.vmware.inventory import VMSummary
 
@@ -107,6 +108,7 @@ class VMwareCompatibilityService:
                     issues, "critical", "os",
                     f"Unsupported guest OS: {guest_os}",
                 )
+                vmw_unsupported_hardware_total.labels(category="os").inc()
                 return
         for supported in VMwareCompatibilityService.SUPPORTED_OS_PREFIXES:
             if supported in os_lower:
@@ -179,6 +181,7 @@ class VMwareCompatibilityService:
                 "VM uses EFI/UEFI firmware — requires OpenStack UEFI support (hw_firmware_type=uefi)",
                 compatible=True,
             )
+            vmw_unsupported_hardware_total.labels(category="firmware").inc()
 
     @staticmethod
     def _check_secure_boot(vm: VMSummary, issues: list[CompatibilityIssueDetail]) -> None:
@@ -187,6 +190,7 @@ class VMwareCompatibilityService:
                 issues, "high", "firmware",
                 "Secure Boot is enabled — requires OpenStack with UEFI + hw_firmware_type=uefi + secure boot support",
             )
+            vmw_unsupported_hardware_total.labels(category="firmware").inc()
 
     @staticmethod
     def _check_vmware_tools(vm: VMSummary, issues: list[CompatibilityIssueDetail]) -> None:
@@ -217,6 +221,7 @@ class VMwareCompatibilityService:
                     issues, "high", "disk_controller",
                     f"Disk controller type '{ctype}' may not be supported in OpenStack — consider converting to virtio/scsi",
                 )
+                vmw_unsupported_hardware_total.labels(category="disk_controller").inc()
             elif ctype_lower in ("lsilogic",):
                 VMwareCompatibilityService._add_issue(
                     issues, "low", "disk_controller",
@@ -229,6 +234,7 @@ class VMwareCompatibilityService:
                     f"Disk controller type '{ctype}' requires OpenStack with NVMe emulation support",
                     compatible=True,
                 )
+                vmw_unsupported_hardware_total.labels(category="disk_controller").inc()
 
     @staticmethod
     def _check_nic_types(vm: VMSummary, issues: list[CompatibilityIssueDetail]) -> None:
@@ -252,18 +258,21 @@ class VMwareCompatibilityService:
                     "NIC type 'vmxnet2' requires OpenStack with vmxnet3 support — consider converting to virtio",
                     compatible=True,
                 )
+                vmw_unsupported_hardware_total.labels(category="nic").inc()
             elif ntype == "sriov":
                 VMwareCompatibilityService._add_issue(
                     issues, "medium", "nic",
                     "NIC type 'sriov' requires OpenStack SR-IOV support — passthrough configuration needed",
                     compatible=True,
                 )
+                vmw_unsupported_hardware_total.labels(category="nic").inc()
             elif ntype == "unknown":
                 VMwareCompatibilityService._add_issue(
                     issues, "medium", "nic",
                     "Unknown NIC type detected — compatibility not guaranteed",
                     compatible=True,
                 )
+                vmw_unsupported_hardware_total.labels(category="nic").inc()
 
 
 __all__ = ["VMwareCompatibilityService"]

@@ -1,5 +1,8 @@
 import math
+import time
+
 from app.clients.openstack.connection import OpenStackConnectionFactory
+from app.common.metrics.custom import vmw_openstack_api_duration
 from app.schemas.openstack.flavor import FlavorSummary as OSFlavorSummary
 from app.schemas.openstack.network import NetworkSummary as OSNetworkSummary
 from app.schemas.vmware.assessment import (
@@ -46,7 +49,17 @@ class VMwareMappingEngine:
     def _get_flavors(self) -> list[OSFlavorSummary]:
         if self._flavor_cache is not None:
             return self._flavor_cache
-        raw = self.os_factory.call("compute", "flavors")
+        t0 = time.perf_counter()
+        try:
+            raw = self.os_factory.call("compute", "flavors")
+            vmw_openstack_api_duration.labels(service="compute", operation="flavors", status="success").observe(
+                time.perf_counter() - t0
+            )
+        except Exception:
+            vmw_openstack_api_duration.labels(service="compute", operation="flavors", status="error").observe(
+                time.perf_counter() - t0
+            )
+            raise
         self._flavor_cache = [
             OSFlavorSummary(id=f.id, name=f.name, vcpus=f.vcpus, ram=f.ram, disk=f.disk)
             for f in raw
@@ -56,7 +69,17 @@ class VMwareMappingEngine:
     def _get_networks(self) -> list[OSNetworkSummary]:
         if self._network_cache is not None:
             return self._network_cache
-        raw = self.os_factory.call("network", "networks")
+        t0 = time.perf_counter()
+        try:
+            raw = self.os_factory.call("network", "networks")
+            vmw_openstack_api_duration.labels(service="network", operation="networks", status="success").observe(
+                time.perf_counter() - t0
+            )
+        except Exception:
+            vmw_openstack_api_duration.labels(service="network", operation="networks", status="error").observe(
+                time.perf_counter() - t0
+            )
+            raise
         self._network_cache = [
             OSNetworkSummary(id=n.id, name=n.name)
             for n in raw

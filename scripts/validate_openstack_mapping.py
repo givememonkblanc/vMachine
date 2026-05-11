@@ -52,10 +52,16 @@ class ValidationResult:
     detail: str = ""
     properties: dict[str, Any] = field(default_factory=dict)
 
-
 # ---------------------------------------------------------------------------
 # Utilities
 # ---------------------------------------------------------------------------
+
+try:
+    from app.common.metrics.custom import vmw_openstack_api_duration
+    _HAS_OS_METRICS = True
+except ImportError:
+    _HAS_OS_METRICS = False
+
 
 def _measure(label: str, fn: callable, *args, **kwargs) -> tuple[Any, float]:
     start = time.perf_counter()
@@ -63,7 +69,7 @@ def _measure(label: str, fn: callable, *args, **kwargs) -> tuple[Any, float]:
         result = fn(*args, **kwargs)
         dur = (time.perf_counter() - start) * 1000
         return result, dur
-    except Exception as e:
+    except Exception:
         dur = (time.perf_counter() - start) * 1000
         raise
 
@@ -127,8 +133,13 @@ class MockOpenStackValidator:
                         best = fname
 
                 matched = best == expected
+                dur = 0.0
+                if _HAS_OS_METRICS:
+                    vmw_openstack_api_duration.labels(
+                        service="mock", operation="flavor_matching", status="success"
+                    ).observe(0.001)
                 results.append(ValidationResult(
-                    f"flavor_match_{label.replace(' ', '_')}", matched, 0.0,
+                    f"flavor_match_{label.replace(' ', '_')}", matched, dur,
                     f"VM({cpu}c/{ram}M/{disk}G) → Flavor: {best} (expected: {expected}, score: {best_score:.3f})",
                     properties={
                         "vm_cpus": cpu, "vm_ram_mb": ram, "vm_disk_gb": disk,
@@ -161,6 +172,10 @@ class MockOpenStackValidator:
                     break
 
             success = (matched is not None) == should_match
+            if _HAS_OS_METRICS:
+                vmw_openstack_api_duration.labels(
+                    service="mock", operation="network_matching", status="success" if success else "error"
+                ).observe(0.001)
             results.append(ValidationResult(
                 f"net_match_{vm_net}", success, 0.0,
                 f"VM network '{vm_net}' → '{matched}' (expected: {expected})",

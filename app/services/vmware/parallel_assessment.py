@@ -3,6 +3,11 @@ import time
 import uuid
 from dataclasses import dataclass, field
 
+from app.common.metrics.custom import (
+    vmw_assessment_queue_depth,
+    vmw_assessment_timeouts_total,
+    vmw_assessment_retries_total,
+)
 from app.schemas.vmware.assessment import (
     ParallelAssessmentProgress,
     ScoredCompatibilityResult,
@@ -73,6 +78,8 @@ class ParallelAssessmentService:
         self._tasks[task_id] = progress
         self._results[task_id] = []
 
+        vmw_assessment_queue_depth.set(len(vm_ids))
+
         if self._operation_task:
             op_task = await self._operation_task.create_task(
                 operation_type="vmware_parallel_assessment",
@@ -94,6 +101,7 @@ class ParallelAssessmentService:
                     result.duration_ms = round((time.perf_counter() - start) * 1000, 2)
                     return result
                 except asyncio.TimeoutError:
+                    vmw_assessment_timeouts_total.inc()
                     return SingleVMResult(
                         vm_id=vm_id,
                         vm_name="",
@@ -102,42 +110,66 @@ class ParallelAssessmentService:
                         duration_ms=timeout_seconds * 1000,
                     )
                 except Exception as exc:
-                    return SingleVMResult(
-                        vm_id=vm_id,
-                        vm_name="",
-                        status="failed",
-                        error_message=str(exc),
-                        duration_ms=round((time.perf_counter() - start) * 1000, 2),
-                    )
+                    vmw_assessment_retries_total.labels(operation="evaluate_single").inc()
+                    try:
+                        retry_start = time.perf_counter()
+                        retry_result = await asyncio.wait_for(
+                            self._evaluate_single(vm_id, include_mapping),
+                            timeout=timeout_seconds,
+                        )
+                        retry_result.duration_ms = round((time.perf_counter() - retry_start) * 1000, 2)
+                        return retry_result
+                    except asyncio.TimeoutError:
+                        vmw_assessment_timeouts_total.inc()
+                        return SingleVMResult(
+                            vm_id=vm_id,
+                            vm_name="",
+                            status="timeout",
+                            error_message=f"Evaluation timed out after {timeout_seconds}s (retry)",
+                            duration_ms=timeout_seconds * 1000,
+                        )
+                    except Exception:
+                        return SingleVMResult(
+                            vm_id=vm_id,
+                            vm_name="",
+                            status="failed",
+                            error_message=str(exc),
+                            duration_ms=round((time.perf_counter() - start) * 1000, 2),
+                        )
 
         coros = [_evaluate_one(vm_id) for vm_id in vm_ids]
         results: list[SingleVMResult] = []
         completed = 0
         failed = 0
 
-        for coro in asyncio.as_completed(coros):
-            single = await coro
-            results.append(single)
-            if single.status == "completed":
-                completed += 1
-            else:
-                failed += 1
+        try:
+            for coro in asyncio.as_completed(coros):
+                single = await coro
+                results.append(single)
+                if single.status == "completed":
+                    completed += 1
+                else:
+                    failed += 1
+                remaining = len(vm_ids) - completed - failed
+                self._tasks[task_id].completed = completed
+                self._tasks[task_id].failed = failed
+                self._tasks[task_id].in_progress = remaining
+                vmw_assessment_queue_depth.set(remaining)
+
+            final_status = "completed" if failed == 0 else "completed_with_errors"
+            self._tasks[task_id].status = final_status
             self._tasks[task_id].completed = completed
             self._tasks[task_id].failed = failed
-            self._tasks[task_id].in_progress = len(vm_ids) - completed - failed
+            self._tasks[task_id].in_progress = 0
+            self._results[task_id] = results
 
-        final_status = "completed" if failed == 0 else "completed_with_errors"
-        self._tasks[task_id].status = final_status
-        self._tasks[task_id].completed = completed
-        self._tasks[task_id].failed = failed
-        self._tasks[task_id].in_progress = 0
-        self._results[task_id] = results
-
-        if self._operation_task:
-            await self._operation_task.update_task(
-                op_task.id,
-                state="succeeded" if final_status == "completed" else "failed",
-            )
+            if self._operation_task:
+                await self._operation_task.update_task(
+                    op_task.id,
+                    state="succeeded" if final_status == "completed" else "failed",
+                )
+        finally:
+            vmw_assessment_queue_depth.set(0)
 
         return self._tasks[task_id]
 

@@ -168,7 +168,24 @@ Each validation run produces:
   - `latency_profile.json` — per-operation latency measurements
   - `validation_summary.json` — pass/fail summary per criterion
 
-## 7. Benchmark Dataset & Simulator Validation (Phase 5A)
+### 7.7 Prometheus Metrics Instrumentation
+
+All 6 Phase 5 observability metrics have been wired into service execution paths:
+
+| Metric | Wired Into | Validated |
+|--------|-----------|:---------:|
+| `vmware_vcenter_api_duration_seconds` | `connection.py` (8 operations), `validate_vcenter.py` (`_measure` wrapper) | ✅ Import + registry check |
+| `vmware_openstack_api_duration_seconds` | `mapping_engine.py` (flavor/network listing), `validate_openstack_mapping.py` | ✅ Dataset benchmark (mapping) |
+| `vmware_assessment_queue_depth` | `parallel_assessment.py` (set/reset during batch) | ✅ Import + gauge cycle test |
+| `vmware_assessment_timeouts_total` | `parallel_assessment.py` (TimeoutError handler) | ✅ Import + counter inc test |
+| `vmware_assessment_retries_total` | `parallel_assessment.py` (single retry on failure) | ✅ Import + counter inc test |
+| `vmware_unsupported_hardware_total` | `compatibility.py` (6 check methods, 4 categories) | ✅ Dataset benchmark + recovery validation |
+
+**Verified:** All metrics register correctly with Prometheus client library, accept the expected label dimensions, and increment/observe correctly through the dataset benchmark and recovery validation runs.
+
+**Pending:** Real vCenter/OpenStack metric values (histogram observations will be populated once live infrastructure is connected).
+
+## 8. Benchmark Dataset & Simulator Validation (Phase 5A)
 
 ### 7.1 Overview
 

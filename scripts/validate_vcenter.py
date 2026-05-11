@@ -71,10 +71,18 @@ class VMDetail:
     nic_count: int
     nic_types: list[str]
 
-
 # ---------------------------------------------------------------------------
 # Utilities
 # ---------------------------------------------------------------------------
+
+# Import Prometheus metrics when available (graceful fallback if not running
+# in Gunicorn multiproc context)
+try:
+    from app.common.metrics.custom import vmw_vcenter_api_duration
+    _HAS_METRICS = True
+except ImportError:
+    _HAS_METRICS = False
+
 
 def _measure(label: str, fn: callable, *args, **kwargs) -> tuple[Any, float]:
     """Execute fn and return (result, duration_ms)."""
@@ -82,9 +90,13 @@ def _measure(label: str, fn: callable, *args, **kwargs) -> tuple[Any, float]:
     try:
         result = fn(*args, **kwargs)
         dur = (time.perf_counter() - start) * 1000
+        if _HAS_METRICS:
+            vmw_vcenter_api_duration.labels(operation=label, status="success").observe(dur / 1000)
         return result, dur
-    except Exception as e:
+    except Exception:
         dur = (time.perf_counter() - start) * 1000
+        if _HAS_METRICS:
+            vmw_vcenter_api_duration.labels(operation=label, status="error").observe(dur / 1000)
         raise  # re-raise after measuring
 
 

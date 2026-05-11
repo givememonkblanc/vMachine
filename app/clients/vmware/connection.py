@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ssl
+import time
 from typing import Any
 
 from pyVim.connect import SmartConnect
@@ -9,6 +10,7 @@ from pyVmomi import vim
 from app.clients.vmware.pool import VMwareConnectionPool
 from app.common.exceptions.base import AppException
 from app.core.config.settings import Settings
+from app.common.metrics.custom import vmw_vcenter_api_duration
 
 
 class VMwareClientException(AppException):
@@ -35,14 +37,26 @@ class VMwareClientFactory:
         self._get_pool().disconnect_all()
 
     def get_vm_by_name(self, vm_name: str) -> Any:
-        si = self.connect()
-        container = si.content.viewManager.CreateContainerView(si.content.rootFolder, [vim.VirtualMachine], True)
-
-        for vm in container.view:
-            if vm.name == vm_name:
-                return vm
-
-        raise VMwareClientException(f"VM '{vm_name}' not found in VMware")
+        t0 = time.perf_counter()
+        try:
+            si = self.connect()
+            container = si.content.viewManager.CreateContainerView(
+                si.content.rootFolder, [vim.VirtualMachine], True
+            )
+            for vm in container.view:
+                if vm.name == vm_name:
+                    return vm
+            raise VMwareClientException(f"VM '{vm_name}' not found in VMware")
+        except VMwareClientException:
+            vmw_vcenter_api_duration.labels(operation="get_vm_by_name", status="success").observe(
+                time.perf_counter() - t0
+            )
+            raise
+        except Exception:
+            vmw_vcenter_api_duration.labels(operation="get_vm_by_name", status="error").observe(
+                time.perf_counter() - t0
+            )
+            raise
 
     # ------------------------------------------------------------------
     # Inventory discovery helpers
@@ -55,20 +69,34 @@ class VMwareClientFactory:
         )
         return list(container.view)
 
+    def _instrument(self, operation: str, fn, *args, **kwargs):
+        t0 = time.perf_counter()
+        try:
+            result = fn(*args, **kwargs)
+            vmw_vcenter_api_duration.labels(operation=operation, status="success").observe(
+                time.perf_counter() - t0
+            )
+            return result
+        except Exception:
+            vmw_vcenter_api_duration.labels(operation=operation, status="error").observe(
+                time.perf_counter() - t0
+            )
+            raise
+
     def list_vms(self) -> list[Any]:
-        return self._get_all_objects(vim.VirtualMachine)
+        return self._instrument("list_vms", self._get_all_objects, vim.VirtualMachine)
 
     def list_datastores(self) -> list[Any]:
-        return self._get_all_objects(vim.Datastore)
+        return self._instrument("list_datastores", self._get_all_objects, vim.Datastore)
 
     def list_networks(self) -> list[Any]:
-        return self._get_all_objects(vim.Network)
+        return self._instrument("list_networks", self._get_all_objects, vim.Network)
 
     def list_clusters(self) -> list[Any]:
-        return self._get_all_objects(vim.ClusterComputeResource)
+        return self._instrument("list_clusters", self._get_all_objects, vim.ClusterComputeResource)
 
     def list_hosts(self) -> list[Any]:
-        return self._get_all_objects(vim.HostSystem)
+        return self._instrument("list_hosts", self._get_all_objects, vim.HostSystem)
 
     # ------------------------------------------------------------------
     # VM detail extraction
@@ -313,10 +341,17 @@ class VMwareClientFactory:
         }
 
     def validate_credentials(self) -> bool:
+        t0 = time.perf_counter()
         try:
             si = self.connect()
+            vmw_vcenter_api_duration.labels(operation="validate_credentials", status="success").observe(
+                time.perf_counter() - t0
+            )
             return si is not None
         except Exception:
+            vmw_vcenter_api_duration.labels(operation="validate_credentials", status="error").observe(
+                time.perf_counter() - t0
+            )
             return False
 
     def export_vm_disk(self, vm: Any, export_path: str) -> str:

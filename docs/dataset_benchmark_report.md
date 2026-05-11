@@ -1,6 +1,6 @@
 # Dataset Benchmark Report
 
-> Generated: 2026-05-11 01:48:11 UTC
+> Generated: 2026-05-11 01:59:59 UTC
 > Dataset: benchmark_data/vmware_inventory_100.json, benchmark_data/vmware_inventory_1000.json
 > OpenStack catalog: synthetic-openstack-katakse
 > Memory: 86 MB RSS
@@ -12,14 +12,14 @@
 
 | Operation | VMs | Avg (ms) | p50 (ms) | p95 (ms) | p99 (ms) | Compatible | Incompatible | Mapping Rate |
 |-----------|:---:|:--------:|:--------:|:--------:|:--------:|:----------:|:------------:|:------------:|
-| Compatibility Check | 100 | 0.60 | 0.55 | 0.71 | 0.71 | 64 | 36 | - |
-| Resource Mapping | 100 | 1.43 | 1.37 | 1.56 | 1.56 | - | - | 100% |
-| Plan Generation | 100 | 0.36 | 0.39 | 0.39 | 0.39 | - | - | - |
-| Parallel Assessment (concurrency=10) | 100 | 0.93 | 1.02 | 1.02 | 1.02 | - | - | - |
-| Compatibility Check | 1000 | 6.41 | 6.46 | 7.23 | 7.23 | 634 | 366 | - |
-| Resource Mapping | 1000 | 14.04 | 14.08 | 14.22 | 14.22 | - | - | 100% |
-| Plan Generation | 1000 | 3.20 | 3.50 | 3.50 | 3.50 | - | - | - |
-| Parallel Assessment (concurrency=10) | 1000 | 8.11 | 8.76 | 8.76 | 8.76 | - | - | - |
+| Compatibility Check | 100 | 0.81 | 0.76 | 0.93 | 0.93 | 64 | 36 | - |
+| Resource Mapping | 100 | 1.44 | 1.37 | 1.61 | 1.61 | - | - | 100% |
+| Plan Generation | 100 | 0.32 | 0.38 | 0.38 | 0.38 | - | - | - |
+| Parallel Assessment (concurrency=10) | 100 | 1.02 | 1.08 | 1.08 | 1.08 | - | - | - |
+| Compatibility Check | 1000 | 8.66 | 8.26 | 9.71 | 9.71 | 634 | 366 | - |
+| Resource Mapping | 1000 | 14.00 | 14.04 | 14.12 | 14.12 | - | - | 100% |
+| Plan Generation | 1000 | 3.36 | 3.76 | 3.76 | 3.76 | - | - | - |
+| Parallel Assessment (concurrency=10) | 1000 | 28.31 | 47.06 | 47.06 | 47.06 | - | - | - |
 
 ## Top Incompatibility Reasons
 

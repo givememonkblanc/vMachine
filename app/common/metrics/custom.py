@@ -180,15 +180,15 @@ vmw_inventory_stale_count = Gauge(
 
 vmw_vcenter_api_duration = Histogram(
     name="vmware_vcenter_api_duration_seconds",
-    documentation="vCenter API call latency by operation.",
-    labelnames=("operation",),
+    documentation="vCenter API call latency by operation and status.",
+    labelnames=("operation", "status"),
     buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0),
 )
 
 vmw_openstack_api_duration = Histogram(
     name="vmware_openstack_api_duration_seconds",
     documentation="OpenStack API call latency during mapping validation.",
-    labelnames=("service", "operation"),
+    labelnames=("service", "operation", "status"),
     buckets=(0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 10.0, 30.0),
 )
 

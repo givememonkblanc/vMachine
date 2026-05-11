@@ -275,16 +275,26 @@ Layer 6: Live OpenStack Validation      (validate_openstack_mapping.py)   ← Ph
 
 ### Integration with Phase 5 Prometheus Metrics
 
-6 new metrics defined in `custom.py` but not yet instrumented into services:
+All 6 Phase 5 metrics are now wired into service paths and validated:
 
-| Metric | Type | Target Service |
-|--------|------|----------------|
-| `vmware_vcenter_api_duration_seconds` | Histogram | `connection.py` (vCenter API calls) |
-| `vmware_openstack_api_duration_seconds` | Histogram | `mapping_engine.py` (OpenStack catalog calls) |
-| `vmware_assessment_queue_depth` | Gauge | `parallel_assessment.py` |
-| `vmware_assessment_timeouts_total` | Counter | `parallel_assessment.py` |
-| `vmware_assessment_retries_total` | Counter | `assessment_persistence.py` |
-| `vmware_unsupported_hardware_total` | Counter | `compatibility.py` (check functions) |
+| Metric | Type | Instrumented In | Verified |
+|--------|------|-----------------|:--------:|
+| `vmware_vcenter_api_duration_seconds` | Histogram (operation, status) | `connection.py` — list_vms, list_datastores, list_networks, get_vm_detail, get_datastore_detail, get_network_detail, validate_credentials, get_vm_by_name; `validate_vcenter.py` — `_measure()` wrapper | ✅ |
+| `vmware_openstack_api_duration_seconds` | Histogram (service, operation, status) | `mapping_engine.py` — `_get_flavors()`, `_get_networks()`; `validate_openstack_mapping.py` — mock validator | ✅ |
+| `vmware_assessment_queue_depth` | Gauge | `parallel_assessment.py` — set at start, updated per-VM, reset to 0 in finally | ✅ |
+| `vmware_assessment_timeouts_total` | Counter | `parallel_assessment.py` — incremented on `asyncio.TimeoutError` in `_evaluate_one()` | ✅ |
+| `vmware_assessment_retries_total` | Counter (operation) | `parallel_assessment.py` — single retry on non-timeout failures in `_evaluate_one()` | ✅ |
+| `vmware_unsupported_hardware_total` | Counter (category) | `compatibility.py` — `_check_os_compat` (os), `_check_firmware` + `_check_secure_boot` (firmware), `_check_disk_controllers` (disk_controller), `_check_nic_types` (nic) | ✅ |
+
+**Metric label breakdown:**
+- `vmware_vcenter_api_duration_seconds{operation="list_vms", status="success"}`
+- `vmware_openstack_api_duration_seconds{service="compute", operation="flavors", status="success"}`
+- `vmware_assessment_retries_total{operation="evaluate_single"}`
+- `vmware_unsupported_hardware_total{category="os|firmware|disk_controller|nic"}`
+
+**Validated through:** dataset benchmark (100/1000 VMs), recovery validation (6/6 scenarios), unit import checks, Prometheus registry dump.
+
+**Note:** Live vCenter/OpenStack paths (validate_vcenter.py, validate_openstack_mapping.py with real API calls) cannot be exercised until real infrastructure is connected. The metric wiring is verified through mock and synthetic paths.
 
 ## Phase 4: VMware Migration Assessment Engine — Implementation
 
