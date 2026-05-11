@@ -1,6 +1,6 @@
 # Recovery Validation Report
 
-> Generated: 2026-05-11 01:59:34 UTC
+> Generated: 2026-05-11 02:09:11 UTC
 > Result: **6/6 scenarios passed**
 
 ## Summary
@@ -15,10 +15,10 @@
 
 | Scenario | Status | Duration | Recovered | Recovery Time | Detail |
 |----------|:------:|:--------:|:---------:|:-------------:|--------|
-| vcenter_disconnect | ✅ | 86ms | ❌ | - | VMware env not configured — scenario skipped (expected behavior) |
+| vcenter_disconnect | ✅ | 94ms | ❌ | - | VMware env not configured — scenario skipped (expected behavior) |
 | expired_session | ✅ | 1ms | ❌ | - | VMware env not configured — scenario skipped |
 | pool_exhaustion | ✅ | 1ms | ❌ | - | VMware env not configured — scenario skipped |
-| malformed_vm_metadata | ✅ | 146ms | ❌ | - | Malformed VM metadata — null fields, missing properties |
+| malformed_vm_metadata | ✅ | 167ms | ❌ | - | Malformed VM metadata — null fields, missing properties |
 | unsupported_guest_os | ✅ | 0ms | ❌ | - | Unsupported guest OS detection — graceful handling |
 | partial_inventory_failure | ✅ | 0ms | ❌ | - | Partial infrastructure failure — some services unavailable, assessment engine should still function  |
 

@@ -301,14 +301,14 @@ def main():
                         choices=list(SCENARIOS.keys()), help="Scenario mix")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
     parser.add_argument("--json", type=str, default=None, help="Output JSON file path")
-    parser.add_argument("--all", action="store_true", help="Generate all standard sizes (10,100,500,1000)")
+    parser.add_argument("--all", action="store_true", help="Generate all standard sizes (10,100,500,1000,5000)")
     args = parser.parse_args()
 
     output_dir = Path("benchmark_data")
     output_dir.mkdir(exist_ok=True)
 
     if args.all:
-        sizes = [10, 100, 500, 1000]
+        sizes = [10, 100, 500, 1000, 5000]
         scenarios = ["normal", "mixed_compatibility", "high_risk"]
         for size in sizes:
             for scenario in scenarios:

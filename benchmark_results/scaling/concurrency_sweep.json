@@ -1,0 +1,181 @@
+{
+  "generated_at": "2026-05-11T02:09:13.860539+00:00",
+  "results": [
+    {
+      "vm_count": 1000,
+      "concurrency": 1,
+      "avg_ms": 24.26,
+      "p50_ms": 13.09,
+      "p95_ms": 69.26,
+      "p99_ms": 69.26,
+      "min_ms": 12.08,
+      "max_ms": 69.26,
+      "throughput_vm_per_s": 41212.0,
+      "mem_before_mb": 78.9,
+      "mem_after_mb": 80.6,
+      "mem_delta_mb": 1.7,
+      "cpu_percent": 0.0,
+      "durations_ms": [
+        12.51,
+        69.26,
+        13.09,
+        14.39,
+        12.08
+      ]
+    },
+    {
+      "vm_count": 1000,
+      "concurrency": 5,
+      "avg_ms": 10.68,
+      "p50_ms": 10.18,
+      "p95_ms": 12.13,
+      "p99_ms": 12.13,
+      "min_ms": 9.59,
+      "max_ms": 12.13,
+      "throughput_vm_per_s": 93645.0,
+      "mem_before_mb": 80.6,
+      "mem_after_mb": 80.6,
+      "mem_delta_mb": 0.0,
+      "cpu_percent": 0.0,
+      "durations_ms": [
+        12.13,
+        11.43,
+        10.06,
+        10.18,
+        9.59
+      ]
+    },
+    {
+      "vm_count": 1000,
+      "concurrency": 10,
+      "avg_ms": 12.78,
+      "p50_ms": 13.16,
+      "p95_ms": 13.94,
+      "p99_ms": 13.94,
+      "min_ms": 10.95,
+      "max_ms": 13.94,
+      "throughput_vm_per_s": 78232.0,
+      "mem_before_mb": 80.6,
+      "mem_after_mb": 80.6,
+      "mem_delta_mb": 0.0,
+      "cpu_percent": 0.0,
+      "durations_ms": [
+        13.4,
+        12.46,
+        10.95,
+        13.94,
+        13.16
+      ]
+    },
+    {
+      "vm_count": 1000,
+      "concurrency": 20,
+      "avg_ms": 17.66,
+      "p50_ms": 10.52,
+      "p95_ms": 47.23,
+      "p99_ms": 47.23,
+      "min_ms": 9.45,
+      "max_ms": 47.23,
+      "throughput_vm_per_s": 56627.0,
+      "mem_before_mb": 80.6,
+      "mem_after_mb": 80.6,
+      "mem_delta_mb": 0.0,
+      "cpu_percent": 0.0,
+      "durations_ms": [
+        47.23,
+        9.45,
+        10.52,
+        10.06,
+        11.04
+      ]
+    },
+    {
+      "vm_count": 5000,
+      "concurrency": 1,
+      "avg_ms": 126.04,
+      "p50_ms": 72.52,
+      "p95_ms": 214.88,
+      "p99_ms": 214.88,
+      "min_ms": 66.07,
+      "max_ms": 214.88,
+      "throughput_vm_per_s": 39670.0,
+      "mem_before_mb": 119.3,
+      "mem_after_mb": 122.4,
+      "mem_delta_mb": 3.1,
+      "cpu_percent": 0.0,
+      "durations_ms": [
+        205.26,
+        66.07,
+        71.47,
+        214.88,
+        72.52
+      ]
+    },
+    {
+      "vm_count": 5000,
+      "concurrency": 5,
+      "avg_ms": 123.17,
+      "p50_ms": 70.14,
+      "p95_ms": 213.51,
+      "p99_ms": 213.51,
+      "min_ms": 63.98,
+      "max_ms": 213.51,
+      "throughput_vm_per_s": 40595.0,
+      "mem_before_mb": 122.4,
+      "mem_after_mb": 122.4,
+      "mem_delta_mb": 0.0,
+      "cpu_percent": 0.0,
+      "durations_ms": [
+        63.98,
+        202.72,
+        65.48,
+        213.51,
+        70.14
+      ]
+    },
+    {
+      "vm_count": 5000,
+      "concurrency": 10,
+      "avg_ms": 121.9,
+      "p50_ms": 69.58,
+      "p95_ms": 206.15,
+      "p99_ms": 206.15,
+      "min_ms": 64.82,
+      "max_ms": 206.15,
+      "throughput_vm_per_s": 41017.0,
+      "mem_before_mb": 122.4,
+      "mem_after_mb": 122.4,
+      "mem_delta_mb": 0.0,
+      "cpu_percent": 0.0,
+      "durations_ms": [
+        69.58,
+        206.15,
+        64.82,
+        69.53,
+        199.43
+      ]
+    },
+    {
+      "vm_count": 5000,
+      "concurrency": 20,
+      "avg_ms": 107.64,
+      "p50_ms": 61.82,
+      "p95_ms": 182.12,
+      "p99_ms": 182.12,
+      "min_ms": 57.99,
+      "max_ms": 182.12,
+      "throughput_vm_per_s": 46453.0,
+      "mem_before_mb": 122.4,
+      "mem_after_mb": 122.4,
+      "mem_delta_mb": 0.0,
+      "cpu_percent": 0.0,
+      "durations_ms": [
+        60.97,
+        57.99,
+        175.26,
+        61.82,
+        182.12
+      ]
+    }
+  ]
+}

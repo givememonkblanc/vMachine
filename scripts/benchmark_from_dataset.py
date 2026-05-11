@@ -373,7 +373,8 @@ async def main():
                         help="Path to OpenStack catalog JSON")
     parser.add_argument("--json", action="store_true", help="Export JSON results")
     parser.add_argument("--quick", action="store_true", help="Run 10 and 100 only")
-    parser.add_argument("--all", action="store_true", help="Run all standard sizes (10,100,500,1000)")
+    parser.add_argument("--all", action="store_true", help="Run all standard sizes (10,100,500,1000,5000)")
+    parser.add_argument("--concurrency", type=int, default=10, help="Concurrency level for parallel assessment (default: 10)")
     args = parser.parse_args()
 
     # Load catalog
@@ -395,7 +396,7 @@ async def main():
         if args.quick:
             sizes = [10, 100]
         else:
-            sizes = [10, 100, 500, 1000]
+            sizes = [10, 100, 500, 1000, 5000]
         for size in sizes:
             p = base / f"vmware_inventory_{size}.json"
             if p.exists():
@@ -448,8 +449,8 @@ async def main():
         print(f"avg={run.avg_ms:.1f}ms")
 
         # Parallel assessment
-        print(f"  → Parallel assessment...", end=" ", flush=True)
-        run = await benchmark_parallel(vms, concurrency=10, repeat=2)
+        print(f"  → Parallel assessment (concurrency={args.concurrency})...", end=" ", flush=True)
+        run = await benchmark_parallel(vms, concurrency=args.concurrency, repeat=2)
         all_runs.append(run)
         print(f"avg={run.avg_ms:.1f}ms")
 

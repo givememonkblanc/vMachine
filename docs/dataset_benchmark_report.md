@@ -1,9 +1,9 @@
 # Dataset Benchmark Report
 
-> Generated: 2026-05-11 01:59:59 UTC
-> Dataset: benchmark_data/vmware_inventory_100.json, benchmark_data/vmware_inventory_1000.json
+> Generated: 2026-05-11 02:08:06 UTC
+> Dataset: benchmark_data/vmware_inventory_10.json, benchmark_data/vmware_inventory_100.json, benchmark_data/vmware_inventory_500.json, benchmark_data/vmware_inventory_1000.json, benchmark_data/vmware_inventory_5000.json
 > OpenStack catalog: synthetic-openstack-katakse
-> Memory: 86 MB RSS
+> Memory: 113 MB RSS
 
 ## Validation Warnings
 - ✅ No validation warnings
@@ -12,29 +12,54 @@
 
 | Operation | VMs | Avg (ms) | p50 (ms) | p95 (ms) | p99 (ms) | Compatible | Incompatible | Mapping Rate |
 |-----------|:---:|:--------:|:--------:|:--------:|:--------:|:----------:|:------------:|:------------:|
-| Compatibility Check | 100 | 0.81 | 0.76 | 0.93 | 0.93 | 64 | 36 | - |
-| Resource Mapping | 100 | 1.44 | 1.37 | 1.61 | 1.61 | - | - | 100% |
-| Plan Generation | 100 | 0.32 | 0.38 | 0.38 | 0.38 | - | - | - |
-| Parallel Assessment (concurrency=10) | 100 | 1.02 | 1.08 | 1.08 | 1.08 | - | - | - |
-| Compatibility Check | 1000 | 8.66 | 8.26 | 9.71 | 9.71 | 634 | 366 | - |
-| Resource Mapping | 1000 | 14.00 | 14.04 | 14.12 | 14.12 | - | - | 100% |
-| Plan Generation | 1000 | 3.36 | 3.76 | 3.76 | 3.76 | - | - | - |
-| Parallel Assessment (concurrency=10) | 1000 | 28.31 | 47.06 | 47.06 | 47.06 | - | - | - |
+| Compatibility Check | 10 | 0.26 | 0.09 | 0.63 | 0.63 | 8 | 2 | - |
+| Resource Mapping | 10 | 0.20 | 0.14 | 0.34 | 0.34 | - | - | 100% |
+| Plan Generation | 10 | 0.10 | 0.15 | 0.15 | 0.15 | - | - | - |
+| Parallel Assessment (concurrency=10) | 10 | 0.19 | 0.22 | 0.22 | 0.22 | - | - | - |
+| Compatibility Check | 100 | 0.79 | 0.79 | 0.84 | 0.84 | 64 | 36 | - |
+| Resource Mapping | 100 | 1.69 | 1.53 | 2.14 | 2.14 | - | - | 100% |
+| Plan Generation | 100 | 0.33 | 0.35 | 0.35 | 0.35 | - | - | - |
+| Parallel Assessment (concurrency=10) | 100 | 1.05 | 1.10 | 1.10 | 1.10 | - | - | - |
+| Compatibility Check | 500 | 16.24 | 4.45 | 40.29 | 40.29 | 323 | 177 | - |
+| Resource Mapping | 500 | 6.91 | 6.87 | 7.00 | 7.00 | - | - | 100% |
+| Plan Generation | 500 | 1.62 | 1.87 | 1.87 | 1.87 | - | - | - |
+| Parallel Assessment (concurrency=10) | 500 | 4.92 | 4.94 | 4.94 | 4.94 | - | - | - |
+| Compatibility Check | 1000 | 7.95 | 7.94 | 8.28 | 8.28 | 634 | 366 | - |
+| Resource Mapping | 1000 | 14.04 | 14.11 | 14.18 | 14.18 | - | - | 100% |
+| Plan Generation | 1000 | 3.48 | 3.53 | 3.53 | 3.53 | - | - | - |
+| Parallel Assessment (concurrency=10) | 1000 | 29.65 | 48.79 | 48.79 | 48.79 | - | - | - |
+| Compatibility Check | 5000 | 138.00 | 169.95 | 188.61 | 188.61 | 3089 | 1911 | - |
+| Resource Mapping | 5000 | 79.65 | 79.87 | 79.88 | 79.88 | - | - | 100% |
+| Plan Generation | 5000 | 21.59 | 22.68 | 22.68 | 22.68 | - | - | - |
+| Parallel Assessment (concurrency=10) | 5000 | 58.46 | 60.20 | 60.20 | 60.20 | - | - | - |
 
 ## Top Incompatibility Reasons
 
 | Reason | Count |
 |--------|:-----:|
+| high: disk_controller — Disk controller type 'ide' may not be supported in OpenStack | 5 |
+| critical: os — Unsupported guest OS: Solaris 11 | 1 |
+| critical: os — VM is suspended — must be powered on before migration | 1 |
 | high: disk_controller — Disk controller type 'ide' may not be supported in OpenStack | 37 |
 | critical: os — VM is suspended — must be powered on before migration | 28 |
 | critical: memory — VM has no memory configured | 5 |
 | critical: os — Unsupported guest OS: Solaris 11 | 3 |
 | critical: os — Unsupported guest OS: HP-UX 11i | 2 |
+| high: disk_controller — Disk controller type 'ide' may not be supported in OpenStack | 162 |
+| critical: os — VM is suspended — must be powered on before migration | 149 |
+| critical: os — Unsupported guest OS: HP-UX 11i | 18 |
+| critical: os — Unsupported guest OS: Solaris 11 | 13 |
+| high: disk — VM has no disks attached | 13 |
 | high: disk_controller — Disk controller type 'ide' may not be supported in OpenStack | 329 |
 | critical: os — VM is suspended — must be powered on before migration | 299 |
 | critical: os — Unsupported guest OS: Solaris 11 | 37 |
 | critical: os — Unsupported guest OS: HP-UX 11i | 37 |
 | high: disk — VM has no disks attached | 27 |
+| high: disk_controller — Disk controller type 'ide' may not be supported in OpenStack | 1627 |
+| critical: os — VM is suspended — must be powered on before migration | 1544 |
+| critical: os — Unsupported guest OS: Solaris 11 | 176 |
+| critical: os — Unsupported guest OS: HP-UX 11i | 161 |
+| high: disk — VM has no disks attached | 137 |
 
 ## Notes
 

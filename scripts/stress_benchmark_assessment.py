@@ -161,8 +161,8 @@ def _generate_mock_vms(count: int) -> list[VMSummary]:
         nics = [
             VMNic(
                 label=f"nic{j}",
-                mac=f"00:50:56:{(i % 256):02x}:{j:02x}:{(i * j % 256):02x}",
-                network=f"VM Network {j % 5 + 1}",
+                mac_address=f"00:50:56:{(i % 256):02x}:{j:02x}:{(i * j % 256):02x}",
+                network_name=f"VM Network {j % 5 + 1}",
                 nic_type=MOCK_NIC_TYPES[(i + j) % len(MOCK_NIC_TYPES)],
             )
             for j in range(nic_count)
