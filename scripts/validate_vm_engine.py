@@ -39,6 +39,51 @@ logger = logging.getLogger("validate_vm_engine")
 
 
 @dataclass
+class StateTraceEntry:
+    """Single VM state observation from polling."""
+    timestamp: str = ""
+    state: str = ""
+    elapsed_since_start: float = 0.0
+    detail: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class OperationTiming:
+    """Detailed timing breakdown for one lifecycle operation."""
+    operation: str = ""
+    passed: bool = False
+    total_duration_s: float = 0.0
+    api_latency_s: float = 0.0
+    state_convergence_s: float = 0.0
+    request_sent_at: str = ""
+    response_received_at: str = ""
+    state_converged_at: str = ""
+    initial_state: str = ""
+    final_state: str = ""
+    state_trace: list[StateTraceEntry] = field(default_factory=list)
+    error: str | None = None
+    detail: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class LifecycleTimingResult:
+    """Complete lifecycle timing profile for one VM."""
+    vm_name: str = ""
+    server_id: str = ""
+    flavor_id: str = ""
+    image_id: str = ""
+    network_id: str = ""
+    poll_interval_s: float = 3.0
+    started_at: str = ""
+    finished_at: str = ""
+    total_duration_s: float = 0.0
+    all_passed: bool = False
+    operations: list[OperationTiming] = field(default_factory=list)
+    full_state_trace: list[StateTraceEntry] = field(default_factory=list)
+    failure_observations: list[dict[str, Any]] = field(default_factory=list)
+
+
+@dataclass
 class ValidationStep:
     name: str
     passed: bool = False
@@ -56,6 +101,7 @@ class ValidationResult:
     all_passed: bool = False
     server_cleaned_up: bool = False
     engine_ready: bool = False
+    lifecycle_timing: LifecycleTimingResult | None = None
 
     @property
     def passed_count(self) -> int:
@@ -241,7 +287,6 @@ def _validate_state_dry(state: str, operation: str, expect_pass: bool) -> None:
 
 
 async def _validate_live(args: argparse.Namespace) -> ValidationResult:
-    """Live mode: creates, controls, and deletes a real VM."""
     result = ValidationResult(
         started_at=datetime.now(timezone.utc).isoformat(),
     )
@@ -249,10 +294,7 @@ async def _validate_live(args: argparse.Namespace) -> ValidationResult:
 
     if not get_settings().openstack_ready:
         logger.error("OpenStack not configured — set OPENSTACK_AUTH_URL/USERNAME/PASSWORD/etc.")
-        result.steps.append(ValidationStep(
-            name="engine_ready", passed=False,
-            error="OpenStack env vars not set",
-        ))
+        result.steps.append(ValidationStep(name="engine_ready", passed=False, error="OpenStack env vars not set"))
         result.all_passed = False
         result.engine_ready = False
         result.finished_at = datetime.now(timezone.utc).isoformat()
@@ -268,85 +310,30 @@ async def _validate_live(args: argparse.Namespace) -> ValidationResult:
     created_server_id: str | None = None
     cleanup_attempted = False
     vm_name = args.vm_name or f"vmachine-test-{int(time.time())}"
+    poll_interval = args.poll_interval
+
+    lifecycle_ops: list[OperationTiming] = []
+    full_state_trace: list[StateTraceEntry] = []
+    failure_observations: list[dict[str, Any]] = []
+    lifecycle_start = time.monotonic()
 
     try:
-        # ---------------------------------------------------------------
-        # 1. List flavors, images, networks
-        # ---------------------------------------------------------------
-        step = ValidationStep(name="discover_resources")
-        t0 = time.monotonic()
-        try:
-            flavors = list(await engine._nova_call("flavors", 30.0, get_all=True))
-            step.detail["flavor_count"] = len(flavors)
-            logger.info("Found %d flavors", len(flavors))
-
-            images = await engine._nova_call("images", 30.0)
-            step.detail["image_count"] = len(images)
-            logger.info("Found %d images", len(images))
-
-            networks_list = await factory.call("network", "networks")
-            step.detail["network_count"] = len(networks_list)
-            logger.info("Found %d networks", len(networks_list))
-
-            flavor_id = args.flavor or (flavors[0].id if flavors else None)
-            image_id = args.image or (images[0].id if images else None)
-            network_id = args.network or (networks_list[0].id if networks_list else None)
-
-            if not flavor_id or not image_id or not network_id:
-                raise RuntimeError(f"Missing resources: flavor={flavor_id} image={image_id} network={network_id}")
-
-            step.detail["selected"] = {
-                "flavor_id": flavor_id,
-                "image_id": image_id,
-                "network_id": network_id,
-            }
-            step.passed = True
-            logger.info("Selected flavor=%s image=%s network=%s", flavor_id, image_id, network_id)
-        except Exception as exc:
-            step.error = str(exc)
-            step.passed = False
-            logger.error("Resource discovery failed: %s", exc)
-        step.duration_seconds = time.monotonic() - t0
+        step, flavors, images_list, networks_list, flavor_id, image_id, network_id = (
+            await _discover_resources(engine, factory, args)
+        )
         result.steps.append(step)
-
         if not step.passed:
             result.all_passed = False
             result.finished_at = datetime.now(timezone.utc).isoformat()
             return result
 
-        # ---------------------------------------------------------------
-        # 2. Create VM
-        # ---------------------------------------------------------------
-        step = ValidationStep(name="create_vm")
-        t0 = time.monotonic()
-        try:
-            req = VMCreateRequest(
-                name=vm_name,
-                flavor_id=flavor_id,
-                image_id=image_id,
-                network_ids=[network_id],
-                keypair=args.keypair or None,
-                security_groups=[args.security_group] if args.security_group else None,
-                availability_zone=args.az or None,
-            )
-            vm = await engine.create_vm(req)
-            created_server_id = vm.id
-            step.detail = {
-                "server_id": vm.id,
-                "name": vm.name,
-                "status": vm.status,
-                "flavor_id": vm.flavor_id,
-                "image_id": vm.image_id,
-            }
-            step.passed = vm.status == "ACTIVE"
-            logger.info("VM created id=%s status=%s", vm.id, vm.status)
-        except Exception as exc:
-            step.error = str(exc)
-            step.passed = False
-            logger.error("VM creation failed: %s", exc)
-        step.duration_seconds = time.monotonic() - t0
+        step, ot, state_trace = await _instrumented_create_vm(
+            engine, vm_name, flavor_id, image_id, network_id, args, poll_interval,
+        )
+        full_state_trace.extend(state_trace)
         result.steps.append(step)
-
+        if ot:
+            lifecycle_ops.append(ot)
         if not step.passed:
             result.all_passed = False
             if created_server_id:
@@ -356,62 +343,70 @@ async def _validate_live(args: argparse.Namespace) -> ValidationResult:
             result.finished_at = datetime.now(timezone.utc).isoformat()
             return result
 
-        # ---------------------------------------------------------------
-        # 3. Reboot VM
-        # ---------------------------------------------------------------
-        resp = await _run_lifecycle_step(engine, "reboot", created_server_id)
-        result.steps.append(resp)
+        created_server_id = step.detail.get("server_id")
 
-        # ---------------------------------------------------------------
-        # 4. Stop VM
-        # ---------------------------------------------------------------
-        stop_resp = await _run_lifecycle_step(engine, "stop", created_server_id)
-        result.steps.append(stop_resp)
+        for op_name in ("reboot", "stop", "start"):
+            ot = await _instrumented_lifecycle_operation(engine, created_server_id, op_name, poll_interval)
+            lifecycle_ops.append(ot)
+            vs = ValidationStep(
+                name=f"vm_{op_name}",
+                passed=ot.passed,
+                duration_seconds=ot.total_duration_s,
+                detail={"server_id": created_server_id, "operation": op_name, "timing": {
+                    "api_latency_s": ot.api_latency_s,
+                    "state_convergence_s": ot.state_convergence_s,
+                    "total_s": ot.total_duration_s,
+                }},
+                error=ot.error,
+            )
+            result.steps.append(vs)
+            full_state_trace.extend(ot.state_trace)
+            if not ot.passed:
+                failure_observations.append({
+                    "operation": op_name,
+                    "error": ot.error,
+                    "duration_s": ot.total_duration_s,
+                    "final_state": ot.final_state,
+                })
 
-        # ---------------------------------------------------------------
-        # 5. Start VM
-        # ---------------------------------------------------------------
-        start_resp = await _run_lifecycle_step(engine, "start", created_server_id)
-        result.steps.append(start_resp)
-
-        # ---------------------------------------------------------------
-        # 6. Delete VM
-        # ---------------------------------------------------------------
-        step = ValidationStep(name="delete_vm")
-        t0 = time.monotonic()
-        try:
-            del_resp = await engine.delete_vm(created_server_id)
-            step.detail = {"server_id": created_server_id, "status": del_resp.status}
-            step.passed = True
-            logger.info("VM deleted id=%s", created_server_id)
-        except Exception as exc:
-            step.error = str(exc)
-            step.passed = False
-            logger.error("VM deletion failed: %s", exc)
-        step.duration_seconds = time.monotonic() - t0
+        ot = await _instrumented_delete_vm(engine, created_server_id, poll_interval)
+        lifecycle_ops.append(ot)
+        step = ValidationStep(
+            name="delete_vm",
+            passed=ot.passed,
+            duration_seconds=ot.total_duration_s,
+            detail={"server_id": created_server_id, "status": "deleted", "timing": {
+                "api_latency_s": ot.api_latency_s, "state_convergence_s": ot.state_convergence_s,
+            }},
+            error=ot.error,
+        )
         result.steps.append(step)
+        full_state_trace.extend(ot.state_trace)
+        if not ot.passed:
+            failure_observations.append({
+                "operation": "delete", "error": ot.error,
+                "duration_s": ot.total_duration_s,
+            })
 
-        # ---------------------------------------------------------------
-        # 7. Verify cleanup (server should 404)
-        # ---------------------------------------------------------------
         step = ValidationStep(name="verify_cleanup")
         t0 = time.monotonic()
         try:
             await engine.get_vm(created_server_id)
             step.passed = False
             step.error = "Server still exists after deletion"
-            logger.error("Server %s still exists after deletion!", created_server_id)
         except Exception as exc:
             error_str = str(exc)
-            if "not found" in error_str.lower() or "404" in error_str:
+            if "not found" in error_str.lower() or "404" in error_str or "no server" in error_str.lower():
                 step.passed = True
                 step.detail = {"confirmed": "server no longer exists"}
-                logger.info("Cleanup verified — server %s gone", created_server_id)
             else:
                 step.passed = False
                 step.error = error_str
         step.duration_seconds = time.monotonic() - t0
         result.steps.append(step)
+
+        # VM was deleted by the engine — skip safety cleanup
+        cleanup_attempted = True
 
     except Exception as exc:
         logger.error("Validation failed with unexpected error: %s", exc)
@@ -428,25 +423,284 @@ async def _validate_live(args: argparse.Namespace) -> ValidationResult:
     result.all_passed = all(s.passed for s in result.steps)
     result.finished_at = datetime.now(timezone.utc).isoformat()
     if result.steps:
-        result.total_duration = (datetime.fromisoformat(result.finished_at) - datetime.fromisoformat(result.started_at)).total_seconds()
+        result.total_duration = (
+            datetime.fromisoformat(result.finished_at) - datetime.fromisoformat(result.started_at)
+        ).total_seconds()
+
+    result.lifecycle_timing = LifecycleTimingResult(
+        vm_name=vm_name,
+        server_id=created_server_id or "",
+        flavor_id=flavor_id if "flavor_id" in dir() else "",
+        image_id=image_id if "image_id" in dir() else "",
+        network_id=network_id if "network_id" in dir() else "",
+        poll_interval_s=poll_interval,
+        started_at=result.started_at,
+        finished_at=result.finished_at,
+        total_duration_s=result.total_duration,
+        all_passed=result.all_passed,
+        operations=lifecycle_ops,
+        full_state_trace=full_state_trace,
+        failure_observations=failure_observations,
+    )
     return result
 
 
-async def _run_lifecycle_step(engine: VMProvisioningEngine, operation: str, server_id: str) -> ValidationStep:
-    step = ValidationStep(name=f"vm_{operation}")
+async def _discover_resources(
+    engine: VMProvisioningEngine, factory: OpenStackConnectionFactory, args: argparse.Namespace,
+) -> tuple[ValidationStep, list, list, list, str, str, str]:
+    step = ValidationStep(name="discover_resources")
     t0 = time.monotonic()
+    flavor_id = args.flavor or ""
+    image_id = args.image or ""
+    network_id = args.network or ""
+    flavors: list = []
+    images_list: list = []
+    networks_list: list = []
     try:
-        method = getattr(engine, f"{operation}_vm")
-        resp = await method(server_id)
-        step.detail = {"server_id": server_id, "status": resp.status, "elapsed": round(resp.elapsed_seconds, 2)}
-        step.passed = resp.status == "success"
-        logger.info("VM %s %s (%.1fs)", server_id, operation, resp.elapsed_seconds)
+        flavors = list(await engine._nova_call("flavors", 30.0, get_all=True))
+        step.detail["flavor_count"] = len(flavors)
+        images_list = list(await engine._nova_call("images", 30.0))
+        step.detail["image_count"] = len(images_list)
+        networks_list = list(factory.call("network", "networks"))
+        step.detail["network_count"] = len(networks_list)
+        flavor_id = args.flavor or (flavors[0].id if flavors else None)
+        image_id = args.image or (images_list[0].id if images_list else None)
+        network_id = args.network or (networks_list[0].id if networks_list else None)
+        if not flavor_id or not image_id or not network_id:
+            raise RuntimeError(f"Missing resources: flavor={flavor_id} image={image_id} network={network_id}")
+        step.detail["selected"] = {"flavor_id": flavor_id, "image_id": image_id, "network_id": network_id}
+        step.passed = True
     except Exception as exc:
         step.error = str(exc)
         step.passed = False
-        logger.error("VM %s %s failed: %s", server_id, operation, exc)
     step.duration_seconds = time.monotonic() - t0
-    return step
+    return step, flavors, images_list, networks_list, flavor_id, image_id, network_id
+
+
+async def _instrumented_create_vm(
+    engine: VMProvisioningEngine,
+    vm_name: str, flavor_id: str, image_id: str, network_id: str,
+    args: argparse.Namespace,
+    poll_interval: float,
+) -> tuple[ValidationStep, OperationTiming | None, list[StateTraceEntry]]:
+    step = ValidationStep(name="create_vm")
+    from app.schemas.openstack.vm_lifecycle import VMCreateRequest
+
+    req = VMCreateRequest(
+        name=vm_name, flavor_id=flavor_id, image_id=image_id,
+        network_ids=[network_id], keypair=args.keypair or None,
+        security_groups=[args.security_group] if args.security_group else None,
+        availability_zone=args.az or None,
+    )
+
+    operation_start = time.monotonic()
+    request_sent_at = datetime.now(timezone.utc).isoformat()
+    all_trace: list[StateTraceEntry] = []
+    server_id: str | None = None
+    ot = None
+    api_latency = 0.0
+
+    try:
+        vm = await engine.create_vm(req)
+        response_received_at = datetime.now(timezone.utc).isoformat()
+        api_latency = time.monotonic() - operation_start
+        server_id = vm.id
+
+        state_convergence = time.monotonic() - operation_start - api_latency
+        if state_convergence < 0:
+            state_convergence = 0.0
+
+        step.detail = {
+            "server_id": vm.id, "name": vm.name, "status": vm.status,
+            "flavor_id": vm.flavor_id, "image_id": vm.image_id,
+        }
+        step.passed = vm.status == "ACTIVE"
+
+        stop_ev = asyncio.Event()
+        trace_task = asyncio.create_task(
+            _poll_state_trace(engine, vm.id, operation_start, poll_interval, 15.0, stop_ev)
+        )
+        await asyncio.sleep(poll_interval)
+        stop_ev.set()
+        post_trace = await trace_task
+        all_trace = post_trace
+
+        ot = _build_operation_timing(
+            operation="create", passed=step.passed,
+            request_sent_at=request_sent_at,
+            response_received_at=response_received_at,
+            state_converged_at=datetime.now(timezone.utc).isoformat(),
+            initial_state="BUILD", final_state=vm.status,
+            state_trace=all_trace,
+            total_duration_s=time.monotonic() - operation_start,
+            api_latency_s=api_latency,
+            state_convergence_s=state_convergence,
+        )
+    except Exception as exc:
+        step.error = str(exc)
+        step.passed = False
+        ot = _build_operation_timing(
+            operation="create", passed=False,
+            request_sent_at=request_sent_at,
+            response_received_at=datetime.now(timezone.utc).isoformat(),
+            state_converged_at="",
+            initial_state="BUILD", final_state="ERROR",
+            state_trace=all_trace,
+            total_duration_s=time.monotonic() - operation_start,
+            api_latency_s=api_latency,
+            state_convergence_s=0.0,
+            error=str(exc),
+        )
+    step.duration_seconds = time.monotonic() - operation_start
+    return step, ot, all_trace
+
+
+async def _instrumented_lifecycle_operation(
+    engine: VMProvisioningEngine, server_id: str, operation: str, poll_interval: float,
+) -> OperationTiming:
+    operation_start = time.monotonic()
+    request_sent_at = datetime.now(timezone.utc).isoformat()
+
+    try:
+        detail = await engine.get_vm(server_id)
+        initial_state = detail.status
+    except Exception as exc:
+        return _build_operation_timing(
+            operation=operation, passed=False,
+            request_sent_at=request_sent_at,
+            response_received_at=datetime.now(timezone.utc).isoformat(),
+            state_converged_at="",
+            initial_state="UNKNOWN", final_state="UNKNOWN",
+            state_trace=[], total_duration_s=0, api_latency_s=0,
+            state_convergence_s=0, error=f"Pre-flight check failed: {exc}",
+        )
+
+    stop_ev = asyncio.Event()
+    trace_task = asyncio.create_task(
+        _poll_state_trace(engine, server_id, operation_start, poll_interval, 120.0, stop_ev)
+    )
+
+    try:
+        method = getattr(engine, f"{operation}_vm")
+        resp = await method(server_id)
+        response_received_at = datetime.now(timezone.utc).isoformat()
+        api_latency = time.monotonic() - operation_start
+
+        await asyncio.sleep(poll_interval)
+        stop_ev.set()
+        trace = await trace_task
+
+        try:
+            final_detail = await engine.get_vm(server_id)
+            final_state = final_detail.status
+        except Exception:
+            final_state = "UNKNOWN"
+
+        state_convergence = time.monotonic() - operation_start - api_latency
+        if state_convergence < 0:
+            state_convergence = 0.0
+
+        passed = resp.status == "success"
+        ot = _build_operation_timing(
+            operation=operation, passed=passed,
+            request_sent_at=request_sent_at,
+            response_received_at=response_received_at,
+            state_converged_at=datetime.now(timezone.utc).isoformat(),
+            initial_state=initial_state, final_state=final_state,
+            state_trace=trace,
+            total_duration_s=time.monotonic() - operation_start,
+            api_latency_s=api_latency,
+            state_convergence_s=state_convergence,
+        )
+        return ot
+    except Exception as exc:
+        stop_ev.set()
+        trace = await trace_task if not trace_task.done() else []
+        try:
+            final_detail = await engine.get_vm(server_id)
+            final_state = final_detail.status
+        except Exception:
+            final_state = "UNKNOWN"
+        return _build_operation_timing(
+            operation=operation, passed=False,
+            request_sent_at=request_sent_at,
+            response_received_at=datetime.now(timezone.utc).isoformat(),
+            state_converged_at="",
+            initial_state=initial_state, final_state=final_state,
+            state_trace=trace,
+            total_duration_s=time.monotonic() - operation_start,
+            api_latency_s=time.monotonic() - operation_start,
+            state_convergence_s=0,
+            error=str(exc),
+        )
+
+
+async def _instrumented_delete_vm(
+    engine: VMProvisioningEngine, server_id: str, poll_interval: float,
+) -> OperationTiming:
+    operation_start = time.monotonic()
+    request_sent_at = datetime.now(timezone.utc).isoformat()
+
+    try:
+        detail = await engine.get_vm(server_id)
+        initial_state = detail.status
+    except Exception:
+        initial_state = "UNKNOWN"
+
+    stop_ev = asyncio.Event()
+    trace_task = asyncio.create_task(
+        _poll_state_trace(engine, server_id, operation_start, poll_interval, 60.0, stop_ev)
+    )
+
+    try:
+        resp = await engine.delete_vm(server_id)
+        response_received_at = datetime.now(timezone.utc).isoformat()
+        api_latency = time.monotonic() - operation_start
+
+        await asyncio.sleep(poll_interval)
+        stop_ev.set()
+        trace = await trace_task
+
+        deleted = False
+        try:
+            await engine.get_vm(server_id)
+        except Exception as exc:
+            err = str(exc).lower()
+            if "not found" in err or "404" in err or "no server" in err:
+                deleted = True
+
+        state_convergence = time.monotonic() - operation_start - api_latency
+        if state_convergence < 0:
+            state_convergence = 0.0
+
+        ot = _build_operation_timing(
+            operation="delete", passed=deleted,
+            request_sent_at=request_sent_at,
+            response_received_at=response_received_at,
+            state_converged_at=datetime.now(timezone.utc).isoformat(),
+            initial_state=initial_state, final_state="DELETED" if deleted else "UNKNOWN",
+            state_trace=trace,
+            total_duration_s=time.monotonic() - operation_start,
+            api_latency_s=api_latency,
+            state_convergence_s=state_convergence,
+            detail={"delete_api_status": resp.status if hasattr(resp, "status") else "success"},
+        )
+        return ot
+    except Exception as exc:
+        stop_ev.set()
+        trace = await trace_task if not trace_task.done() else []
+        return _build_operation_timing(
+            operation="delete", passed=False,
+            request_sent_at=request_sent_at,
+            response_received_at=datetime.now(timezone.utc).isoformat(),
+            state_converged_at="",
+            initial_state=initial_state, final_state="UNKNOWN",
+            state_trace=trace,
+            total_duration_s=time.monotonic() - operation_start,
+            api_latency_s=time.monotonic() - operation_start,
+            state_convergence_s=0,
+            error=str(exc),
+        )
 
 
 async def _cleanup(engine: VMProvisioningEngine, server_id: str) -> None:
@@ -455,6 +709,72 @@ async def _cleanup(engine: VMProvisioningEngine, server_id: str) -> None:
         logger.info("Cleanup: deleted server id=%s", server_id)
     except Exception as exc:
         logger.warning("Cleanup failed for server id=%s: %s", server_id, exc)
+
+
+async def _poll_state_trace(
+    engine: VMProvisioningEngine,
+    server_id: str,
+    start_time: float,
+    poll_interval: float,
+    timeout: float,
+    stop_event: asyncio.Event,
+) -> list[StateTraceEntry]:
+    trace: list[StateTraceEntry] = []
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if stop_event.is_set():
+            break
+        try:
+            detail = await engine.get_vm(server_id)
+            trace.append(StateTraceEntry(
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                state=detail.status,
+                elapsed_since_start=time.monotonic() - start_time,
+                detail={
+                    "power_state": detail.power_state if hasattr(detail, "power_state") else None,
+                },
+            ))
+        except Exception:
+            trace.append(StateTraceEntry(
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                state="UNKNOWN",
+                elapsed_since_start=time.monotonic() - start_time,
+                detail={"error": "poll_failed"},
+            ))
+        await asyncio.sleep(poll_interval)
+    return trace
+
+
+def _build_operation_timing(
+    operation: str,
+    passed: bool,
+    request_sent_at: str,
+    response_received_at: str,
+    state_converged_at: str,
+    initial_state: str,
+    final_state: str,
+    state_trace: list[StateTraceEntry],
+    total_duration_s: float,
+    api_latency_s: float,
+    state_convergence_s: float,
+    error: str | None = None,
+    detail: dict | None = None,
+) -> OperationTiming:
+    return OperationTiming(
+        operation=operation,
+        passed=passed,
+        total_duration_s=round(total_duration_s, 3),
+        api_latency_s=round(api_latency_s, 3),
+        state_convergence_s=round(state_convergence_s, 3),
+        request_sent_at=request_sent_at,
+        response_received_at=response_received_at,
+        state_converged_at=state_converged_at,
+        initial_state=initial_state,
+        final_state=final_state,
+        state_trace=state_trace,
+        error=error,
+        detail=detail or {},
+    )
 
 
 def _generate_report(result: ValidationResult) -> str:
@@ -502,6 +822,44 @@ def _generate_report(result: ValidationResult) -> str:
                 lines.append(f"- **Detail**: {step.detail}")
         lines.append("")
 
+    if result.lifecycle_timing:
+        lt = result.lifecycle_timing
+        lines.append("")
+        lines.append("## Lifecycle Timing Profile")
+        lines.append("")
+        lines.append(f"- **VM**: {lt.vm_name} | **Flavor**: {lt.flavor_id} | **Image**: {lt.image_id}")
+        lines.append(f"- **Total duration**: {lt.total_duration_s:.1f}s")
+        lines.append(f"- **Poll interval**: {lt.poll_interval_s}s")
+        lines.append(f"- **All operations passed**: {lt.all_passed}")
+        if lt.failure_observations:
+            lines.append(f"- **Failure observations**: {len(lt.failure_observations)}")
+            for fo in lt.failure_observations:
+                lines.append(f"  - {fo.get('operation')}: {fo.get('error', 'unknown')} ({fo.get('duration_s', 0):.1f}s)")
+        lines.append("")
+        lines.append("### Per-Operation Timing")
+        lines.append("")
+        lines.append("| Operation | Status | API Latency | State Convergence | Total | Initial → Final |")
+        lines.append("|-----------|:------:|:-----------:|:-----------------:|:-----:|:----------------:|")
+        for op in lt.operations:
+            icon = "✅" if op.passed else "❌"
+            lines.append(
+                f"| {op.operation} | {icon} | {op.api_latency_s:.2f}s | {op.state_convergence_s:.2f}s | "
+                f"{op.total_duration_s:.2f}s | {op.initial_state} → {op.final_state} |"
+            )
+        lines.append("")
+        lines.append("### State Transition Trace")
+        lines.append("")
+        for op in lt.operations:
+            lines.append(f"**{op.operation}** (state trace)")
+            lines.append("")
+            lines.append("| Time | State | Elapsed (s) |")
+            lines.append("|------|:-----:|:-----------:|")
+            for entry in (op.state_trace or []):
+                lines.append(f"| {entry.timestamp} | {entry.state} | {entry.elapsed_since_start:.1f} |")
+            if not op.state_trace:
+                lines.append("| — | (no trace recorded) | — |")
+            lines.append("")
+
     lines.append("---")
     lines.append("*Report generated by validate_vm_engine.py*")
     return "\n".join(lines)
@@ -517,6 +875,8 @@ def main():
     parser.add_argument("--security-group", type=str, default=None, help="Security group name")
     parser.add_argument("--az", type=str, default=None, help="Availability zone")
     parser.add_argument("--dry-run", action="store_true", help="Dry-run mode — validate structure without creating or deleting any VM")
+    parser.add_argument("--poll-interval", type=float, default=3.0, help="State poll interval in seconds (default: 3.0)")
+    parser.add_argument("--lifecycle-timing", action="store_true", help="Output detailed lifecycle timing JSON to benchmark_results/vm_engine/")
     parser.add_argument("--json", action="store_true", help="Export JSON results")
     args = parser.parse_args()
 
@@ -547,6 +907,48 @@ async def run_validation(args: argparse.Namespace) -> None:
     report_path = output_dir / "vm_engine_validation.md"
     report_path.write_text(_generate_report(result))
     print(f"\n  Report: {report_path}")
+
+    if args.lifecycle_timing and result.lifecycle_timing:
+        lt = result.lifecycle_timing
+        timing_json = {
+            "vm_name": lt.vm_name,
+            "server_id": lt.server_id,
+            "flavor_id": lt.flavor_id,
+            "image_id": lt.image_id,
+            "network_id": lt.network_id,
+            "poll_interval_s": lt.poll_interval_s,
+            "started_at": lt.started_at,
+            "finished_at": lt.finished_at,
+            "total_duration_s": lt.total_duration_s,
+            "all_passed": lt.all_passed,
+            "failure_observations": lt.failure_observations,
+            "operations": [
+                {
+                    "operation": op.operation,
+                    "passed": op.passed,
+                    "total_duration_s": op.total_duration_s,
+                    "api_latency_s": op.api_latency_s,
+                    "state_convergence_s": op.state_convergence_s,
+                    "initial_state": op.initial_state,
+                    "final_state": op.final_state,
+                    "error": op.error,
+                    "state_trace": [
+                        {"time": e.timestamp, "state": e.state, "elapsed_s": round(e.elapsed_since_start, 3)}
+                        for e in op.state_trace
+                    ],
+                }
+                for op in lt.operations
+            ],
+            "full_state_trace": [
+                {"time": e.timestamp, "state": e.state, "elapsed_s": round(e.elapsed_since_start, 3)}
+                for e in lt.full_state_trace
+            ],
+        }
+        lt_dir = Path("benchmark_results") / "vm_engine"
+        lt_dir.mkdir(parents=True, exist_ok=True)
+        lt_path = lt_dir / "live_lifecycle_timing.json"
+        lt_path.write_text(json.dumps(timing_json, indent=2, default=str))
+        logger.info("Lifecycle timing JSON written to %s", lt_path)
 
     if args.json:
         json_dir = Path("benchmark_results")

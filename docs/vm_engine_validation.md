@@ -1,123 +1,145 @@
 # VM Engine Validation Report
 
-> **Status: Phase 6 Dry-Run Validated**  
-> OpenStack VM Lifecycle Validation — Phase 6  
-> Live validation skipped: OpenStack endpoint `https://openstack.example.com:5000` is a placeholder.
-
----
-
-> Started: 2026-05-11T02:34:46.891621+00:00
-> Finished: 2026-05-11T02:34:46.895402+00:00
-> Duration: 0.0s
-> Result: **✅ ALL PASSED** (4/4)
+> Started: 2026-05-11T04:34:57.318554+00:00
+> Finished: 2026-05-11T04:36:35.860391+00:00
+> Duration: 98.5s
+> Result: **✅ ALL PASSED** (7/7)
 > Server cleaned up: N/A
 
 ## Summary
 
 | Step | Status | Duration | Detail |
 |------|:------:|:--------:|--------|
-| engine_construction | ✅ | 0.0s | {'openstack_configured': True, 'factory_created': True, 'note': 'OpenStack is configured — engine ca |
-| request_payload_validation | ✅ | 0.0s | {'name': 'dry-run-test-vm', 'flavor_id': 'm1.tiny', 'image_id': 'cirros-0.6.2', 'network_ids': ['net |
-| state_transition_validation | ✅ | 0.0s | {'valid_transitions_tested': 7, 'invalid_transitions_tested': 4, 'all_valid': 'ACTIVE/SHUTOFF/STOPPE |
-| cleanup_plan_validation | ✅ | 0.0s | {'vm_name_prefix': 'vmachine-test-', 'delete_on_failure': True, 'safety_net_finally': True, 'only_de |
+| discover_resources | ✅ | 0.9s | {'flavor_count': 3, 'image_count': 1, 'network_count': 1, 'selected': {'flavor_id': '0c18a674-1431-4 |
+| create_vm | ✅ | 17.8s | {'server_id': '999a43a0-b7b6-4a4a-9393-e1d66fc37239', 'name': 'vmachine-test-1778474097', 'status':  |
+| vm_reboot | ✅ | 28.0s | {'server_id': '999a43a0-b7b6-4a4a-9393-e1d66fc37239', 'operation': 'reboot', 'timing': {'api_latency |
+| vm_stop | ✅ | 21.1s | {'server_id': '999a43a0-b7b6-4a4a-9393-e1d66fc37239', 'operation': 'stop', 'timing': {'api_latency_s |
+| vm_start | ✅ | 17.6s | {'server_id': '999a43a0-b7b6-4a4a-9393-e1d66fc37239', 'operation': 'start', 'timing': {'api_latency_ |
+| delete_vm | ✅ | 13.1s | {'server_id': '999a43a0-b7b6-4a4a-9393-e1d66fc37239', 'status': 'deleted', 'timing': {'api_latency_s |
+| verify_cleanup | ✅ | 0.1s | {'confirmed': 'server no longer exists'} |
 
 ## Step Details
 
-### engine_construction
+### discover_resources
 
 - **Passed**: True
-- **Duration**: 0.00s
-- **openstack_configured**: True
-- **factory_created**: True
-- **note**: OpenStack is configured — engine can connect to live API
+- **Duration**: 0.85s
+- **flavor_count**: 3
+- **image_count**: 1
+- **network_count**: 1
 
-### request_payload_validation
+### create_vm
 
 - **Passed**: True
-- **Duration**: 0.00s
-- **name**: dry-run-test-vm
+- **Duration**: 17.83s
+- **server_id**: 999a43a0-b7b6-4a4a-9393-e1d66fc37239
+- **name**: vmachine-test-1778474097
+- **status**: ACTIVE
 - **flavor_id**: m1.tiny
-- **image_id**: cirros-0.6.2
-- **network_ids**: ['net-dry-run']
-- **keypair**: None
-- **security_groups**: None
-- **availability_zone**: None
+- **image_id**: 030a32d0-4538-499e-9f12-d298b249e9bf
 
-### state_transition_validation
+### vm_reboot
 
 - **Passed**: True
-- **Duration**: 0.00s
-- **valid_transitions_tested**: 7
-- **invalid_transitions_tested**: 4
-- **all_valid**: ACTIVE/SHUTOFF/STOPPED/SUSPENDED/ERROR -> start/stop/reboot/delete
+- **Duration**: 27.96s
+- **server_id**: 999a43a0-b7b6-4a4a-9393-e1d66fc37239
+- **operation**: reboot
 
-### cleanup_plan_validation
+### vm_stop
 
 - **Passed**: True
-- **Duration**: 0.00s
-- **vm_name_prefix**: vmachine-test-
-- **delete_on_failure**: True
-- **safety_net_finally**: True
-- **only_delete_own_vms**: True
-- **timeout_per_operation_s**: 120
-- **create_timeout_s**: 300
+- **Duration**: 21.06s
+- **server_id**: 999a43a0-b7b6-4a4a-9393-e1d66fc37239
+- **operation**: stop
+
+### vm_start
+
+- **Passed**: True
+- **Duration**: 17.61s
+- **server_id**: 999a43a0-b7b6-4a4a-9393-e1d66fc37239
+- **operation**: start
+
+### delete_vm
+
+- **Passed**: True
+- **Duration**: 13.11s
+- **server_id**: 999a43a0-b7b6-4a4a-9393-e1d66fc37239
+- **status**: deleted
+
+### verify_cleanup
+
+- **Passed**: True
+- **Duration**: 0.12s
+- **confirmed**: server no longer exists
+
+
+## Lifecycle Timing Profile
+
+- **VM**: vmachine-test-1778474097 | **Flavor**: 0c18a674-1431-49aa-8664-ab619ffc6dfa | **Image**: 030a32d0-4538-499e-9f12-d298b249e9bf
+- **Total duration**: 98.5s
+- **Poll interval**: 3.0s
+- **All operations passed**: True
+
+### Per-Operation Timing
+
+| Operation | Status | API Latency | State Convergence | Total | Initial → Final |
+|-----------|:------:|:-----------:|:-----------------:|:-----:|:----------------:|
+| create | ✅ | 14.50s | 0.00s | 17.83s | BUILD → ACTIVE |
+| reboot | ✅ | 21.40s | 6.57s | 27.96s | ACTIVE → ACTIVE |
+| stop | ✅ | 14.50s | 6.56s | 21.06s | ACTIVE → SHUTOFF |
+| start | ✅ | 11.01s | 6.60s | 17.61s | SHUTOFF → ACTIVE |
+| delete | ✅ | 7.40s | 5.71s | 13.11s | ACTIVE → DELETED |
+
+### State Transition Trace
+
+**create** (state trace)
+
+| Time | State | Elapsed (s) |
+|------|:-----:|:-----------:|
+| 2026-05-11T04:35:13.001387+00:00 | ACTIVE | 14.8 |
+
+**reboot** (state trace)
+
+| Time | State | Elapsed (s) |
+|------|:-----:|:-----------:|
+| 2026-05-11T04:35:16.712711+00:00 | ACTIVE | 0.7 |
+| 2026-05-11T04:35:20.293034+00:00 | REBOOT | 4.3 |
+| 2026-05-11T04:35:23.623114+00:00 | REBOOT | 7.6 |
+| 2026-05-11T04:35:26.994102+00:00 | REBOOT | 11.0 |
+| 2026-05-11T04:35:30.332758+00:00 | REBOOT | 14.3 |
+| 2026-05-11T04:35:33.744218+00:00 | REBOOT | 17.7 |
+| 2026-05-11T04:35:37.104892+00:00 | ACTIVE | 21.1 |
+| 2026-05-11T04:35:40.507876+00:00 | ACTIVE | 24.5 |
+
+**stop** (state trace)
+
+| Time | State | Elapsed (s) |
+|------|:-----:|:-----------:|
+| 2026-05-11T04:35:44.661517+00:00 | ACTIVE | 0.7 |
+| 2026-05-11T04:35:47.984745+00:00 | ACTIVE | 4.0 |
+| 2026-05-11T04:35:51.308991+00:00 | ACTIVE | 7.3 |
+| 2026-05-11T04:35:54.800506+00:00 | ACTIVE | 10.8 |
+| 2026-05-11T04:35:58.232555+00:00 | SHUTOFF | 14.3 |
+| 2026-05-11T04:36:01.553280+00:00 | SHUTOFF | 17.6 |
+
+**start** (state trace)
+
+| Time | State | Elapsed (s) |
+|------|:-----:|:-----------:|
+| 2026-05-11T04:36:05.670494+00:00 | SHUTOFF | 0.6 |
+| 2026-05-11T04:36:08.977554+00:00 | SHUTOFF | 4.0 |
+| 2026-05-11T04:36:12.443306+00:00 | SHUTOFF | 7.4 |
+| 2026-05-11T04:36:15.791858+00:00 | ACTIVE | 10.8 |
+| 2026-05-11T04:36:19.142789+00:00 | ACTIVE | 14.1 |
+
+**delete** (state trace)
+
+| Time | State | Elapsed (s) |
+|------|:-----:|:-----------:|
+| 2026-05-11T04:36:23.258628+00:00 | ACTIVE | 0.6 |
+| 2026-05-11T04:36:26.463843+00:00 | ACTIVE | 3.8 |
+| 2026-05-11T04:36:29.569701+00:00 | UNKNOWN | 6.9 |
+| 2026-05-11T04:36:32.651288+00:00 | UNKNOWN | 10.0 |
 
 ---
----
-
-## Companion Validation Suites
-
-### Negative Case & Metrics Validation (`scripts/negative_case_vm_engine.py`)
-
-**Result: ✅ 43/43 passed**
-
-| Suite | Passed | Total |
-|-------|:------:|:-----:|
-| State transitions (valid + invalid) | 26 | 26 |
-| Operation-to-SDK mapping | 5 | 5 |
-| Extraction helpers | 4 | 4 |
-| Prometheus metrics | 8 | 8 |
-
-Metrics verified:
-- `vmware_vm_create_duration_seconds` (Histogram) — `observe()` works
-- `vmware_vm_create_failures_total` (Counter) — `inc()` works
-- `vmware_vm_lifecycle_operations_total` (Counter) — `inc()` works
-- `vmware_vm_active_count` (Gauge) — `set()`/`dec()` works
-
-### Benchmark Harness (`scripts/benchmark_vm_engine.py`)
-
-**Result: ⏸️ Skipped — OpenStack not reachable**
-
-The benchmark script supports 3 cases:
-1. Create + delete 1 VM
-2. Create + delete 3 VMs sequentially
-3. Full lifecycle on 1 VM (create → reboot → stop → start → delete)
-
-All require a live OpenStack Nova endpoint. The environment's `openstack.example.com` placeholder must be replaced with a real OpenStack URL.
-
----
-
-## How to Re-validate with Live OpenStack
-
-1. Configure real OpenStack credentials:
-   ```
-   OPENSTACK_AUTH_URL=https://your-openstack:5000/v3
-   OPENSTACK_USERNAME=admin
-   OPENSTACK_PASSWORD=...
-   OPENSTACK_PROJECT_NAME=admin
-   ```
-
-2. Run validation:
-   ```bash
-   PYTHONPATH=. python scripts/validate_vm_engine.py --json
-   ```
-
-3. Run benchmarks:
-   ```bash
-   PYTHONPATH=. python scripts/benchmark_vm_engine.py --json
-   ```
-
----
-
-*Report generated by validate_vm_engine.py*  
-*Phase 6 — VM Engine Validation*
+*Report generated by validate_vm_engine.py*

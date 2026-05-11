@@ -61,16 +61,20 @@ class VMProvisioningEngine:
 
         server = None
         try:
-            server = await self._nova_call("create_server", PROVISIONING_TIMEOUT,
+            kwargs = dict(
                 name=request.name,
                 image_id=request.image_id,
                 flavor_id=request.flavor_id,
                 networks=[{"uuid": nid} for nid in request.network_ids],
-                key_name=request.keypair,
-                security_groups=[{"name": sg} for sg in request.security_groups] if request.security_groups else None,
-                availability_zone=request.availability_zone,
                 metadata=request.metadata,
             )
+            if request.keypair:
+                kwargs["key_name"] = request.keypair
+            if request.security_groups:
+                kwargs["security_groups"] = [{"name": sg} for sg in request.security_groups]
+            if request.availability_zone:
+                kwargs["availability_zone"] = request.availability_zone
+            server = await self._nova_call("create_server", PROVISIONING_TIMEOUT, **kwargs)
 
             server_id = _get_id(server)
             logger.info("VM created id=%s, waiting for ACTIVE state", server_id)
@@ -163,7 +167,18 @@ class VMProvisioningEngine:
             _validate_state(detail.status, operation)
 
             sdk_method = _operation_to_sdk(operation)
-            await self._nova_call(sdk_method, LIFECYCLE_TIMEOUT, server_id)
+
+            if operation == "reboot":
+                await self._nova_call(sdk_method, LIFECYCLE_TIMEOUT, server_id, reboot_type="SOFT")
+            else:
+                await self._nova_call(sdk_method, LIFECYCLE_TIMEOUT, server_id)
+
+            if operation == "start":
+                await self._wait_for_active(server_id, LIFECYCLE_TIMEOUT)
+            elif operation == "stop":
+                await self._wait_for_stopped(server_id, LIFECYCLE_TIMEOUT)
+            elif operation == "reboot":
+                await self._wait_for_active(server_id, LIFECYCLE_TIMEOUT)
 
             elapsed = time.monotonic() - t0
             vm_lifecycle_operations.labels(operation=operation, status="success").inc()
@@ -214,6 +229,21 @@ class VMProvisioningEngine:
                 raise
             await _async_sleep(SERVER_POLL_INTERVAL)
         logger.warning("VM id=%s did not disappear within %.1fs (may still be deleting)", server_id, timeout)
+
+    async def _wait_for_stopped(self, server_id: str, timeout: float) -> VMDetail:
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            detail = await self.get_vm(server_id)
+            if detail.status in ("SHUTOFF", "STOPPED"):
+                return detail
+            if detail.status in ("ERROR", "UNKNOWN"):
+                raise AppException(
+                    message=f"VM entered {detail.status} state while stopping",
+                    status_code=500,
+                    error_code="vm_stop_failed",
+                )
+            await _async_sleep(SERVER_POLL_INTERVAL)
+        raise TimeoutError(f"VM {server_id} did not reach SHUTOFF within {timeout}s")
 
     async def _cleanup_failed_server(self, server_id: str) -> None:
         try:

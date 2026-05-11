@@ -1,64 +1,107 @@
 {
-  "started_at": "2026-05-11T02:34:46.891621+00:00",
-  "finished_at": "2026-05-11T02:34:46.895402+00:00",
-  "total_duration": 0.003781,
+  "started_at": "2026-05-11T04:34:57.318554+00:00",
+  "finished_at": "2026-05-11T04:36:35.860391+00:00",
+  "total_duration": 98.541837,
   "all_passed": true,
-  "passed_count": 4,
-  "total_count": 4,
+  "passed_count": 7,
+  "total_count": 7,
   "engine_ready": true,
   "server_cleaned_up": false,
   "steps": [
     {
-      "name": "engine_construction",
+      "name": "discover_resources",
       "passed": true,
-      "duration_seconds": 0.0012010469981760252,
+      "duration_seconds": 0.8542555249987345,
       "detail": {
-        "openstack_configured": true,
-        "factory_created": true,
-        "note": "OpenStack is configured \u2014 engine can connect to live API"
+        "flavor_count": 3,
+        "image_count": 1,
+        "network_count": 1,
+        "selected": {
+          "flavor_id": "0c18a674-1431-49aa-8664-ab619ffc6dfa",
+          "image_id": "030a32d0-4538-499e-9f12-d298b249e9bf",
+          "network_id": "021ca565-7b8e-4bc6-93be-89e3918de1a2"
+        }
       },
       "error": null
     },
     {
-      "name": "request_payload_validation",
+      "name": "create_vm",
       "passed": true,
-      "duration_seconds": 4.13269990531262e-05,
+      "duration_seconds": 17.82593078500213,
       "detail": {
-        "name": "dry-run-test-vm",
+        "server_id": "999a43a0-b7b6-4a4a-9393-e1d66fc37239",
+        "name": "vmachine-test-1778474097",
+        "status": "ACTIVE",
         "flavor_id": "m1.tiny",
-        "image_id": "cirros-0.6.2",
-        "network_ids": [
-          "net-dry-run"
-        ],
-        "keypair": null,
-        "security_groups": null,
-        "availability_zone": null,
-        "metadata": {}
+        "image_id": "030a32d0-4538-499e-9f12-d298b249e9bf"
       },
       "error": null
     },
     {
-      "name": "state_transition_validation",
+      "name": "vm_reboot",
       "passed": true,
-      "duration_seconds": 2.9545997676905245e-05,
+      "duration_seconds": 27.964,
       "detail": {
-        "valid_transitions_tested": 7,
-        "invalid_transitions_tested": 4,
-        "all_valid": "ACTIVE/SHUTOFF/STOPPED/SUSPENDED/ERROR -> start/stop/reboot/delete"
+        "server_id": "999a43a0-b7b6-4a4a-9393-e1d66fc37239",
+        "operation": "reboot",
+        "timing": {
+          "api_latency_s": 21.398,
+          "state_convergence_s": 6.565,
+          "total_s": 27.964
+        }
       },
       "error": null
     },
     {
-      "name": "cleanup_plan_validation",
+      "name": "vm_stop",
       "passed": true,
-      "duration_seconds": 1.4828001440037042e-05,
+      "duration_seconds": 21.059,
       "detail": {
-        "vm_name_prefix": "vmachine-test-",
-        "delete_on_failure": true,
-        "safety_net_finally": true,
-        "only_delete_own_vms": true,
-        "timeout_per_operation_s": 120,
-        "create_timeout_s": 300
+        "server_id": "999a43a0-b7b6-4a4a-9393-e1d66fc37239",
+        "operation": "stop",
+        "timing": {
+          "api_latency_s": 14.497,
+          "state_convergence_s": 6.562,
+          "total_s": 21.059
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "vm_start",
+      "passed": true,
+      "duration_seconds": 17.606,
+      "detail": {
+        "server_id": "999a43a0-b7b6-4a4a-9393-e1d66fc37239",
+        "operation": "start",
+        "timing": {
+          "api_latency_s": 11.007,
+          "state_convergence_s": 6.599,
+          "total_s": 17.606
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "delete_vm",
+      "passed": true,
+      "duration_seconds": 13.11,
+      "detail": {
+        "server_id": "999a43a0-b7b6-4a4a-9393-e1d66fc37239",
+        "status": "deleted",
+        "timing": {
+          "api_latency_s": 7.397,
+          "state_convergence_s": 5.713
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "verify_cleanup",
+      "passed": true,
+      "duration_seconds": 0.11895043000185979,
+      "detail": {
+        "confirmed": "server no longer exists"
       },
       "error": null
     }

@@ -1,0 +1,317 @@
+{
+  "vm_name": "vmachine-test-1778474097",
+  "server_id": "999a43a0-b7b6-4a4a-9393-e1d66fc37239",
+  "flavor_id": "0c18a674-1431-49aa-8664-ab619ffc6dfa",
+  "image_id": "030a32d0-4538-499e-9f12-d298b249e9bf",
+  "network_id": "021ca565-7b8e-4bc6-93be-89e3918de1a2",
+  "poll_interval_s": 3.0,
+  "started_at": "2026-05-11T04:34:57.318554+00:00",
+  "finished_at": "2026-05-11T04:36:35.860391+00:00",
+  "total_duration_s": 98.541837,
+  "all_passed": true,
+  "failure_observations": [],
+  "operations": [
+    {
+      "operation": "create",
+      "passed": true,
+      "total_duration_s": 17.826,
+      "api_latency_s": 14.498,
+      "state_convergence_s": 0.0,
+      "initial_state": "BUILD",
+      "final_state": "ACTIVE",
+      "error": null,
+      "state_trace": [
+        {
+          "time": "2026-05-11T04:35:13.001387+00:00",
+          "state": "ACTIVE",
+          "elapsed_s": 14.825
+        }
+      ]
+    },
+    {
+      "operation": "reboot",
+      "passed": true,
+      "total_duration_s": 27.964,
+      "api_latency_s": 21.398,
+      "state_convergence_s": 6.565,
+      "initial_state": "ACTIVE",
+      "final_state": "ACTIVE",
+      "error": null,
+      "state_trace": [
+        {
+          "time": "2026-05-11T04:35:16.712711+00:00",
+          "state": "ACTIVE",
+          "elapsed_s": 0.71
+        },
+        {
+          "time": "2026-05-11T04:35:20.293034+00:00",
+          "state": "REBOOT",
+          "elapsed_s": 4.291
+        },
+        {
+          "time": "2026-05-11T04:35:23.623114+00:00",
+          "state": "REBOOT",
+          "elapsed_s": 7.621
+        },
+        {
+          "time": "2026-05-11T04:35:26.994102+00:00",
+          "state": "REBOOT",
+          "elapsed_s": 10.992
+        },
+        {
+          "time": "2026-05-11T04:35:30.332758+00:00",
+          "state": "REBOOT",
+          "elapsed_s": 14.33
+        },
+        {
+          "time": "2026-05-11T04:35:33.744218+00:00",
+          "state": "REBOOT",
+          "elapsed_s": 17.742
+        },
+        {
+          "time": "2026-05-11T04:35:37.104892+00:00",
+          "state": "ACTIVE",
+          "elapsed_s": 21.102
+        },
+        {
+          "time": "2026-05-11T04:35:40.507876+00:00",
+          "state": "ACTIVE",
+          "elapsed_s": 24.505
+        }
+      ]
+    },
+    {
+      "operation": "stop",
+      "passed": true,
+      "total_duration_s": 21.059,
+      "api_latency_s": 14.497,
+      "state_convergence_s": 6.562,
+      "initial_state": "ACTIVE",
+      "final_state": "SHUTOFF",
+      "error": null,
+      "state_trace": [
+        {
+          "time": "2026-05-11T04:35:44.661517+00:00",
+          "state": "ACTIVE",
+          "elapsed_s": 0.695
+        },
+        {
+          "time": "2026-05-11T04:35:47.984745+00:00",
+          "state": "ACTIVE",
+          "elapsed_s": 4.019
+        },
+        {
+          "time": "2026-05-11T04:35:51.308991+00:00",
+          "state": "ACTIVE",
+          "elapsed_s": 7.343
+        },
+        {
+          "time": "2026-05-11T04:35:54.800506+00:00",
+          "state": "ACTIVE",
+          "elapsed_s": 10.834
+        },
+        {
+          "time": "2026-05-11T04:35:58.232555+00:00",
+          "state": "SHUTOFF",
+          "elapsed_s": 14.267
+        },
+        {
+          "time": "2026-05-11T04:36:01.553280+00:00",
+          "state": "SHUTOFF",
+          "elapsed_s": 17.587
+        }
+      ]
+    },
+    {
+      "operation": "start",
+      "passed": true,
+      "total_duration_s": 17.606,
+      "api_latency_s": 11.007,
+      "state_convergence_s": 6.599,
+      "initial_state": "SHUTOFF",
+      "final_state": "ACTIVE",
+      "error": null,
+      "state_trace": [
+        {
+          "time": "2026-05-11T04:36:05.670494+00:00",
+          "state": "SHUTOFF",
+          "elapsed_s": 0.645
+        },
+        {
+          "time": "2026-05-11T04:36:08.977554+00:00",
+          "state": "SHUTOFF",
+          "elapsed_s": 3.952
+        },
+        {
+          "time": "2026-05-11T04:36:12.443306+00:00",
+          "state": "SHUTOFF",
+          "elapsed_s": 7.418
+        },
+        {
+          "time": "2026-05-11T04:36:15.791858+00:00",
+          "state": "ACTIVE",
+          "elapsed_s": 10.766
+        },
+        {
+          "time": "2026-05-11T04:36:19.142789+00:00",
+          "state": "ACTIVE",
+          "elapsed_s": 14.117
+        }
+      ]
+    },
+    {
+      "operation": "delete",
+      "passed": true,
+      "total_duration_s": 13.11,
+      "api_latency_s": 7.397,
+      "state_convergence_s": 5.713,
+      "initial_state": "ACTIVE",
+      "final_state": "DELETED",
+      "error": null,
+      "state_trace": [
+        {
+          "time": "2026-05-11T04:36:23.258628+00:00",
+          "state": "ACTIVE",
+          "elapsed_s": 0.627
+        },
+        {
+          "time": "2026-05-11T04:36:26.463843+00:00",
+          "state": "ACTIVE",
+          "elapsed_s": 3.832
+        },
+        {
+          "time": "2026-05-11T04:36:29.569701+00:00",
+          "state": "UNKNOWN",
+          "elapsed_s": 6.938
+        },
+        {
+          "time": "2026-05-11T04:36:32.651288+00:00",
+          "state": "UNKNOWN",
+          "elapsed_s": 10.02
+        }
+      ]
+    }
+  ],
+  "full_state_trace": [
+    {
+      "time": "2026-05-11T04:35:13.001387+00:00",
+      "state": "ACTIVE",
+      "elapsed_s": 14.825
+    },
+    {
+      "time": "2026-05-11T04:35:16.712711+00:00",
+      "state": "ACTIVE",
+      "elapsed_s": 0.71
+    },
+    {
+      "time": "2026-05-11T04:35:20.293034+00:00",
+      "state": "REBOOT",
+      "elapsed_s": 4.291
+    },
+    {
+      "time": "2026-05-11T04:35:23.623114+00:00",
+      "state": "REBOOT",
+      "elapsed_s": 7.621
+    },
+    {
+      "time": "2026-05-11T04:35:26.994102+00:00",
+      "state": "REBOOT",
+      "elapsed_s": 10.992
+    },
+    {
+      "time": "2026-05-11T04:35:30.332758+00:00",
+      "state": "REBOOT",
+      "elapsed_s": 14.33
+    },
+    {
+      "time": "2026-05-11T04:35:33.744218+00:00",
+      "state": "REBOOT",
+      "elapsed_s": 17.742
+    },
+    {
+      "time": "2026-05-11T04:35:37.104892+00:00",
+      "state": "ACTIVE",
+      "elapsed_s": 21.102
+    },
+    {
+      "time": "2026-05-11T04:35:40.507876+00:00",
+      "state": "ACTIVE",
+      "elapsed_s": 24.505
+    },
+    {
+      "time": "2026-05-11T04:35:44.661517+00:00",
+      "state": "ACTIVE",
+      "elapsed_s": 0.695
+    },
+    {
+      "time": "2026-05-11T04:35:47.984745+00:00",
+      "state": "ACTIVE",
+      "elapsed_s": 4.019
+    },
+    {
+      "time": "2026-05-11T04:35:51.308991+00:00",
+      "state": "ACTIVE",
+      "elapsed_s": 7.343
+    },
+    {
+      "time": "2026-05-11T04:35:54.800506+00:00",
+      "state": "ACTIVE",
+      "elapsed_s": 10.834
+    },
+    {
+      "time": "2026-05-11T04:35:58.232555+00:00",
+      "state": "SHUTOFF",
+      "elapsed_s": 14.267
+    },
+    {
+      "time": "2026-05-11T04:36:01.553280+00:00",
+      "state": "SHUTOFF",
+      "elapsed_s": 17.587
+    },
+    {
+      "time": "2026-05-11T04:36:05.670494+00:00",
+      "state": "SHUTOFF",
+      "elapsed_s": 0.645
+    },
+    {
+      "time": "2026-05-11T04:36:08.977554+00:00",
+      "state": "SHUTOFF",
+      "elapsed_s": 3.952
+    },
+    {
+      "time": "2026-05-11T04:36:12.443306+00:00",
+      "state": "SHUTOFF",
+      "elapsed_s": 7.418
+    },
+    {
+      "time": "2026-05-11T04:36:15.791858+00:00",
+      "state": "ACTIVE",
+      "elapsed_s": 10.766
+    },
+    {
+      "time": "2026-05-11T04:36:19.142789+00:00",
+      "state": "ACTIVE",
+      "elapsed_s": 14.117
+    },
+    {
+      "time": "2026-05-11T04:36:23.258628+00:00",
+      "state": "ACTIVE",
+      "elapsed_s": 0.627
+    },
+    {
+      "time": "2026-05-11T04:36:26.463843+00:00",
+      "state": "ACTIVE",
+      "elapsed_s": 3.832
+    },
+    {
+      "time": "2026-05-11T04:36:29.569701+00:00",
+      "state": "UNKNOWN",
+      "elapsed_s": 6.938
+    },
+    {
+      "time": "2026-05-11T04:36:32.651288+00:00",
+      "state": "UNKNOWN",
+      "elapsed_s": 10.02
+    }
+  ]
+}

@@ -35,7 +35,7 @@ class VMDetail(BaseModel):
     key_name: str | None = None
     availability_zone: str | None = None
     power_state: str | None = None
-    progress: int = 0
+    progress: int | None = None
 
 
 class VMEngineValidationResult(BaseModel):
