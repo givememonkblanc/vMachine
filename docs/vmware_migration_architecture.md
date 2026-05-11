@@ -247,6 +247,15 @@ assessment is an operational tool, not a high-throughput data path.
 
 Detailed request/response schemas in `migration_assessment_api.md`.
 
+> **⚠️ Breaking Schema Change**: The `/api/v1/vmware/assess/{vm_id}/compatibility`
+> endpoint now returns `ScoredCompatibilityResult` (with `score: float`,
+> `issues: list[IssueDetail]`, `summary: str`) instead of the previous
+> `VMCompatibilityResult` (flat boolean fields `os_supported`, `cpu_compatible`,
+> `memory_compatible`, `disk_compatible`, `network_compatible`, `power_state`).
+> Old clients must migrate to the new `issues[]` + `score` format.
+> `VMCompatibilityResult` is preserved in the schema module for backward-reference
+> but no longer used by any endpoint.
+
 ---
 
 ## 7. Metrics

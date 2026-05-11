@@ -1,0 +1,235 @@
+{
+  "generated_at": "2026-05-11T01:12:14.805676",
+  "cpu": "AMD RYZEN AI MAX+ PRO 395 w/ Radeon 8060S",
+  "memory_total": "31.1 GB",
+  "runs": [
+    {
+      "vm_count": 10,
+      "mem_before_mb": 70.8,
+      "mem_after_mb": 71.2,
+      "results": {
+        "Compatibility Check": {
+          "avg_ms": 0.1,
+          "p50_ms": 0.08,
+          "p95_ms": 0.16,
+          "p99_ms": 0.16,
+          "min_ms": 0.07,
+          "max_ms": 0.16,
+          "count": 3,
+          "throughput_vm_per_sec": 31756.1
+        },
+        "Resource Mapping": {
+          "avg_ms": 0.24,
+          "p50_ms": 0.18,
+          "p95_ms": 0.36,
+          "p99_ms": 0.36,
+          "min_ms": 0.17,
+          "max_ms": 0.36,
+          "count": 3,
+          "throughput_vm_per_sec": 14092.4
+        },
+        "Resource Mapping (warm cache)": {
+          "avg_ms": 0.17,
+          "p50_ms": 0.17,
+          "p95_ms": 0.18,
+          "p99_ms": 0.18,
+          "min_ms": 0.17,
+          "max_ms": 0.18,
+          "count": 3,
+          "throughput_vm_per_sec": 19124.1
+        },
+        "Plan Generation": {
+          "avg_ms": 0.11,
+          "p50_ms": 0.08,
+          "p95_ms": 0.16,
+          "p99_ms": 0.16,
+          "min_ms": 0.07,
+          "max_ms": 0.16,
+          "count": 3,
+          "throughput_vm_per_sec": 31017.4
+        },
+        "Parallel (concurrency=10)": {
+          "avg_ms": 0.53,
+          "p50_ms": 0.51,
+          "p95_ms": 0.65,
+          "p99_ms": 0.65,
+          "min_ms": 0.44,
+          "max_ms": 0.65,
+          "count": 3,
+          "throughput_vm_per_sec": 6236.0
+        }
+      }
+    },
+    {
+      "vm_count": 50,
+      "mem_before_mb": 71.3,
+      "mem_after_mb": 72.8,
+      "results": {
+        "Compatibility Check": {
+          "avg_ms": 0.36,
+          "p50_ms": 0.32,
+          "p95_ms": 0.46,
+          "p99_ms": 0.46,
+          "min_ms": 0.31,
+          "max_ms": 0.46,
+          "count": 3,
+          "throughput_vm_per_sec": 45985.5
+        },
+        "Resource Mapping": {
+          "avg_ms": 0.89,
+          "p50_ms": 0.93,
+          "p95_ms": 0.93,
+          "p99_ms": 0.93,
+          "min_ms": 0.82,
+          "max_ms": 0.93,
+          "count": 3,
+          "throughput_vm_per_sec": 18697.2
+        },
+        "Resource Mapping (warm cache)": {
+          "avg_ms": 0.81,
+          "p50_ms": 0.81,
+          "p95_ms": 0.82,
+          "p99_ms": 0.82,
+          "min_ms": 0.8,
+          "max_ms": 0.82,
+          "count": 3,
+          "throughput_vm_per_sec": 20615.2
+        },
+        "Plan Generation": {
+          "avg_ms": 0.37,
+          "p50_ms": 0.36,
+          "p95_ms": 0.42,
+          "p99_ms": 0.42,
+          "min_ms": 0.34,
+          "max_ms": 0.42,
+          "count": 3,
+          "throughput_vm_per_sec": 44607.0
+        },
+        "Parallel (concurrency=10)": {
+          "avg_ms": 1.91,
+          "p50_ms": 1.82,
+          "p95_ms": 2.12,
+          "p99_ms": 2.12,
+          "min_ms": 1.79,
+          "max_ms": 2.12,
+          "count": 3,
+          "throughput_vm_per_sec": 8736.7
+        }
+      }
+    },
+    {
+      "vm_count": 100,
+      "mem_before_mb": 72.9,
+      "mem_after_mb": 75.2,
+      "results": {
+        "Compatibility Check": {
+          "avg_ms": 0.58,
+          "p50_ms": 0.56,
+          "p95_ms": 0.63,
+          "p99_ms": 0.63,
+          "min_ms": 0.56,
+          "max_ms": 0.63,
+          "count": 3,
+          "throughput_vm_per_sec": 57090.7
+        },
+        "Resource Mapping": {
+          "avg_ms": 1.47,
+          "p50_ms": 1.43,
+          "p95_ms": 1.57,
+          "p99_ms": 1.57,
+          "min_ms": 1.41,
+          "max_ms": 1.57,
+          "count": 3,
+          "throughput_vm_per_sec": 22673.7
+        },
+        "Resource Mapping (warm cache)": {
+          "avg_ms": 1.38,
+          "p50_ms": 1.37,
+          "p95_ms": 1.4,
+          "p99_ms": 1.4,
+          "min_ms": 1.37,
+          "max_ms": 1.4,
+          "count": 3,
+          "throughput_vm_per_sec": 24107.4
+        },
+        "Plan Generation": {
+          "avg_ms": 0.61,
+          "p50_ms": 0.58,
+          "p95_ms": 0.69,
+          "p99_ms": 0.69,
+          "min_ms": 0.57,
+          "max_ms": 0.69,
+          "count": 3,
+          "throughput_vm_per_sec": 54389.2
+        },
+        "Parallel (concurrency=10)": {
+          "avg_ms": 12.11,
+          "p50_ms": 3.35,
+          "p95_ms": 29.86,
+          "p99_ms": 29.86,
+          "min_ms": 3.11,
+          "max_ms": 29.86,
+          "count": 3,
+          "throughput_vm_per_sec": 2752.9
+        }
+      }
+    },
+    {
+      "vm_count": 500,
+      "mem_before_mb": 76.1,
+      "mem_after_mb": 89.5,
+      "results": {
+        "Compatibility Check": {
+          "avg_ms": 2.6,
+          "p50_ms": 2.54,
+          "p95_ms": 2.73,
+          "p99_ms": 2.73,
+          "min_ms": 2.53,
+          "max_ms": 2.73,
+          "count": 3,
+          "throughput_vm_per_sec": 64077.1
+        },
+        "Resource Mapping": {
+          "avg_ms": 6.9,
+          "p50_ms": 6.88,
+          "p95_ms": 7.05,
+          "p99_ms": 7.05,
+          "min_ms": 6.78,
+          "max_ms": 7.05,
+          "count": 3,
+          "throughput_vm_per_sec": 24149.2
+        },
+        "Resource Mapping (warm cache)": {
+          "avg_ms": 6.87,
+          "p50_ms": 6.81,
+          "p95_ms": 7.0,
+          "p99_ms": 7.0,
+          "min_ms": 6.81,
+          "max_ms": 7.0,
+          "count": 3,
+          "throughput_vm_per_sec": 24247.0
+        },
+        "Plan Generation": {
+          "avg_ms": 3.64,
+          "p50_ms": 3.2,
+          "p95_ms": 4.54,
+          "p99_ms": 4.54,
+          "min_ms": 3.2,
+          "max_ms": 4.54,
+          "count": 3,
+          "throughput_vm_per_sec": 45726.4
+        },
+        "Parallel (concurrency=10)": {
+          "avg_ms": 28.67,
+          "p50_ms": 18.09,
+          "p95_ms": 51.63,
+          "p99_ms": 51.63,
+          "min_ms": 16.28,
+          "max_ms": 51.63,
+          "count": 3,
+          "throughput_vm_per_sec": 5813.6
+        }
+      }
+    }
+  ]
+}

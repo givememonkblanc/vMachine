@@ -1,9 +1,11 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.api.deps.services import (
+    get_assessment_persistence_service,
     get_operation_task_service,
+    get_parallel_assessment_service,
     get_vmware_compatibility_service,
     get_vmware_inventory_service,
     get_vmware_mapping_engine,
@@ -13,13 +15,20 @@ from app.schemas.vmware.assessment import (
     AssessmentResponse,
     AssessmentResult,
     MigrationPlanResponse,
-    VMCompatibilityResult,
+    ParallelAssessmentProgress,
+    PersistedAssessmentDetail,
+    PersistedAssessmentSummary,
+    PersistedPlanDetail,
+    PersistedPlanSummary,
+    ScoredCompatibilityResult,
     VMMappingResult,
 )
 from app.services.core.operation_task_service import OperationTaskService
+from app.services.vmware.assessment_persistence import AssessmentPersistenceService
 from app.services.vmware.compatibility import VMwareCompatibilityService
 from app.services.vmware.inventory_service import VMwareInventoryService
 from app.services.vmware.mapping_engine import VMwareMappingEngine
+from app.services.vmware.parallel_assessment import ParallelAssessmentService
 from app.services.vmware.plan_service import VMwarePlanService
 
 router = APIRouter()
@@ -33,7 +42,6 @@ async def assess_vms(
     mapping_engine: Annotated[VMwareMappingEngine, Depends(get_vmware_mapping_engine)],
     operation_task_service: Annotated[OperationTaskService, Depends(get_operation_task_service)],
 ) -> AssessmentResponse:
-    """VMware VM 목록에 대한 OpenStack 마이그레이션 적합성을 평가합니다."""
     from app.schemas.vmware.assessment import AssessmentRequest
 
     payload = AssessmentRequest(vm_ids=vm_ids)
@@ -65,12 +73,12 @@ async def assess_vms(
             )
 
         compatible = sum(1 for a in assessments if a.compatibility.compatible)
-        total_warnings = sum(len(a.compatibility.warnings) for a in assessments)
+        total_issues = sum(len(a.compatibility.issues) for a in assessments)
         summary = {
             "total": len(assessments),
             "compatible": compatible,
             "incompatible": len(assessments) - compatible,
-            "warning_count": total_warnings,
+            "warning_count": total_issues,
         }
 
         _ = await operation_task_service.update_task(task.id, state="succeeded")
@@ -86,13 +94,12 @@ async def assess_vms(
         raise
 
 
-@router.post("/assess/{vm_id}/compatibility", response_model=VMCompatibilityResult)
+@router.post("/assess/{vm_id}/compatibility", response_model=ScoredCompatibilityResult)
 def assess_single_compatibility(
     vm_id: str,
     inventory_service: Annotated[VMwareInventoryService, Depends(get_vmware_inventory_service)],
     compatibility_service: Annotated[VMwareCompatibilityService, Depends(get_vmware_compatibility_service)],
-) -> VMCompatibilityResult:
-    """단일 VMware VM의 OpenStack 마이그레이션 호환성을 평가합니다."""
+) -> ScoredCompatibilityResult:
     vm = inventory_service.get_vm(vm_id)
     if not vm:
         from fastapi import HTTPException
@@ -107,7 +114,6 @@ def map_single_vm(
     inventory_service: Annotated[VMwareInventoryService, Depends(get_vmware_inventory_service)],
     mapping_engine: Annotated[VMwareMappingEngine, Depends(get_vmware_mapping_engine)],
 ) -> VMMappingResult:
-    """단일 VMware VM에 대한 OpenStack 리소스 매핑 결과를 조회합니다."""
     vm = inventory_service.get_vm(vm_id)
     if not vm:
         from fastapi import HTTPException
@@ -125,7 +131,6 @@ async def create_migration_plan(
     plan_service: Annotated[VMwarePlanService, Depends(get_vmware_plan_service)],
     operation_task_service: Annotated[OperationTaskService, Depends(get_operation_task_service)],
 ) -> MigrationPlanResponse:
-    """VMware VM 목록에 대한 마이그레이션 계획을 생성합니다."""
     from app.schemas.vmware.assessment import MigrationPlanRequest
 
     payload = MigrationPlanRequest(vm_ids=vm_ids)
@@ -138,7 +143,6 @@ async def create_migration_plan(
     _ = await operation_task_service.update_task(task.id, state="running")
 
     try:
-        # Gather VM data
         vms = []
         for vm_id in payload.vm_ids:
             vm = inventory_service.get_vm(vm_id)
@@ -156,3 +160,76 @@ async def create_migration_plan(
             task.id, state="failed", error_message=str(exc)
         )
         raise
+
+
+@router.get("/assessments", response_model=list[PersistedAssessmentSummary])
+async def list_persisted_assessments(
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    compatible_only: bool | None = None,
+    persistence: Annotated[AssessmentPersistenceService, Depends(get_assessment_persistence_service)] = None,  # type: ignore[assignment]
+) -> list[PersistedAssessmentSummary]:
+    return await persistence.list_assessments(
+        limit=limit, offset=offset, compatible_only=compatible_only
+    )
+
+
+@router.get("/assessment/{assessment_id}", response_model=PersistedAssessmentDetail)
+async def get_persisted_assessment(
+    assessment_id: str,
+    persistence: Annotated[AssessmentPersistenceService, Depends(get_assessment_persistence_service)] = None,  # type: ignore[assignment]
+) -> PersistedAssessmentDetail:
+    result = await persistence.get_assessment(assessment_id)
+    if not result:
+        raise HTTPException(status_code=404, detail=f"Assessment '{assessment_id}' not found")
+    return result
+
+
+@router.get("/plans", response_model=list[PersistedPlanSummary])
+async def list_persisted_plans(
+    assessment_id: str | None = None,
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    persistence: Annotated[AssessmentPersistenceService, Depends(get_assessment_persistence_service)] = None,  # type: ignore[assignment]
+) -> list[PersistedPlanSummary]:
+    return await persistence.list_plans(
+        assessment_id=assessment_id, limit=limit, offset=offset
+    )
+
+
+@router.get("/plan/{plan_id}", response_model=PersistedPlanDetail)
+async def get_persisted_plan(
+    plan_id: str,
+    persistence: Annotated[AssessmentPersistenceService, Depends(get_assessment_persistence_service)] = None,  # type: ignore[assignment]
+) -> PersistedPlanDetail:
+    result = await persistence.get_plan(plan_id)
+    if not result:
+        raise HTTPException(status_code=404, detail=f"Plan '{plan_id}' not found")
+    return result
+
+
+@router.post("/assess/parallel", response_model=ParallelAssessmentProgress)
+async def assess_vms_parallel(
+    vm_ids: list[str],
+    include_mapping: bool = Query(default=True),
+    max_concurrency: int = Query(default=10, ge=1, le=50),
+    timeout_seconds: int = Query(default=300, ge=10, le=3600),
+    parallel_service: Annotated[ParallelAssessmentService, Depends(get_parallel_assessment_service)] = None,  # type: ignore[assignment]
+) -> ParallelAssessmentProgress:
+    return await parallel_service.assess_parallel(
+        vm_ids=vm_ids,
+        include_mapping=include_mapping,
+        max_concurrency=max_concurrency,
+        timeout_seconds=timeout_seconds,
+    )
+
+
+@router.get("/assess/parallel/{task_id}", response_model=ParallelAssessmentProgress)
+async def get_parallel_progress(
+    task_id: str,
+    parallel_service: Annotated[ParallelAssessmentService, Depends(get_parallel_assessment_service)] = None,  # type: ignore[assignment]
+) -> ParallelAssessmentProgress:
+    progress = parallel_service.get_progress(task_id)
+    if not progress:
+        raise HTTPException(status_code=404, detail=f"Parallel task '{task_id}' not found")
+    return progress

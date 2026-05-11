@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -58,7 +60,7 @@ class AssessmentRequest(BaseModel):
 class AssessmentResult(BaseModel):
     vm_id: str = Field(description="VMware VM MOR")
     vm_name: str = Field(description="VM 이름")
-    compatibility: VMCompatibilityResult = Field(description="호환성 평가 결과")
+    compatibility: "ScoredCompatibilityResult" = Field(description="호환성 평가 결과 (scored)")
     mapping: VMMappingResult | None = Field(default=None, description="리소스 매핑 결과")
 
 
@@ -100,3 +102,87 @@ class MigrationPlanResponse(BaseModel):
     total_estimated_minutes: int = Field(description="전체 예상 소요 시간 (분)")
     created_at: str = Field(description="계획 생성 시간")
     operation_task_id: str | None = None
+
+
+class CompatibilityIssueDetail(BaseModel):
+    severity: str = Field(description="심각도 (critical, high, medium, low, info)")
+    category: str = Field(description="문제 카테고리 (os, cpu, memory, disk, network, disk_controller, firmware, secure_boot, vmware_tools, nic)")
+    message: str = Field(description="문제 설명")
+    compatible: bool = Field(default=False, description="이 문제가 호환성에 영향을 미치는지 여부")
+
+
+class ScoredCompatibilityResult(BaseModel):
+    vm_id: str = Field(description="VMware VM MOR")
+    vm_name: str = Field(description="VM 이름")
+    compatible: bool = Field(description="전체 호환 여부")
+    score: float = Field(ge=0.0, le=1.0, description="호환성 점수 (1.0 = 완벽 호환)")
+    issues: list[CompatibilityIssueDetail] = Field(default_factory=list, description="발견된 문제 상세 목록")
+    summary: str = Field(default="", description="호환성 요약 문장")
+
+
+# ---------------------------------------------------------------------------
+# Assessment Persistence (Task 3)
+# ---------------------------------------------------------------------------
+
+
+class PersistedAssessmentSummary(BaseModel):
+    id: str = Field(description="평가 ID")
+    vm_id: str = Field(description="VMware VM MOR")
+    vm_name: str = Field(description="VM 이름")
+    compatible: bool = Field(description="호환 여부")
+    score: float = Field(description="호환성 점수")
+    assessed_at: str = Field(description="평가 시간")
+
+
+class PersistedAssessmentDetail(PersistedAssessmentSummary):
+    compatibility_detail: dict[str, Any] | None = None
+    flavor_match: dict[str, Any] | None = None
+    network_mappings: dict[str, Any] | None = None
+    disk_mappings: dict[str, Any] | None = None
+    source_vm_metadata: dict[str, Any] | None = None
+    issues: list[str] | None = None
+    warnings: list[str] | None = None
+    plans: list["PersistedPlanSummary"] = Field(default_factory=list)
+
+
+class PersistedPlanSummary(BaseModel):
+    id: str = Field(description="계획 ID")
+    vm_id: str = Field(description="VMware VM MOR")
+    priority: int = Field(description="우선순위")
+    status: str = Field(description="계획 상태")
+    estimated_total_minutes: int = Field(description="예상 소요 시간 (분)")
+    created_at: str = Field(description="계획 생성 시간")
+
+
+class PersistedPlanDetail(PersistedPlanSummary):
+    assessment_id: str
+    target_flavor_id: str | None = None
+    target_flavor_name: str | None = None
+    target_network_ids: dict[str, Any] | None = None
+    target_volume_types: dict[str, Any] | None = None
+    estimated_downtime_minutes: int = 0
+    steps: dict[str, Any] | None = None
+    notes: str | None = None
+    updated_at: str | None = None
+    assessment: PersistedAssessmentSummary | None = None
+
+
+# ---------------------------------------------------------------------------
+# Parallel Assessment (Task 5)
+# ---------------------------------------------------------------------------
+
+
+class ParallelAssessmentRequest(BaseModel):
+    vm_ids: list[str] = Field(..., min_length=1, max_length=500, description="평가할 VMware VM MOR 목록 (최대 500개)")
+    include_mapping: bool = Field(default=True, description="OpenStack 리소스 매핑 포함 여부")
+    max_concurrency: int = Field(default=10, ge=1, le=50, description="최대 동시 평가 수")
+    timeout_seconds: int = Field(default=300, ge=10, le=3600, description="평가 타임아웃 (초)")
+
+
+class ParallelAssessmentProgress(BaseModel):
+    task_id: str = Field(description="병렬 평가 작업 ID")
+    total_vms: int = Field(description="전체 VM 수")
+    completed: int = Field(default=0, description="완료된 평가 수")
+    failed: int = Field(default=0, description="실패한 평가 수")
+    in_progress: int = Field(default=0, description="진행 중인 평가 수")
+    status: str = Field(default="running", description="작업 상태 (running, completed, failed, timeout)")

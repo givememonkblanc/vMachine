@@ -70,17 +70,33 @@ Gunicorn (preload_app=True)
 
 ### Phase 4: VMware Migration Assessment Engine
 ```
-┌─ VMware vCenter ─────────────────────────────────────┐
-│ pyVmomi SDK (list_vms, list_datastores, etc.)        │
-└────────────────────┬──────────────────────────────────┘
+┌─ VMware vCenter ─────────────────────────────────────────────┐
+│ pyVmomi SDK (list_vms, list_datastores, etc.)                │
+└────────────────────┬─────────────────────────────────────────┘
                      │
                      ▼
 Gunicorn Workers
-  └── VMwareClientFactory → VMwareClient
-        ├── VMwareInventoryService   (inventory + DB sync)
-        ├── VMwareMappingEngine      (flavor/network/disk mapping)
-        ├── VMwareCompatibilityService (OS/CPU/memory/disk/net checks)
-        └── VMwarePlanService        (migration plan generation)
+  └── VMwareClientFactory
+        ├── VMwareConnectionPool (auto-reconnect, health checks, TTL)
+        │     └── VMwareClient → pyVmomi ServiceInstance
+        │
+        ├── VMwareInventoryService   (list_vms/datastores/networks, DB sync)
+        │     └── TTLCache (per-worker, 300s)
+        │
+        ├── VMwareMappingEngine      (flavor/network/disk → OpenStack)
+        │
+        ├── VMwareCompatibilityService (rules-based, scored 0.0-1.0)
+        │     ├── OS / CPU / Memory / Disk / Network
+        │     ├── Firmware (BIOS/UEFI) / Secure Boot
+        │     ├── VMware Tools status
+        │     ├── Disk Controller types
+        │     └── NIC types
+        │
+        ├── VMwarePlanService        (priority-sorted plans + downtime)
+        │
+        └── ParallelAssessmentService (asyncio.Semaphore, configurable concurrency)
+              └── Assesses & persists results in parallel
+                    └── AssessmentPersistenceService (MigrationAssessment/Plan CRUD)
 ```
 
 ---
@@ -169,20 +185,45 @@ VMware vCenter (optional, external)
        │  pyVmomi SDK
        ▼
 VMwareClientFactory
-  └── VMwareClient (list_vms, get_vm_detail, list_datastores, list_networks, …)
+  ├── VMwareConnectionPool (auto-reconnect, health checks, session TTL)
+  │     └── PooledConnection (least-used selection, max_pool_size=5, ttl=300s)
+  │
+  ├── list_vms() → list_datastores() → list_networks() → list_clusters() → list_hosts()
+  ├── get_vm_detail() (disks, nics, firmware, secure_boot, tools_status, controllers)
+  └── validate_credentials()
        │
        ▼
-VMwareInventoryService        VMwareMappingEngine         VMwareCompatibilityService
-  ├── list_vms()                ├── match_flavor()          ├── check_os()
-  ├── get_vm_detail()           ├── match_network()         ├── check_cpu()
-  ├── list_datastores()         ├── map_disks()             ├── check_memory()
-  ├── list_networks()           └── map_networks()          ├── check_disk()
-  └── sync_to_db()                                           └── check_network()
-       │                                                           │
-       ▼                                                           ▼
-  ResourceSnapshot DB                                       VMwarePlanService
-  (vmware_vm, vmware_datastore,                               └── generate_plan()
-   vmware_network)                                                └── MigrationPlanResponse
+┌──────────────────┬──────────────────────┬──────────────────────────┐
+│ VMwareInventory  │ VMwareMappingEngine  │ VMwareCompatibility     │
+│   Service        │                      │   Service               │
+│                  │                      │                          │
+│ ├── list_vms()   │ ├── match_flavor()   │ ├── OS check             │
+│ ├── get_vm()     │ ├── match_network()  │ ├── CPU/Memory/Disk/NIC  │
+│ ├── ds/networks  │ ├── map_disks()      │ ├── Firmware (BIOS/UEFI) │
+│ └── sync_inv()   │ └── map_networks()   │ ├── Secure Boot          │
+│       │          │                      │ ├── VMware Tools status  │
+│       ▼          │                      │ ├── Disk controller type │
+│ ResourceSnapshot │                      │ └── NIC type             │
+│ (DB snapshots)   │                      │       │                  │
+│                  │                      │       │ ScoredResult     │
+└──────────────────┴──────────────────────┴─────────┬────────────────┘
+                                                     │
+                          ┌──────────────────────────┴───────────────┐
+                          │ VMwarePlanService                         │
+                          │  └── generate_plan() → priority-sorted   │
+                          │       step-by-step MigrationPlanResponse │
+                          │                                          │
+                          │ AssessmentPersistenceService             │
+                          │  ├── save_assessment/plan                │
+                          │  ├── get_assessment/plan (by ID)         │
+                          │  └── list_assessments/plans              │
+                          │       └── MigrationAssessment/MigrationPlan (DB)
+                          │                                          │
+                          │ ParallelAssessmentService                │
+                          │  └── assess_parallel()                   │
+                          │       └── asyncio.Semaphore(max=10)      │
+                          │            └── Concurrent VM evaluation  │
+                          └──────────────────────────────────────────┘
 ```
 
 ### Key Design Decisions
@@ -197,7 +238,15 @@ VMwareInventoryService        VMwareMappingEngine         VMwareCompatibilitySer
 
 5. **Async DB writes**: Inventory sync uses `asyncio.create_task` for non-blocking snapshot upsert.
 
-### API Endpoints (9 new routes)
+6. **Scored compatibility**: Rules-based engine with 8 check categories (OS, CPU, memory, disk, network, firmware, Secure Boot, VMware Tools, disk controllers, NIC types). Each check can produce a `CompatibilityIssueDetail` with severity (critical/high/medium/low/info) that deducts from a 1.0 base score. Final score is floored at 0.0. Compatible = score >= 0.5 and no critical issues.
+
+7. **Async connection pooling**: `VMwareConnectionPool` wraps `PooledConnection` objects with thread-safe acquire/release, session TTL (300s), health check interval (60s), and auto-reconnect on stale connections. Uses least-used connection selection for load balancing.
+
+8. **Parallel assessment**: `ParallelAssessmentService` uses `asyncio.Semaphore(max_concurrency)` to evaluate multiple VMs concurrently. Per-VM timeout via `asyncio.wait_for()`. Results are tracked per-task with progress/completion status.
+
+9. **Separate persistence tables**: `MigrationAssessment` and `MigrationPlan` SQLAlchemy models with dedicated database tables (`migration_assessments`, `migration_plans`), Alembic migration, and CRUD service (`AssessmentPersistenceService`).
+
+### API Endpoints (13 new routes)
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -210,8 +259,12 @@ VMwareInventoryService        VMwareMappingEngine         VMwareCompatibilitySer
 | POST | `/api/v1/vmware/assess/{id}/compatibility` | Single VM compatibility |
 | POST | `/api/v1/vmware/assess/{id}/mapping` | Single VM resource mapping |
 | POST | `/api/v1/vmware/plan` | Generate migration plan |
+| GET | `/api/v1/vmware/assessments` | List persisted assessments |
+| GET | `/api/v1/vmware/assessment/{id}` | Get assessment detail + plans |
+| GET | `/api/v1/vmware/plans` | List persisted plans |
+| GET | `/api/v1/vmware/plan/{id}` | Get plan detail + assessment |
 
-### New Prometheus Metrics (4)
+### New Prometheus Metrics (8)
 
 | Metric | Type | Labels | Description |
 |--------|------|--------|-------------|
@@ -219,6 +272,10 @@ VMwareInventoryService        VMwareMappingEngine         VMwareCompatibilitySer
 | `vmware_plan_total` | Counter | status | Migration plan requests (success/error) |
 | `vmware_inventory_sync_duration_seconds` | Histogram | — | Inventory sync latency |
 | `vmware_inventory_stale_count` | Gauge | resource_type | Number of stale (uncached) inventory items |
+| `vmware_connection_pool_size` | Gauge | — | Current VMware connection pool size |
+| `vmware_connections_created_total` | Counter | — | Total VMware connections created |
+| `vmware_connections_reused_total` | Counter | — | Total VMware connections reused from pool |
+| `vmware_connections_failed_total` | Counter | — | Total VMware connection failures |
 
 ### Benchmark Results
 
@@ -253,25 +310,39 @@ Benchmarked with single Uvicorn worker, no vCenter configured (all VMware endpoi
 
 | Metric | Value |
 |--------|:-----:|
-| New source files | 13 |
-| Lines added | ~3,500 |
-| Lines removed | ~170 |
-| Modified files | 5 (router.py, deps/services.py, settings.py, custom.py, api_benchmark.py) |
+| New source files | 18 |
+| Lines added | ~4,800 |
+| Lines removed | ~200 |
+| Key new files | `connection.py` (inventory methods), `pool.py`, `compatibility.py`, `parallel_assessment.py`, `assessment_persistence.py`, `migration_assessment.py` (models), `assessment.py` (schemas + endpoints) |
+| Modified files | 12+ (router.py, deps/services.py, settings.py, custom.py, api_benchmark.py, models/__init__.py, inventory schemas, alembic/env.py, ...) |
+
+### Phase 4 Final Status
+
+| Status | Note |
+|--------|------|
+| **Implementation** | ✅ **Completed** — All 8 sub-tasks implemented (inventory fix, connection pooling, persistence, rules-based compatibility, parallel assessment, benchmark endpoints, performance report, status update) |
+| **Live Validation** | ⏳ **Pending** — Requires real vCenter + OpenStack environment |
+| **Parallel Benchmark** | ✅ **Completed** — Simulated assessment benchmark validated on synthetic 10/50/100/500 VM payloads. See [`docs/vmware_benchmark_results.md`](vmware_benchmark_results.md) for full results. Best throughput: ~64K VM/s (compatibility), ~24K VM/s (mapping), ~5.8K VM/s (parallel assessment at 500 VMs concurrency=10). |
+| **Schema Change** | ⚠️ **Breaking** — `VMCompatibilityResult` replaced by `ScoredCompatibilityResult` on `/assess/{id}/compatibility` endpoint. Old clients expecting `power_state`, `os_supported`, `cpu_compatible`, etc. flat fields must migrate to the new `issues[]` + `score` format. |
 
 ### vCenter Integration Status
 
 | Feature | Status | Notes |
 |---------|:------:|-------|
 | `list_vms` | ✅ Implemented | Requires `VMWARE_HOST/USER/PASS` env vars |
-| `get_vm_detail` | ✅ Implemented | pyVmomi `Collector.RetrievePropertiesEx` |
+| `get_vm_detail` | ✅ Implemented | pyVmomi `Collector.RetrievePropertiesEx` — disks, nics, firmware, secure boot, tools, controllers |
 | `list_datastores` | ✅ Implemented | Datastore name, capacity, free space |
 | `list_networks` | ✅ Implemented | Network name, type, VLAN |
+| `list_clusters` | ✅ Implemented | ClusterComputeResource discovery |
+| `list_hosts` | ✅ Implemented | HostSystem discovery |
 | `validate_credentials` | ✅ Implemented | SiContent check |
 | Flavor matching | ✅ Implemented | Weighted Euclidean distance |
-| Compatibility check | ✅ Implemented | OS/CPU/Memory/Disk/Network |
+| Compatibility check | ✅ Implemented | Rules-based, scored 0.0–1.0 (8 categories) |
 | Migration plan | ✅ Implemented | Priority-sorted step-by-step workflow |
+| Connection pooling | ✅ Implemented | VMwareConnectionPool with auto-reconnect, health checks, TTL |
+| Assessment persistence | ✅ Implemented | DB-backed MigrationAssessment + MigrationPlan models |
+| Parallel evaluation | ✅ Implemented | asyncio.Semaphore-based concurrent VM assessment |
 | E2E integration test | ⏳ Pending | Requires live vCenter + OpenStack |
-| VCenter connection pooling | ⏳ Pending | Currently creates new `Si()` per call |
 
 ## Phase 2: Redis Distributed Cache — Results
 
@@ -635,7 +706,11 @@ Note: Cache misses are low because each worker has its own cache. With 16 worker
 | **No GPU monitoring** | GPU workloads invisible to Prometheus | Phase 5 nvidia-smi exporter |
 | **No alerting** | Metrics collected but not acted upon | Prometheus Alertmanager + Grafana |
 | **Gunicorn preload_app=True** | DB connections opened in master before fork may be shared unsafely | ✅ **Resolved — `init_db_engine()` called in lifespan (post-fork)** |
-| **VMwareClientFactory.list_vms bug** | Inventory endpoint crashes with AttributeError | `inventory_service.list_vms()` calls `self.factory.list_vms()` but method lives on `VMwareClient`, not `VMwareClientFactory` |
+| **VMwareClientFactory.list_vms bug** | Inventory endpoint crashes with AttributeError | ✅ **Resolved — inventory methods restored from git history, connection.py now has all 8 discovery methods + validate_credentials** |
+| **Async connection pool** | No pooling for VMware SDK connections | ✅ **Resolved — VMwareConnectionPool with auto-reconnect, health checks, session TTL, least-used connection selection** |
+| **Assessment persistence** | Assessment results were transient (in-memory only) | ✅ **Resolved — MigrationAssessment + MigrationPlan models with Alembic migration, CRUD service, GET endpoints** |
+| **Compatibility depth** | Only basic OS/CPU/memory/disk checks | ✅ **Resolved — rules-based ScoredCompatibilityResult with firmware, Secure Boot, VMware Tools, disk controller, NIC type checks** |
+| **Sequential assessment** | Multiple VMs evaluated one-at-a-time | ✅ **Resolved — ParallelAssessmentService with asyncio.Semaphore-based concurrent evaluation, configurable concurrency & timeout** |
 
 ---
 
@@ -645,7 +720,7 @@ Note: Cache misses are low because each worker has its own cache. With 16 worker
 |-------|-------|:--------:|-----------|
 | **Phase 2** | Redis shared cache | 🔴 High | ✅ **Completed** — Redis distributed cache with CACHE_BACKEND selection, cross-worker sharing, auto-fallback |
 | **Phase 3** | OpenTelemetry tracing | 🟡 Medium | ✅ **Completed** — Per-worker TracerProvider, FastAPI/SQLAlchemy/httpx instrumentation, lifespan-based init |
-| **Phase 4** | VMware assessment | 🔴 High | ✅ **Completed** — 9 API endpoints, flavor mapping engine, compatibility checks, migration plan service |
+| **Phase 4** | VMware assessment | 🔴 High | ✅ **Completed** — Inventory, compatibility engine (rules-based, scored), mapping, planning, persistence, parallel evaluation, connection pooling. See Completed Features below. |
 | **Phase 5** | PostgreSQL migration | 🔴 High | Concurrent write safety; connection pooling; production-grade durability. Code is ready (`init_db_engine()`, `dispose_engine()`) — just switch `DATABASE_URL` |
 | **Phase 6** | Grafana dashboard | 🟡 Medium | Visual dashboards for Prometheus metrics (request latency, cache hit ratio, OpenStack errors, VMware inventory) |
 | **Phase 7** | GPU telemetry | 🟢 Low | nvidia-smi Prometheus exporter; only needed for GPU workloads |
@@ -670,13 +745,15 @@ Note: Cache misses are low because each worker has its own cache. With 16 worker
 - `dispose_engine()` on shutdown
 
 #### Phase 4: VMware Migration Assessment
-- 9 new API endpoints for VMware inventory and assessment
-- `VMwareInventoryService` — list VMs/datastores/networks, sync to DB
-- `VMwareMappingEngine` — weighted Euclidean distance flavor matching (cpu=0.4, ram=0.4, disk=0.2)
-- `VMwareCompatibilityService` — OS/CPU/memory/disk/network compatibility checks
-- `VMwarePlanService` — priority-sorted migration plan generation
-- 4 new Prometheus metrics: `vmware_assessment_total`, `vmware_plan_total`, `vmware_inventory_sync_duration_seconds`, `vmware_inventory_stale_count`
-- 13 new source files, ~3,500 lines added
+- **Inventory**: 9 API endpoints for VMs/datastores/networks/clusters/hosts, DB sync via `ResourceSnapshot`
+- **Mapping**: `VMwareMappingEngine` — weighted Euclidean distance flavor matching (cpu=0.4, ram=0.4, disk=0.2), network/Disk mapping
+- **Compatibility**: `VMwareCompatibilityService` — rules-based `ScoredCompatibilityResult` with 8 check categories (OS, CPU, memory, disk, network, firmware, Secure Boot, VMware Tools, disk controllers, NIC types), scored 0.0–1.0
+- **Planning**: `VMwarePlanService` — priority-sorted migration plan with estimated downtime and execution steps
+- **Persistence**: `MigrationAssessment` + `MigrationPlan` ORM models, Alembic migration, `AssessmentPersistenceService` CRUD
+- **Parallel Evaluation**: `ParallelAssessmentService` — asyncio.Semaphore-based concurrent VM evaluation with per-VM timeout
+- **Connection Pooling**: `VMwareConnectionPool` — thread-safe pool with auto-reconnect, health checks, session TTL, least-used connection selection
+- **Metrics**: 8 Prometheus metrics: `vmware_assessment_total`, `vmware_plan_total`, `vmware_inventory_sync_duration_seconds`, `vmware_inventory_stale_count`, `vmware_connection_pool_size`, `vmware_connections_created_total`, `vmware_connections_reused_total`, `vmware_connections_failed_total`
+- **18 source files**, ~4,800 lines added
 
 ### Design Constraints for Next Phase
 - **Do not** change existing metric names or labels (backward compatibility)

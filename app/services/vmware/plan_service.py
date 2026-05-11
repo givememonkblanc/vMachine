@@ -5,7 +5,7 @@ from app.schemas.vmware.assessment import (
     MigrationPlanResponse,
     MigrationPlanVM,
     MigrationStep,
-    VMCompatibilityResult,
+    ScoredCompatibilityResult,
     VMMappingResult,
 )
 from app.schemas.vmware.inventory import VMSummary
@@ -23,7 +23,7 @@ class VMwarePlanService:
 
     def generate_plan(
         self,
-        vms: list[tuple[VMSummary, VMCompatibilityResult, VMMappingResult | None]],
+        vms: list[tuple[VMSummary, ScoredCompatibilityResult, VMMappingResult | None]],
         priority_overrides: dict[str, int] | None = None,
     ) -> MigrationPlanResponse:
         overrides = priority_overrides or {}

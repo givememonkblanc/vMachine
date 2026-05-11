@@ -30,6 +30,8 @@ from app.models import (  # noqa: F401
     AutoScalingPolicy,
     ClusterDeployment,
     MetricRecord,
+    MigrationAssessment,
+    MigrationPlan,
     MigrationTask,
     OperationTask,
     ResourceSnapshot,

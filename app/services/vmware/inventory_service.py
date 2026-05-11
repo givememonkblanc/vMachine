@@ -135,6 +135,7 @@ class VMwareInventoryService:
                 capacity_gb=d.get("capacity_gb", 0) or 0,
                 thin_provisioned=d.get("thin_provisioned", True),
                 datastore_name=d.get("datastore_name"),
+                controller_type=d.get("controller_type"),
             )
             for d in detail.get("disks", [])
         ]
@@ -144,6 +145,7 @@ class VMwareInventoryService:
                 network_name=n.get("network_name", "unknown"),
                 mac_address=n.get("mac_address"),
                 ip_addresses=n.get("ip_addresses", []),
+                nic_type=n.get("nic_type"),
             )
             for n in detail.get("nics", [])
         ]
@@ -164,6 +166,10 @@ class VMwareInventoryService:
             datastores=detail.get("datastores", []),
             tags=[],
             annotation=detail.get("annotation", ""),
+            firmware=detail.get("firmware"),
+            secure_boot_enabled=detail.get("secure_boot_enabled"),
+            vmware_tools_status=detail.get("vmware_tools_status"),
+            disk_controller_types=detail.get("disk_controller_types"),
         )
 
     @staticmethod

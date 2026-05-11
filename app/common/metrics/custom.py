@@ -116,3 +116,60 @@ cache_backend_status = Gauge(
     name="cache_backend_status",
     documentation="Active cache backend: 1=redis, 0=memory",
 )
+
+# ---------------------------------------------------------------------------
+# VMware connection pool metrics
+# ---------------------------------------------------------------------------
+
+vmw_pool_size = Gauge(
+    name="vmware_connection_pool_size",
+    documentation="Current VMware connection pool size.",
+)
+
+vmw_conn_created = Counter(
+    name="vmware_connections_created_total",
+    documentation="Total VMware connections created.",
+)
+
+vmw_conn_reused = Counter(
+    name="vmware_connections_reused_total",
+    documentation="Total VMware connections reused from pool.",
+)
+
+vmw_conn_reconnected = Counter(
+    name="vmware_connections_reconnected_total",
+    documentation="Total VMware stale connections reconnected.",
+)
+
+vmw_conn_failed = Counter(
+    name="vmware_connections_failed_total",
+    documentation="Total VMware connection failures.",
+)
+
+# ---------------------------------------------------------------------------
+# VMware assessment metrics
+# ---------------------------------------------------------------------------
+
+vmw_assessment_total = Counter(
+    name="vmware_assessment_total",
+    documentation="Total VMware assessment requests by status.",
+    labelnames=("status",),
+)
+
+vmw_plan_total = Counter(
+    name="vmware_plan_total",
+    documentation="Total VMware migration plan requests by status.",
+    labelnames=("status",),
+)
+
+vmw_inventory_sync_duration = Histogram(
+    name="vmware_inventory_sync_duration_seconds",
+    documentation="VMware inventory sync duration.",
+    buckets=(0.1, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0, 120.0),
+)
+
+vmw_inventory_stale_count = Gauge(
+    name="vmware_inventory_stale_count",
+    documentation="Stale (uncached) VMware inventory items.",
+    labelnames=("resource_type",),
+)

@@ -2,6 +2,7 @@ from app.models.alert_record import AlertRecord
 from app.models.audit_log import AuditLog
 from app.models.auto_scaling_policy import AutoScalingPolicy
 from app.models.cluster_deployment import ClusterDeployment
+from app.models.migration_assessment import MigrationAssessment, MigrationPlan
 from app.models.migration_task import MigrationTask
 from app.models.monitoring_metric import MetricRecord
 from app.models.operation_task import OperationTask
@@ -14,6 +15,8 @@ __all__ = [
     "AuditLog",
     "AutoScalingPolicy",
     "ClusterDeployment",
+    "MigrationAssessment",
+    "MigrationPlan",
     "MigrationTask",
     "MetricRecord",
     "OperationTask",

@@ -19,6 +19,8 @@ ENDPOINTS = [
     {"method": "GET", "path": "/api/v1/vmware/vms", "name": "VMware VMs (cold)", "enabled": True},
     {"method": "GET", "path": "/api/v1/vmware/datastores", "name": "VMware Datastores (cold)", "enabled": True},
     {"method": "GET", "path": "/api/v1/vmware/networks", "name": "VMware Networks (cold)", "enabled": True},
+    {"method": "GET", "path": "/api/v1/vmware/assessments", "name": "VMware Assessments (cold)", "enabled": True},
+    {"method": "GET", "path": "/api/v1/vmware/plans", "name": "VMware Plans (cold)", "enabled": True},
 ]
 
 async def measure_endpoint(client: httpx.AsyncClient, endpoint: dict, iterations: int) -> dict:
